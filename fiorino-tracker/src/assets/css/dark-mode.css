@@ -1,0 +1,528 @@
+:root {
+    --dark-primary-color: #111111;
+    --dark-primary-color-h: #080808;
+    --dark-color: #1e1e1e;
+    --dark-color-hover: #292929;
+    --dark-gray-default: #2a2c35;
+    --dark-color-text: #cac5c5;
+    --dark-color-text-rgb: 202, 197, 197;
+    --transition-mode-color: 0.5s;
+    --dark-box-shadow: 0 2px 18px 1px rgba(0, 0, 0, 0.283);
+}
+
+.receita-info,
+.stepper,
+.card-file,
+.toggle-switch-background,
+.currency-header,
+.card-alert,
+.tab-client-info,
+.currency-row,
+.currency-table,
+textarea,
+.info-area,
+hr,
+.select2-container--classic.select2-container--open .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single,
+.select2-container--open .select2-dropdown--below,
+.select2-results__option.select2-results__option--selectable,
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-container--default .select2-selection--single {
+    transition: box-shadow var(--transition-mode-color), background-color var(--transition-mode-color), border-color var(--transition-mode-color), color var(--transition-mode-color);
+}
+
+input,
+#app-body.dark-mode,
+.header-dash-p,
+p,
+.card,
+.card-row-account {
+    transition: background-color var(--transition-mode-color), border-color var(--transition-mode-color), color var(--transition-mode-color);
+}
+
+#app-body.dark-mode {
+    color: var(--dark-color-text);
+    background-color: var(--dark-primary-color);
+}
+
+.dark-mode .dropdown-menu-header,
+.dark-mode .dropdown-menu-row {
+    background-color: var(--dark-color);
+}
+
+.dark-mode {
+
+    .header-dash {
+        box-shadow: var(--dark-box-shadow);
+    }
+
+    .header-dash-p .links-area .link-child,
+    p {
+        color: var(--dark-color-text);
+    }
+
+    .stepper,
+    .div-sides .side-info,
+    .loader-modal,
+    .card,
+    .header-dash-p {
+        background-color: var(--dark-color);
+    }
+
+    .dropdown-item-h:hover {
+        background-color: var(--dark-color-hover);
+
+    }
+    
+    .dropdown-title {
+        font-weight: 500;
+        color: white;
+    }
+
+    #dash-area .receita-info,
+    .dropdown-menu-header,
+    .dropdown-menu-row {
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    .header-dash-p {
+        border-bottom: 1px solid var(--dark-gray-default);
+    }
+
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea,
+    .select2-container--default .select2-selection--single {
+        border: 1px solid var(--dark-gray-default);
+        color: var(--dark-color-text);
+        background-color: var(--dark-gray-default);
+    }
+
+    .header-dash {
+        .sub-header {
+            background-color: var(--dark-color);
+        }
+
+    }
+
+    .text-red {
+        color: #e0402e !important;
+    }
+
+    hr {
+        border-top: 1px solid var(--dark-gray-default);
+    }
+
+    .card-row-account {
+        background-color: var(--dark-primary-color);
+    }
+
+    .card-row-account:hover {
+        background-color: var(--dark-primary-color-h);
+    }
+
+    #coin-settings .card-row-account.selected,
+    .card-row-account.selected {
+        background-color: var(--dark-primary-color-h);
+    }
+
+    .button-secundary-gray {
+        color: var(--dark-color-text);
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    .checkbox-wrapper-51 .toggle:before {
+        background-color: var(--dark-gray-default);
+    }
+
+    .checkbox-wrapper-51 .toggle span svg path {
+        stroke: #111111;
+    }
+
+    .select2-container--classic.select2-container--open .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single,
+    .select2-container--open .select2-dropdown--below {
+        border-color: var(--dark-gray-default) !important;
+    }
+
+    .select2-results__option.select2-results__option--selectable,
+    .select2-results__option.select2-results__option--disabled {
+        background-color: var(--dark-gray-default);
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: var(--dark-color-text)
+    }
+
+    #coin-settings .info-area,
+    #coin-settings .info-area.active {
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    .multiselect__tags,
+    .multiselect__content-wrapper {
+        background: var(--dark-gray-default);
+    }
+
+    .multiselect__content-wrapper {
+        border: 1px solid var(--dark-gray-default);
+    }
+    
+    .multiselect--disabled,
+    .multiselect--disabled .multiselect__current,
+    .multiselect--disabled .multiselect__select {
+        background: var(--dark-gray-default);
+        border-radius: 7px;
+    }
+
+    .tooltip-custom {
+        background-color: var(--dark-gray-default);
+        color: var(--dark-color-text);
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    .error-area {
+        background-color: rgb(43 40 31);
+        color: rgb(215 132 33);
+        padding: 10px;
+        width: 100%;
+        display: flex;
+        gap: 5px;
+        border-radius: 5px;
+        font-size: 12px;
+        margin-top: 5px;
+        border: 1px solid rgb(69 65 48);
+        align-items: baseline;
+    }
+
+    .daterangepicker {
+        background-color: var(--dark-gray-default);
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    .daterangepicker:before {
+        top: -7px;
+        border-right: 7px solid transparent;
+        border-left: 7px solid transparent;
+        border-bottom: 7px solid var(--dark-gray-default);
+        color: var(--dark-gray-default);
+    }
+
+    .daterangepicker .calendar-table {
+        border: 1px solid var(--dark-gray-default);
+        border-radius: 4px;
+        background-color: var(--dark-gray-default);
+    }
+
+    .daterangepicker td.off,
+    .daterangepicker td.off.in-range,
+    .daterangepicker td.off.start-date,
+    .daterangepicker td.off.end-date {
+        background-color: var(--dark-gray-default);
+        border-color: var(--dark-gray-default);
+        color: inherit;
+    }
+
+    .currency-table {
+        background-color: var(--dark-color);
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    .currency-table .currency-header,
+    .currency-table .currency-row {
+        display: flex;
+        width: 100%;
+        border-bottom: 1px solid var(--dark-gray-default);
+    }
+
+    .badge-black {
+        background-color: rgba(var(--dark-color-text-rgb), 0.186) !important;
+        color: var(--dark-color-text) !important;
+    }
+
+    #client-screen .currency-row-selector:hover {
+        background-color: var(--dark-gray-default);
+    }
+
+    .tab-client-info {
+        border-bottom: 1px solid var(--dark-gray-default);
+    }
+
+    .toggle-switch-background {
+        background-color: var(--dark-gray-default);
+        box-shadow: inset 0 0 0 1px var(--dark-gray-default);
+    }
+
+    .alert-title {
+        color: var(--dark-color-text) !important;
+    }
+
+    .card-alert {
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    .textarea-qr-false {
+        background-color: var(--dark-gray-default);
+    }
+
+    #ledger-screen .currency-row-details,
+    #trader-screen .currency-row-details,
+    #client-screen .currency-row-details,
+    #dash-area .currency-row-details {
+        background-color: var(--dark-primary-color);
+    }
+
+    #client-screen {
+        .list-config .item-config {
+            border-bottom: 1px solid var(--dark-gray-default);
+        }
+
+        .info-status.business {
+            background-color: rgba(var(--dark-color-text-rgb), 0.186) !important;
+            color: var(--dark-color-text) !important;
+        }
+
+        .profile-area,
+        .profile-area .img-area {
+            border: 1px solid var(--dark-gray-default);
+        }
+    }
+
+    .button-secundary,
+    .button-secundary-gray {
+        box-shadow: var(--dark-box-shadow);
+    }
+
+    .card-file {
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    .upload-area {
+        border: 2px dashed var(--dark-gray-default);
+    }
+
+    .card-row-account .menu-col,
+    .currency-table-mobile .menu-col {
+        border: 2px solid var(--dark-gray-default);
+        background: var(--dark-gray-default)
+    }
+
+    .card-row-account .menu-col:hover,
+    .currency-table-mobile .menu-col:hover {
+        background: var(--dark-gray-default)
+    }
+
+    #dash-area .sub-row,
+    #trader-screen .sub-row {
+        border-left: 3px solid var(--dark-gray-default);
+    }
+
+    .pagination button {
+        background-color: var(--dark-primary-color);
+        color: var(--dark-color-text);
+    }
+
+    #trader-screen .choose-type-account,
+    #dash-area .choose-type-account,
+    #bot-screen .choose-type-account {
+        background-color: var(--dark-gray-default);
+        border: 1px solid var(--dark-gray-default);
+        color: var(--dark-color-text);
+    }
+
+    #trader-screen .choose-type-account:not(.disabled) .type-account:not(.active):hover,
+    #dash-area .choose-type-account:not(.disabled) .type-account:not(.active):hover,
+    #bot-screen .choose-type-account:not(.disabled) .type-account:not(.active):hover {
+        background-color: var(--dark-color-hover);
+    }
+
+    .button-card {
+        background-color: var(--dark-gray-default);
+        color: var(--dark-color-text);
+    }
+
+    .percentage-bar-bg {
+        background-color: var(--dark-gray-default) !important;
+    }
+
+    #trader-screen .transation-selected,
+    #dash-area .transation-selected,
+    #dash-area .transation-selected-modal {
+        background-color: var(--dark-gray-default);
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    #dash-area {
+        .box-value {
+            border-color: var(--dark-gray-default);
+        }
+
+        .text-select-active {
+            color: var(--gray-light);
+        }
+
+        .currency-row-details {
+            box-shadow: inset 0 -1px 0 var(--dark-gray-default);
+        }
+
+        .img-avatar {
+            background-color: var(--dark-gray-default);
+        }
+
+        #wallet-area .currency-row .currency-cell {
+            background-color: var(--dark-color);
+        }
+    }
+
+
+    .select2-search--dropdown,
+    .select2-results {
+        background-color: var(--dark-gray-default);
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        background-color: var(--dark-color);
+
+    }
+
+    .divider {
+        background-color: var(--dark-gray-default);
+    }
+
+    .step-number {
+        border-color: var(--dark-gray-default);
+        ;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        color: var(--dark-color-text)
+    }
+
+    .obs-card {
+        color: var(--dark-color-text)
+    }
+
+    .option-card {
+        background-color: var(--dark-gray-default);
+        color: var(--dark-color-text);
+        border: 1px solid var(--dark-gray-default);
+    }
+
+    .option-card:hover {
+        background-color: var(--dark-color-hover);
+    }
+
+    .delete-col {
+        background-color: var(--dark-gray-default);
+        border: 2px solid var(--dark-gray-default)
+    }
+
+    .delete-col:hover {
+        background-color: var(--dark-gray-default);
+
+    }
+
+    #trader-screen {
+
+        .cotacao-book {
+            border: 1px solid #333;
+            background-color: #1a1a1a;
+        }
+
+        .cotacao-header {
+            background-color: #222;
+            border-bottom: 1px solid #333;
+        }
+
+        .buy {
+            color: #00c896;
+        }
+
+        .sell {
+            color: #ff4e4e;
+        }
+
+        .highlight-buy {
+            background-color: rgba(0, 200, 150, 0.15);
+        }
+
+        .highlight-sell {
+            background-color: rgba(255, 78, 78, 0.15);
+        }
+
+        .tab-header,
+        .tab-header.disabled {
+            background-color: var(--dark-color);
+            opacity: 1;
+        }
+
+        .select-input-div input {
+            border-left: 1px solid var(--dark-color)
+        }
+
+        .choose-div {
+            background-color: var(--dark-color);
+        }
+
+        .choose-button {
+            border: 2px solid var(--dark-gray-default);
+        }
+    }
+
+    .card-header {
+        background-color: var(--dark-color);
+    }
+
+    .icon-table {
+        background-color: var(--dark-gray-default);
+    }
+
+    .total-area {
+        background-color: var(--dark-gray-default);
+        border: 1px solid var(--dark-gray-default);
+    }
+    .chat-content {
+        background-color: #1a1a1a;
+        border-left: 1px solid var(--dark-gray-default);
+    }
+
+    .chat-item,
+    .chat-item:first-child {
+        border-color: var(--dark-gray-default);
+    }
+
+    .chat-header,
+    .chat-input {
+        background-color: var(--dark-color);
+    }
+
+    .file-preview,
+    .received {
+        background: var(--dark-gray-default);
+
+    }
+
+    .chat-item:hover,
+    .chat-item:first-child:hover {
+        background-color: #1a1a1a;
+        border-color: #1a1a1a;
+    }
+
+    .chat-item.active,
+    .chat-item:first-child:hover {
+        background-color: #1a1a1a;
+        border-color: #1a1a1a;
+    }
+
+    .card.pull-up.active,
+    .pull-up:hover {
+        box-shadow: 0px 14px 24px rgb(0 0 0 / 20%);
+    }
+
+
+}
