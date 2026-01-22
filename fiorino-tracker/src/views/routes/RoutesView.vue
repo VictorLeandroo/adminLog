@@ -284,7 +284,7 @@ export default {
                     kmInicial: 10380,
                     kmFinal: null,
                     photos: [],
-                    status: 'Em andamento',
+                    status: 'Pendente conferência',
                     createdAt: '2025-10-29T08:10:00',
                     finishedAt: null,
                     driver: 'Estevão',
