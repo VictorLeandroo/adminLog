@@ -4,7 +4,7 @@
       <h4 class="text-center mb-2">Sistema de Gestão Fiorino</h4>
       <p class="text-muted text-center mb-2">Acesse sua conta</p>
 
-      <form @submit.prevent="handleLogin">
+      <form>
         <div class="mb-2">
           <label for="email" class="form-label">E-mail</label>
           <input v-model="form.email" type="email" class="form-control" id="email" placeholder="seuemail@email.com"
@@ -17,7 +17,7 @@
             required />
         </div>
 
-        <ButtonComp type="submit" btn-class="button-primary" class="w-100"
+        <ButtonComp btn-class="button-primary" class="w-100" :click-action="handleLogin"
           :disabled="isLoading || !form.email || !form.password" :is-loading="isLoading">
           Entrar
         </ButtonComp>
@@ -28,6 +28,7 @@
 
 <script>
 import ButtonComp from '@/components/ButtonComp.vue';
+import { loginUser } from '@/services/authService';
 
 export default {
   name: 'LoginView',
@@ -48,15 +49,20 @@ export default {
   methods: {
     async handleLogin() {
       this.isLoading = true
+      this.errorMessage = ''
       try {
-        console.log('Login com', this.form)
+        const { token, user } = await loginUser(this.form.email, this.form.password)
+        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user))
         this.$router.push('/dashboard')
-      } catch (error) {
-        console.error('Erro no login:', error)
+      } catch (err) {
+        console.error(err)
+        this.errorMessage = err.response?.data?.message || 'Erro ao fazer login'
       } finally {
         this.isLoading = false
       }
     }
+
   }
 }
 </script>

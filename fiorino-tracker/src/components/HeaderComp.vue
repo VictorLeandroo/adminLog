@@ -20,8 +20,11 @@
             <router-link class="link" to="rotas" :class="{ 'link-selected': currentPage.includes('rotas') }">
                 Rotas
             </router-link>
-            <router-link class="link" to="historico" :class="{ 'link-selected': currentPage.includes('historico') }">
-                Histórico
+            <router-link class="link" to="financial" :class="{ 'link-selected': currentPage.includes('financial') }">
+                Financeiro
+            </router-link>
+            <router-link class="link" to="vehicles" :class="{ 'link-selected': currentPage.includes('vehicles') }">
+                Veículos
             </router-link>
         </div>
     </nav>

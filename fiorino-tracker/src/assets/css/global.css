@@ -10,7 +10,7 @@
 
 :root {
     --primary-color: #083462;
-    --primary-color-rgb: 245, 131, 46;
+    --primary-color-rgb: 8, 52, 98;
     --gray-default: #eef2f6;
     --gray-light: #f5faff;
     --gray-text: #6b6f82;
@@ -125,7 +125,7 @@ a:hover {
 }
 
 label {
-    font-size: 12px;
+    font-size: 14px;
     margin: 0 !important;
 }
 
@@ -136,6 +136,10 @@ button:disabled,
 .disabled {
     cursor: no-drop !important;
     opacity: 0.5;
+}
+
+.card {
+    border-radius: 18px !important;
 }
 
 .loading-screen {
@@ -273,7 +277,7 @@ button:disabled,
 
 @media (max-width: 768px) {
     body {
-        font-size: 12px;
+        font-size: 14px;
     }
 
     .header-dash-s .header-info {
@@ -374,7 +378,7 @@ button:disabled,
 }
 
 .obs-card {
-    font-size: 12px !important;
+    font-size: 14px !important;
     color: var(--gray-text);
 }
 
@@ -519,7 +523,7 @@ button:disabled,
     position: absolute;
     top: -25px;
     right: 56px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
     color: #aaa;
     text-shadow: 1px 1px #fff;
@@ -817,7 +821,7 @@ button:active {
 }
 
 .currency-table-mobile .currency-header .subtitle-table {
-    font-size: 12px;
+    font-size: 14px;
     color: #757272;
     margin: 0;
 }
@@ -860,6 +864,17 @@ button:active {
     color: black;
 }
 
+.fade-list-enter-active,
+.fade-list-leave-active {
+    transition: all 0.25s ease;
+}
+
+.fade-list-enter-from,
+.fade-list-leave-to {
+    opacity: 0;
+    transform: translateY(5px);
+}
+
 .list-enter-active,
 .list-leave-active,
 .list-move {
@@ -883,7 +898,7 @@ button:active {
 }
 
 .label-top {
-    font-size: 12px;
+    font-size: 14px;
     position: absolute;
     top: -15px;
     margin: 0 0 0 5px;
@@ -891,7 +906,7 @@ button:active {
 }
 
 .label-bottom {
-    font-size: 12px !important;
+    font-size: 14px !important;
     position: absolute;
     bottom: -20px;
     right: 20px;
@@ -1148,7 +1163,7 @@ textarea {
             var(--c) 0 calc(50% + var(--b)/2),
             #0000 0) 1/0 var(--w)/calc(var(--w) + var(--g));
     margin-inline: auto;
-    font-size: 12px;
+    font-size: 14px;
     color: var(--gray-text);
 }
 
@@ -1460,7 +1475,7 @@ textarea {
     top: 3px;
     transform: translateX(-50%);
     left: 50%;
-    font-size: 12px;
+    font-size: 14px;
     background: white;
     border-radius: 50%;
     width: 13px;
@@ -2328,7 +2343,7 @@ h6 {
     display: flex;
     gap: 5px;
     border-radius: 5px;
-    font-size: 12px;
+    font-size: 14px;
     margin-top: 5px;
     border: 1px solid rgb(255, 235, 186);
     align-items: baseline;
@@ -2503,9 +2518,13 @@ h6 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .total-area>div {
     flex: 1;
+}
+
+.border-top, .border-bottom {
+    border-color: var(--gray-default) !important;
 }
