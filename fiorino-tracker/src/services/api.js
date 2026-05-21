@@ -1,7 +1,11 @@
 import axios from 'axios'
 
+const defaultApiUrl = process.env.NODE_ENV === 'production'
+    ? '/api'
+    : 'http://localhost:4000/api'
+
 const api = axios.create({
-    baseURL: 'http://localhost:4000/api',
+    baseURL: process.env.VUE_APP_API_URL || defaultApiUrl,
     headers: {
         'Content-Type': 'application/json'
     }

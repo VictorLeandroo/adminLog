@@ -87,16 +87,6 @@
           </ButtonComp>
         </form>
 
-        <div class="demo-access">
-          <button @click="fillDemo('admin')" type="button">
-            <i class="fa-solid fa-user-shield"></i>
-            Admin demo
-          </button>
-          <button @click="fillDemo('driver')" type="button">
-            <i class="fa-solid fa-truck-fast"></i>
-            Motorista demo
-          </button>
-        </div>
       </div>
     </section>
   </div>
@@ -151,14 +141,6 @@ export default {
       } finally {
         this.isLoading = false
       }
-    },
-
-    fillDemo(type) {
-      this.form = {
-        email: type === 'admin' ? 'admin@fiorino.local' : 'motorista@fiorino.local',
-        password: '123456'
-      }
-      this.errorMessage = ''
     }
   }
 }
@@ -206,8 +188,7 @@ export default {
 
 .brand-top,
 .login-card-head,
-.brand-metrics,
-.demo-access {
+.brand-metrics {
   display: flex;
   gap: 12px;
 }
@@ -353,25 +334,6 @@ form > .button-comp {
   margin-top: 14px;
 }
 
-.demo-access {
-  margin-top: 14px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.demo-access button {
-  border: 1px solid var(--border-soft);
-  border-radius: 14px;
-  background: var(--surface-muted);
-  color: var(--text-strong);
-  min-height: 42px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
 @media (min-width: 860px) {
   .login-shell {
     grid-template-columns: minmax(0, 1.25fr) 390px;
@@ -398,8 +360,7 @@ form > .button-comp {
     margin: 28px 0;
   }
 
-  .brand-metrics,
-  .demo-access {
+  .brand-metrics {
     grid-template-columns: 1fr;
   }
 }

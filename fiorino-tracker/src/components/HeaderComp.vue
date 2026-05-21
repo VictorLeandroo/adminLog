@@ -76,7 +76,7 @@ export default {
 
     data() {
         return {
-            userName: 'Estevao',
+            userName: '',
             userRole: JSON.parse(localStorage.getItem('user') || 'null')?.role || 'DRIVER',
             dropdownOpen: false,
             profileType: localStorage.getItem('profileType') || 'driver',
@@ -101,7 +101,7 @@ export default {
 
     mounted() {
         const user = JSON.parse(localStorage.getItem('user') || 'null')
-        this.userName = user?.name || this.userName
+        this.userName = user?.name || 'Usuário'
         this.userRole = user?.role || this.userRole
         this.applyTheme()
         window.addEventListener('profile-updated', this.syncProfile)
@@ -129,7 +129,7 @@ export default {
         syncProfile(event) {
             this.profileType = event.detail || localStorage.getItem('profileType') || 'driver'
             const user = JSON.parse(localStorage.getItem('user') || 'null')
-            this.userName = user?.name || this.userName
+            this.userName = user?.name || 'Usuário'
             this.userRole = user?.role || this.userRole
         },
 

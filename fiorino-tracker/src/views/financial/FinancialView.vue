@@ -246,7 +246,7 @@
 import ButtonComp from '@/components/ButtonComp.vue'
 import ModalDefault from '@/components/modals/ModalDefault.vue'
 import PhotoUploadComp from '@/components/PhotoUploadComp.vue'
-import { getFinanceData, getQuinzenna, money, saveFinanceData } from '@/services/financeStore'
+import { getFinanceData, getQuinzenna, money } from '@/services/financeStore'
 import {
     createStatementRequestApi,
     formatLocalDate,
@@ -369,20 +369,6 @@ export default {
         window.removeEventListener('profile-updated', this.syncProfile)
     },
 
-    watch: {
-        finance: {
-            deep: true,
-            handler(value) {
-                saveFinanceData({
-                    ...value,
-                    revenues: [],
-                    expenses: [],
-                    statementRequests: []
-                })
-            }
-        }
-    },
-
     methods: {
         async fetchFinance() {
             try {
@@ -408,7 +394,7 @@ export default {
             return {
                 id: null,
                 date: new Date().toISOString().slice(0, 10),
-                description: 'Recebimento Empresa',
+                description: '',
                 company: '',
                 amount: null,
                 paid: true
