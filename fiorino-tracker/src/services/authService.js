@@ -1,16 +1,16 @@
 import api from './api'
 
-export async function loginUser(email, senha) {
-  const response = await api.post('/auth/login', { email, senha })
+export async function loginUser(email, password) {
+  const response = await api.post('/auth/login', { email, password })
   return response.data
 }
 
-export async function registerUser(nome, email, senha) {
-  const response = await api.post('/auth/register', { nome, email, senha })
+export async function registerUser(name, email, password, role = 'DRIVER') {
+  const response = await api.post('/auth/register', { name, email, password, role })
   return response.data
 }
 
-export async function verifyToken() {
-  const response = await api.get('/auth/verify')
+export async function getCurrentUser() {
+  const response = await api.get('/auth/me')
   return response.data
 }

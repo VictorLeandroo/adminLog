@@ -1,447 +1,1057 @@
 <template>
-    <div class="vehicle-page">
-        <div class="container py-2">
+    <div class="vehicle-page premium-page min-vh-100">
+        <div class="container py-1">
+            <section class="vehicle-hero">
+                <div>
+                    <span class="eyebrow">{{ isDriver ? 'Meu veículo' : 'Administração da frota' }}</span>
+                    <h4>{{ isDriver ? currentVehicle.model : 'Veiculos' }}</h4>
+                    <p>{{ isDriver ? `${currentVehicle.plate} • ${currentVehicle.year} • ${currentVehicle.driver}` : 'Cadastre, vincule motoristas e acompanhe documentos da frota.' }}</p>
+                </div>
 
-            <!-- CARD TOPO -->
-            <div class="vehicle-header mb-3">
-                <div class="vehicle-top">
+                <ButtonComp v-if="!isDriver" btn-class="button-primary button-big" :click-action="() => openVehicleModal()">
+                    <i class="fa-solid fa-plus"></i>
+                    Novo veículo
+                </ButtonComp>
+            </section>
+
+            <section v-if="isDriver && !hasVehicle" class="driver-empty-state">
+                <i class="fa-solid fa-van-shuttle"></i>
+                <strong>Nenhum veículo vinculado</strong>
+                <p>Peça para a administração vincular um veículo ao seu usuário motorista.</p>
+            </section>
+
+            <template v-if="isDriver && hasVehicle">
+                <section class="vehicle-status-card">
                     <div>
-                        <h5 class="vehicle-title">Fiat Fiorino</h5>
-                        <small class="vehicle-subtitle">
-                            <i class="fa-solid fa-car me-1"></i>
-                            ABC-1234 • 2021
-                        </small>
+                        <span class="status-pill" :class="currentVehicle.status === 'Em dia' ? 'done' : 'pending'">
+                            {{ currentVehicle.status }}
+                        </span>
+                        <h5>{{ formatKm(currentVehicle.currentKm) }} km</h5>
+                        <p>Proxima manutencao em {{ formatKm(nextMaintenanceKm) }} km</p>
                     </div>
+                    <i class="fa-solid fa-van-shuttle"></i>
+                </section>
 
-                    <span class="vehicle-status success">
-                        <i class="fa-solid fa-check-circle me-1"></i>
-                        Em dia
-                    </span>
-                </div>
+                <section class="driver-grid">
+                    <article class="info-card">
+                        <small>Renavam</small>
+                        <strong>{{ currentVehicle.renavam }}</strong>
+                    </article>
+                    <article class="info-card">
+                        <small>Chassi</small>
+                        <strong>{{ currentVehicle.chassis }}</strong>
+                    </article>
+                    <article class="info-card">
+                        <small>Seguro</small>
+                        <strong>{{ currentVehicle.insuranceValidUntil ? formatDate(currentVehicle.insuranceValidUntil) : 'Não informado' }}</strong>
+                    </article>
+                    <article class="info-card">
+                        <small>Licenciamento</small>
+                        <strong>{{ formatDate(currentVehicle.licenseValidUntil) }}</strong>
+                    </article>
+                </section>
 
-                <div class="vehicle-metrics">
-                    <div class="metric">
-                        <small>KM atual</small>
-                        <strong>42.380</strong>
-                    </div>
-
-                    <div class="metric warning">
-                        <small>Próx. manutenção</small>
-                        <strong>2.500 km</strong>
-                    </div>
-
-                    <div class="metric danger">
-                        <small>Gasto no mês</small>
-                        <strong>R$ 1.240</strong>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SECTION: INFORMAÇÕES -->
-            <div class="card mb-2">
-                <div class="section-header" @click="toggleSection('info')">
-                    <strong>Informações do veículo</strong>
-                    <i class="fa-solid" :class="openSections.info ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-                </div>
-
-                <transition name="collapse" @enter="enter" @leave="leave">
-                    <div v-show="openSections.info">
-                        <div class="section-body">
-                            <div class="info-row">
-                                <span>Modelo</span>
-                                <strong>Fiat Fiorino</strong>
-                            </div>
-                            <div class="info-row">
-                                <span>Ano</span>
-                                <strong>2021</strong>
-                            </div>
-                            <div class="info-row">
-                                <span>Placa</span>
-                                <strong>ABC-1234</strong>
-                            </div>
-                            <div class="info-row">
-                                <span>KM atual</span>
-                                <strong>42.380 km</strong>
-                            </div>
-
-                            <ButtonComp btn-class="button-primary w-100"
-                                :click-action="() => { showEditVehicleModal = true }">
-                                Editar informações
-                            </ButtonComp>
+                <section class="document-card">
+                    <div class="section-head">
+                        <div>
+                            <span class="eyebrow">Documentos</span>
+                            <h5>Documento do veículo</h5>
                         </div>
                     </div>
-                </transition>
-            </div>
 
-            <!-- SECTION: MANUTENÇÕES -->
-            <div class="card mb-2">
-                <div class="section-header" @click="toggleSection('maintenance')">
-                    <strong>Manutenções</strong>
-                    <i class="fa-solid" :class="openSections.maintenance ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-                </div>
+                    <div v-for="document in currentVehicle.documents" :key="document.id" class="document-row">
+                        <div>
+                            <strong>{{ document.name }}</strong>
+                            <small>{{ document.type }} • atualizado em {{ formatDate(document.updatedAt) }}</small>
+                        </div>
+                        <a class="doc-action" :href="document.url" target="_blank" rel="noreferrer">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            Abrir
+                        </a>
+                    </div>
+                </section>
 
-                <transition name="collapse" @enter="enter" @leave="leave">
-                    <div v-show="openSections.maintenance">
-                        <div class="section-body">
+                <section class="document-card">
+                    <div class="section-head">
+                        <div>
+                            <span class="eyebrow">Manutencao</span>
+                            <h5>Histórico recente</h5>
+                        </div>
+                    </div>
 
-                            <div v-for="item in maintenances" :key="item.id" class="maintenance-card">
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <strong>{{ item.type }}</strong>
-                                        <p class="text-muted mb-0">{{ formatDate(item.date) }} • {{ item.km }} km</p>
+                    <div v-for="item in currentVehicle.maintenances" :key="item.id" class="maintenance-row">
+                        <div>
+                            <strong>{{ item.type }}</strong>
+                            <small>{{ formatDate(item.date) }} • {{ formatKm(item.km) }} km</small>
+                        </div>
+                        <span>{{ formatMoney(item.amount) }}</span>
+                    </div>
+                </section>
+            </template>
+
+            <template v-else>
+                <section class="fleet-summary">
+                    <article class="fleet-stat total">
+                        <span class="stat-icon"><i class="fa-solid fa-van-shuttle"></i></span>
+                        <div>
+                            <strong>{{ vehicles.length }}</strong>
+                            <small>Total da frota</small>
+                        </div>
+                    </article>
+                    <article class="fleet-stat ok">
+                        <span class="stat-icon"><i class="fa-solid fa-circle-check"></i></span>
+                        <div>
+                            <strong>{{ vehiclesOk }}</strong>
+                            <small>Em dia</small>
+                        </div>
+                    </article>
+                    <article class="fleet-stat alert">
+                        <span class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                        <div>
+                            <strong>{{ vehiclesWithAlert }}</strong>
+                            <small>Alertas</small>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="fleet-list">
+                    <article v-for="vehicle in vehicles" :key="vehicle.id" class="fleet-card">
+                        <div class="fleet-head">
+                            <div>
+                                <strong>{{ vehicle.model }}</strong>
+                                <small>{{ vehicle.plate }} • {{ vehicle.year }} • {{ vehicle.driver }}</small>
+                            </div>
+                            <span class="status-pill" :class="vehicle.status === 'Em dia' ? 'done' : 'pending'">
+                                {{ vehicle.status }}
+                            </span>
+                        </div>
+
+                        <div class="fleet-metrics">
+                            <div>
+                                <small>KM atual</small>
+                                <strong>{{ formatKm(vehicle.currentKm) }}</strong>
+                            </div>
+                            <div>
+                                <small>Renavam</small>
+                                <strong>{{ vehicle.renavam }}</strong>
+                            </div>
+                            <div>
+                                <small>Licenciamento</small>
+                                <strong>{{ formatDate(vehicle.licenseValidUntil) }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="fleet-actions">
+                            <ButtonComp btn-class="button-secundary w-100" :click-action="() => openVehicleModal(vehicle)">
+                                Editar
+                            </ButtonComp>
+                            <ButtonComp btn-class="button-secundary-red w-100" :click-action="() => removeVehicle(vehicle.id)">
+                                Remover
+                            </ButtonComp>
+                        </div>
+
+                        <div class="admin-review-panel">
+                            <div class="review-panel-head">
+                                <div>
+                                    <span class="eyebrow">Revisoes</span>
+                                    <h6>Histórico completo</h6>
+                                </div>
+                                <ButtonComp btn-class="button-primary" :click-action="() => openMaintenanceModal(vehicle)">
+                                    <i class="fa-solid fa-plus"></i>
+                                    Revisao
+                                </ButtonComp>
+                            </div>
+
+                            <div v-if="vehicle.maintenances?.length" class="review-timeline">
+                                <div v-for="item in vehicle.maintenances" :key="item.id" class="review-item">
+                                    <div class="review-dot"></div>
+                                    <div class="review-content">
+                                        <div class="review-title">
+                                            <strong>{{ item.type }}</strong>
+                                            <span>{{ formatMoney(item.amount) }}</span>
+                                        </div>
+                                        <small>
+                                            {{ formatDate(item.date) }} • {{ formatKm(item.km) }} km
+                                            <template v-if="item.workshop"> • {{ item.workshop }}</template>
+                                        </small>
+                                        <p v-if="item.note">{{ item.note }}</p>
                                     </div>
-                                    <span class="badge h-100"
-                                        :class="item.status === 'Concluída' ? 'badge-green' : 'badge-orange'">
-                                        {{ item.status }}
-                                    </span>
-                                </div>
-
-                                <div class="d-flex justify-content-between border-top mt-1 pt-1">
-                                    <span class="text-muted">Valor</span>
-                                    <strong class="text-danger">{{ formatMoney(item.amount) }}</strong>
                                 </div>
                             </div>
 
-                            <ButtonComp class="button-primary w-100"
-                                :click-action="() => { showMaintenanceModal = true }">
-                                + Nova manutenção
-                            </ButtonComp>
-                        </div>
-                    </div>
-                </transition>
-            </div>
-
-            <!-- SECTION: CUSTOS -->
-            <div class="card mb-2">
-                <div class="section-header" @click="toggleSection('costs')">
-                    <strong>Custos do veículo</strong>
-                    <i class="fa-solid" :class="openSections.costs ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-                </div>
-
-                <transition name="collapse" @enter="enter" @leave="leave">
-                    <div v-show="openSections.costs">
-                        <div class="section-body">
-                            <div class="info-row">
-                                <span>Total no mês</span>
-                                <strong class="text-danger">{{ formatMoney(1240) }}</strong>
-                            </div>
-                            <div class="info-row">
-                                <span>Total no ano</span>
-                                <strong class="text-danger">{{ formatMoney(8420) }}</strong>
-                            </div>
-                            <div class="info-row">
-                                <span>Custo por KM</span>
-                                <strong>{{ formatMoney(0.38) }}</strong>
+                            <div v-else class="review-empty">
+                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                                <span>Nenhuma revisão registrada</span>
                             </div>
                         </div>
-                    </div>
-                </transition>
-            </div>
-
+                    </article>
+                </section>
+            </template>
         </div>
 
-        <ModalDefault :is-visible="showEditVehicleModal" max-width="400px" min-width="400px"
-            @update:isVisible="showEditVehicleModal = false">
-            <h6 class="fw-bold mb-2">Editar veículo</h6>
+        <ModalDefault :is-visible="showVehicleModal" :isLoading="false" max-width="520px" min-width="320px"
+            @update:isVisible="cancelVehicleModal">
+            <div class="modal-head">
+                <span class="modal-icon"><i class="fa-solid fa-van-shuttle"></i></span>
+                <div>
+                    <h6>{{ vehicleForm.id ? 'Editar veículo' : 'Novo veículo' }}</h6>
+                    <p>Complete os dados principais, documento e motorista vinculado.</p>
+                </div>
+            </div>
 
-            <div class="mb-2">
+            <div class="modal-scroll">
                 <label class="form-label">Modelo</label>
-                <input type="text" v-model="vehicleForm.model" class="w-100" />
-            </div>
+                <input v-model="vehicleForm.model" type="text" class="w-100 mb-2" />
 
-            <div class="mb-2">
-                <label class="form-label">Ano</label>
-                <input type="number" v-model.number="vehicleForm.year" class="w-100" />
-            </div>
+                <div class="form-grid">
+                    <div>
+                        <label class="form-label">Ano</label>
+                        <input v-model.number="vehicleForm.year" type="number" class="w-100 mb-2" />
+                    </div>
+                    <div>
+                        <label class="form-label">Placa</label>
+                        <input v-model="vehicleForm.plate" type="text" class="w-100 mb-2" />
+                    </div>
+                </div>
 
-            <div class="mb-2">
-                <label class="form-label">Placa</label>
-                <input type="text" v-model="vehicleForm.plate" class="w-100" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">KM atual</label>
-                <input type="number" v-model.number="vehicleForm.currentKm" class="w-100" />
-                <small class="text-muted">
-                    Use o KM atual do painel
-                </small>
-            </div>
-
-            <ButtonComp btn-class="button-primary button-big w-100" :click-action="saveVehicleInfo">
-                Salvar alterações
-            </ButtonComp>
-        </ModalDefault>
-
-        <ModalDefault :is-visible="showMaintenanceModal" max-width="420px"
-            @update:isVisible="showMaintenanceModal = false">
-            <h6 class="fw-bold mb-2">Nova manutenção</h6>
-
-            <div class="mb-2">
-                <label class="form-label">Tipo</label>
-                <select v-model="maintenanceForm.type" class="form-select w-100">
-                    <option>Troca de óleo</option>
-                    <option>Freios</option>
-                    <option>Suspensão</option>
-                    <option>Pneus</option>
-                    <option>Outros</option>
+                <label class="form-label">Motorista vinculado</label>
+                <select v-model="vehicleForm.driverId" class="form-select w-100 mb-2">
+                    <option :value="null">Sem motorista</option>
+                    <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
+                        {{ driver.name }} - {{ driver.email }}
+                    </option>
                 </select>
-            </div>
 
-            <div class="mb-2">
-                <label class="form-label">Data</label>
-                <input type="date" v-model="maintenanceForm.date" class="w-100" />
-            </div>
+                <div class="form-grid">
+                    <div>
+                        <label class="form-label">KM atual</label>
+                        <input v-model.number="vehicleForm.currentKm" type="number" class="w-100 mb-2" />
+                    </div>
+                    <div>
+                        <label class="form-label">Próxima manutenção</label>
+                        <input v-model.number="vehicleForm.nextMaintenanceAt" type="number" class="w-100 mb-2" />
+                    </div>
+                </div>
 
-            <div class="mb-2">
-                <label class="form-label">KM do veículo</label>
-                <input type="number" v-model.number="maintenanceForm.km" class="w-100" />
-            </div>
+                <label class="form-label">Renavam</label>
+                <input v-model="vehicleForm.renavam" type="text" class="w-100 mb-2" />
 
-            <div class="mb-2">
-                <label class="form-label">Valor</label>
-                <input type="number" v-model.number="maintenanceForm.amount" class="w-100" />
-            </div>
+                <label class="form-label">Chassi</label>
+                <input v-model="vehicleForm.chassis" type="text" class="w-100 mb-2" />
 
-            <div class="mb-3">
+                <div class="form-grid">
+                    <div>
+                        <label class="form-label">Licenciamento válido até</label>
+                        <input v-model="vehicleForm.licenseValidUntil" type="date" class="w-100 mb-2" />
+                    </div>
+                    <div>
+                        <label class="form-label">Seguro válido até</label>
+                        <input v-model="vehicleForm.insuranceValidUntil" type="date" class="w-100 mb-2" />
+                    </div>
+                </div>
+
                 <label class="form-label">Status</label>
-                <select v-model="maintenanceForm.status" class="form-select w-100">
-                    <option>Concluída</option>
-                    <option>Programada</option>
+                <select v-model="vehicleForm.status" class="form-select w-100 mb-2">
+                    <option>Em dia</option>
+                    <option>Atencao</option>
+                    <option>Manutencao</option>
                 </select>
+
+                <label class="form-label">Documento PDF</label>
+                <input type="file" accept="application/pdf" class="w-100 mb-1" @change="handleDocumentFile" />
+                <small class="text-muted d-block mb-2">Mock local: salva o nome e gera um link temporario para abrir.</small>
             </div>
 
-            <ButtonComp btn-class="button-primary button-big w-100"
-                :is-disabled="!maintenanceForm.type || !maintenanceForm.amount" :click-action="addMaintenance">
-                Salvar manutenção
+            <ButtonComp btn-class="button-primary button-big w-100" :is-disabled="!canSaveVehicle" :click-action="saveVehicle">
+                Salvar veículo
             </ButtonComp>
         </ModalDefault>
 
+        <ModalDefault :is-visible="showMaintenanceModal" :isLoading="false" max-width="480px" min-width="320px"
+            @update:isVisible="cancelMaintenanceModal">
+            <div class="modal-head">
+                <span class="modal-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span>
+                <div>
+                    <h6>Registrar revisão</h6>
+                    <p>{{ selectedVehicle?.plate }} • {{ selectedVehicle?.model }}</p>
+                </div>
+            </div>
+
+            <label class="form-label">Tipo de revisão</label>
+            <select v-model="maintenanceForm.type" class="form-select w-100 mb-2">
+                <option>Revisão preventiva</option>
+                <option>Troca de óleo</option>
+                <option>Freios</option>
+                <option>Pneus</option>
+                <option>Suspensão</option>
+                <option>Corretiva</option>
+                <option>Outros</option>
+            </select>
+
+            <div class="form-grid">
+                <div>
+                    <label class="form-label">Data</label>
+                    <input v-model="maintenanceForm.date" type="date" class="w-100 mb-2" />
+                </div>
+                <div>
+                    <label class="form-label">KM</label>
+                    <input v-model.number="maintenanceForm.km" type="number" class="w-100 mb-2" />
+                </div>
+            </div>
+
+            <label class="form-label">Oficina / fornecedor</label>
+            <input v-model="maintenanceForm.workshop" type="text" class="w-100 mb-2" placeholder="Ex: Auto Center São Pedro" />
+
+            <div class="form-grid">
+                <div>
+                    <label class="form-label">Valor</label>
+                    <input v-model.number="maintenanceForm.amount" type="number" class="w-100 mb-2" />
+                </div>
+                <div>
+                    <label class="form-label">Próxima revisão em KM</label>
+                    <input v-model.number="maintenanceForm.nextDueKm" type="number" class="w-100 mb-2" />
+                </div>
+            </div>
+
+            <label class="form-label">Observação</label>
+            <textarea v-model="maintenanceForm.note" class="w-100 maintenance-note" placeholder="Itens trocados, recomendações, pendências..."></textarea>
+
+            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveMaintenance" :click-action="saveMaintenance">
+                Salvar revisão
+            </ButtonComp>
+        </ModalDefault>
     </div>
 </template>
 
 <script>
 import ButtonComp from '@/components/ButtonComp.vue';
 import ModalDefault from '@/components/modals/ModalDefault.vue';
+import {
+    createDocumentApi,
+    createMaintenanceApi,
+    formatLocalDate,
+    getMyVehicle,
+    listDrivers,
+    listVehicles,
+    removeVehicleApi,
+    saveVehicleApi
+} from '@/services/backendService';
 
 export default {
     name: 'VehicleView',
-    data() {
-        return {
-            openSections: {
-                info: true,
-                maintenance: false,
-                costs: false
-            },
-            maintenances: [
-                {
-                    id: 1,
-                    type: 'Troca de óleo',
-                    date: '2025-10-10',
-                    km: 39800,
-                    amount: 320,
-                    status: 'Concluída'
-                },
-                {
-                    id: 2,
-                    type: 'Pastilhas de freio',
-                    date: '2025-11-05',
-                    km: 42300,
-                    amount: 580,
-                    status: 'Programada'
-                }
-            ],
-
-            showEditVehicleModal: false,
-            vehicleForm: {
-                model: 'Fiat Fiorino',
-                year: 2021,
-                plate: 'ABC-1234',
-                currentKm: 42380
-            },
-
-            showMaintenanceModal: false,
-            maintenanceForm: {
-                type: '',
-                date: '',
-                km: '',
-                amount: '',
-                status: 'Concluída'
-            }
-        }
-    },
 
     components: {
         ButtonComp,
         ModalDefault
     },
 
+    data() {
+        return {
+            profileType: localStorage.getItem('profileType') || 'driver',
+            vehicles: [],
+            drivers: [],
+            isLoading: false,
+            errorMessage: '',
+            showVehicleModal: false,
+            showMaintenanceModal: false,
+            vehicleForm: this.emptyVehicleForm(),
+            maintenanceForm: this.emptyMaintenanceForm(),
+            selectedVehicle: null
+        }
+    },
+
+    computed: {
+        isDriver() {
+            return this.profileType === 'driver'
+        },
+
+        currentVehicle() {
+            return this.vehicles[0] || this.emptyVehicleForm()
+        },
+
+        hasVehicle() {
+            return Boolean(this.vehicles.length)
+        },
+
+        nextMaintenanceKm() {
+            return Math.max(0, Number(this.currentVehicle.nextMaintenanceAt) - Number(this.currentVehicle.currentKm))
+        },
+
+        vehiclesOk() {
+            return this.vehicles.filter(vehicle => vehicle.status === 'Em dia').length
+        },
+
+        vehiclesWithAlert() {
+            return this.vehicles.filter(vehicle => vehicle.status !== 'Em dia').length
+        },
+
+        canSaveVehicle() {
+            return Boolean(this.vehicleForm.model && this.vehicleForm.plate)
+        },
+
+        canSaveMaintenance() {
+            return Boolean(this.selectedVehicle && this.maintenanceForm.type && this.maintenanceForm.date && this.maintenanceForm.km)
+        }
+    },
+
+    mounted() {
+        window.addEventListener('profile-updated', this.syncProfile)
+        this.fetchVehicles()
+        this.fetchDrivers()
+    },
+
+    beforeUnmount() {
+        window.removeEventListener('profile-updated', this.syncProfile)
+    },
+
     methods: {
-        toggleSection(section) {
-            this.openSections[section] = !this.openSections[section]
+        async fetchVehicles() {
+            this.isLoading = true
+            this.errorMessage = ''
+
+            try {
+                this.vehicles = this.isDriver ? await getMyVehicle() : await listVehicles()
+            } catch (error) {
+                console.error(error)
+                if ([403, 404].includes(error.response?.status) && this.isDriver) {
+                    this.vehicles = []
+                    return
+                }
+                this.errorMessage = error.response?.data?.message || 'Não foi possível carregar os veículos.'
+            } finally {
+                this.isLoading = false
+            }
         },
+
+        async fetchDrivers() {
+            if (this.isDriver) {
+                this.drivers = []
+                return
+            }
+
+            try {
+                this.drivers = await listDrivers()
+            } catch (error) {
+                console.error(error)
+                this.errorMessage = error.response?.data?.message || 'Não foi possível carregar os motoristas.'
+            }
+        },
+
+        emptyVehicleForm() {
+            return {
+                id: null,
+                model: '',
+                year: new Date().getFullYear(),
+                plate: '',
+                driver: '',
+                driverId: null,
+                currentKm: '',
+                nextMaintenanceAt: '',
+                renavam: '',
+                chassis: '',
+                licenseValidUntil: '',
+                insuranceValidUntil: '',
+                status: 'Em dia',
+                documents: [],
+                maintenances: []
+            }
+        },
+
+        emptyMaintenanceForm() {
+            return {
+                type: 'Revisao preventiva',
+                date: new Date().toISOString().slice(0, 10),
+                km: '',
+                workshop: '',
+                amount: '',
+                nextDueKm: '',
+                note: ''
+            }
+        },
+
+        syncProfile(event) {
+            this.profileType = event.detail || localStorage.getItem('profileType') || 'driver'
+            this.fetchVehicles()
+            this.fetchDrivers()
+        },
+
+        openVehicleModal(vehicle = null) {
+            this.vehicleForm = vehicle
+                ? JSON.parse(JSON.stringify(vehicle))
+                : this.emptyVehicleForm()
+            this.showVehicleModal = true
+        },
+
+        cancelVehicleModal() {
+            this.showVehicleModal = false
+            this.vehicleForm = this.emptyVehicleForm()
+        },
+
+        async saveVehicle() {
+            if (!this.canSaveVehicle) return
+
+            this.isLoading = true
+
+            try {
+                const documents = this.vehicleForm.documents || []
+                const savedVehicle = await saveVehicleApi(this.vehicleForm)
+                const pendingDocuments = documents.filter(document => !document.fileUrl && String(document.id).startsWith('local-'))
+
+                await Promise.all(pendingDocuments.map(document => createDocumentApi(savedVehicle.id, document)))
+                await this.fetchVehicles()
+                this.cancelVehicleModal()
+            } catch (error) {
+                console.error(error)
+                this.errorMessage = error.response?.data?.message || 'Não foi possível salvar o veículo.'
+            } finally {
+                this.isLoading = false
+            }
+        },
+
+        async removeVehicle(id) {
+            try {
+                await removeVehicleApi(id)
+                this.vehicles = this.vehicles.filter(vehicle => vehicle.id !== id)
+            } catch (error) {
+                console.error(error)
+                this.errorMessage = error.response?.data?.message || 'Não foi possível remover o veículo.'
+            }
+        },
+
+        openMaintenanceModal(vehicle) {
+            this.selectedVehicle = vehicle
+            this.maintenanceForm = {
+                ...this.emptyMaintenanceForm(),
+                km: vehicle.currentKm,
+                nextDueKm: vehicle.nextMaintenanceAt
+            }
+            this.showMaintenanceModal = true
+        },
+
+        cancelMaintenanceModal() {
+            this.showMaintenanceModal = false
+            this.selectedVehicle = null
+            this.maintenanceForm = this.emptyMaintenanceForm()
+        },
+
+        async saveMaintenance() {
+            if (!this.canSaveMaintenance) return
+
+            try {
+                await createMaintenanceApi(this.selectedVehicle.id, this.maintenanceForm)
+                await this.fetchVehicles()
+                this.cancelMaintenanceModal()
+            } catch (error) {
+                console.error(error)
+                this.errorMessage = error.response?.data?.message || 'Não foi possível salvar a revisão.'
+            }
+        },
+
+        handleDocumentFile(event) {
+            const file = event.target.files?.[0]
+            if (!file) return
+
+            this.vehicleForm.documents = [
+                ...(this.vehicleForm.documents || []),
+                {
+                    id: `local-${Date.now()}`,
+                    name: file.name,
+                    type: 'PDF',
+                    file,
+                    updatedAt: new Date().toISOString().slice(0, 10),
+                    url: URL.createObjectURL(file)
+                }
+            ]
+            event.target.value = ''
+        },
+
         formatDate(date) {
-            return new Date(date).toLocaleDateString('pt-BR')
+            if (!date) return 'Não informado'
+            return formatLocalDate(date)
         },
+
+        formatKm(value) {
+            return Number(value || 0).toLocaleString('pt-BR')
+        },
+
         formatMoney(value) {
-            return value.toLocaleString('pt-BR', {
+            return Number(value || 0).toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
             })
-        },
-
-        enter(el) {
-            el.style.height = '0'
-            el.style.opacity = '0'
-            requestAnimationFrame(() => {
-                el.style.transition = 'height 280ms ease, opacity 200ms ease'
-                el.style.height = el.scrollHeight + 'px'
-                el.style.opacity = '1'
-            })
-        },
-        leave(el) {
-            el.style.height = el.scrollHeight + 'px'
-            requestAnimationFrame(() => {
-                el.style.transition = 'height 240ms ease, opacity 180ms ease'
-                el.style.height = '0'
-                el.style.opacity = '0'
-            })
-        },
-
-        saveVehicleInfo() {
-            this.showEditVehicleModal = false
-        },
-
-        addMaintenance() {
-            this.maintenances.push({
-                id: Date.now(),
-                ...this.maintenanceForm
-            })
-
-            this.maintenanceForm = {
-                type: '',
-                date: '',
-                km: '',
-                amount: '',
-                status: 'Concluída'
-            }
-
-            this.showMaintenanceModal = false
         }
-
-
     }
 }
 </script>
 
 <style scoped>
-.vehicle-header {
-    border-radius: 18px;
-    padding: 16px;
-    background: linear-gradient(135deg, #f9fafb, #eef2f7);
-    color: #111827;
-    box-shadow: 0 8px 20px rgba(17, 24, 39, 0.08);
+.vehicle-hero,
+.vehicle-status-card,
+.info-card,
+.document-card,
+.driver-empty-state,
+.fleet-card {
+    border: 1px solid var(--border-soft);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-soft);
 }
 
-.vehicle-top {
+.vehicle-hero {
+    border-radius: 24px;
+    padding: 18px;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    gap: 14px;
 }
 
-.vehicle-title {
+.eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--primary-color);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.vehicle-hero h4,
+.vehicle-hero p,
+.section-head h5,
+.modal-head h6 {
     margin: 0;
-    font-weight: 700;
-    letter-spacing: 0.3px;
 }
 
-.vehicle-subtitle {
-    font-size: 0.85rem;
-    color: #6b7280;
+.vehicle-hero p,
+.vehicle-status-card p,
+.info-card small,
+.document-row small,
+.maintenance-row small,
+.fleet-card small,
+.modal-head p {
+    color: var(--text-muted);
 }
 
-.vehicle-status {
-    font-size: 0.75rem;
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-weight: 600;
+.vehicle-status-card {
+    border-radius: 24px;
+    margin: 12px 0;
+    padding: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background:
+        radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.18), transparent 40%),
+        var(--surface-card);
+}
+
+.vehicle-status-card h5 {
+    margin: 10px 0 2px;
+    color: var(--text-strong);
+    font-size: 32px;
+}
+
+.vehicle-status-card > i {
+    color: var(--primary-color);
+    font-size: 44px;
+}
+
+.driver-empty-state {
+    border-radius: 22px;
+    padding: 34px 18px;
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+}
+
+.driver-empty-state i {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    background: var(--primary-soft);
+    color: var(--primary-color);
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    font-size: 24px;
 }
 
-.vehicle-status.success {
-    background: rgba(34, 197, 94, 0.12);
+.driver-empty-state strong {
+    color: var(--text-strong);
+    font-size: 18px;
+}
+
+.driver-empty-state p {
+    color: var(--text-muted);
+    max-width: 420px;
+}
+
+.status-pill {
+    border-radius: 999px;
+    padding: 6px 9px;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.status-pill.done {
     color: #16a34a;
+    background: rgba(22, 163, 74, 0.14);
 }
 
-.vehicle-metrics {
+.status-pill.pending {
+    color: #d97706;
+    background: rgba(217, 119, 6, 0.14);
+}
+
+.driver-grid,
+.fleet-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.info-card,
+.fleet-summary article {
+    border-radius: 18px;
+    padding: 14px;
+}
+
+.info-card strong,
+.fleet-summary strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 16px;
+    margin-top: 4px;
+    overflow-wrap: anywhere;
+}
+
+.document-card {
+    border-radius: 22px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.section-head {
+    margin-bottom: 10px;
+}
+
+.document-row,
+.maintenance-row,
+.fleet-head,
+.fleet-actions,
+.modal-head {
     display: flex;
-    margin-top: 16px;
     gap: 12px;
 }
 
-.metric {
-    flex: 1;
-    background: #ffffff;
-    border-radius: 14px;
-    padding: 10px;
-    text-align: center;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+.document-row,
+.maintenance-row,
+.fleet-head {
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-soft);
 }
 
-.metric small {
+.document-row:last-child,
+.maintenance-row:last-child {
+    border-bottom: 0;
+}
+
+.document-row strong,
+.maintenance-row strong,
+.fleet-head strong {
     display: block;
-    font-size: 0.75rem;
-    color: #6b7280;
-    margin-bottom: 2px;
+    color: var(--text-strong);
 }
 
-.metric strong {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #111827;
+.maintenance-row span {
+    color: #ef4444;
+    font-weight: 900;
+    white-space: nowrap;
 }
 
-.metric.warning strong {
+.doc-action {
+    border-radius: 12px;
+    padding: 8px 10px;
+    color: var(--primary-color) !important;
+    background: var(--primary-soft);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 900;
+}
+
+.fleet-summary {
+    margin: 12px 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fleet-stat {
+    background:
+        radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.12), transparent 58%),
+        var(--surface-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 20px;
+    padding: 13px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 0;
+}
+
+.fleet-stat .stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    background: var(--primary-soft);
+    color: var(--primary-color);
+}
+
+.fleet-stat strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 24px;
+    line-height: 1;
+    margin: 0 0 3px;
+}
+
+.fleet-stat small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+.fleet-stat.ok .stat-icon {
+    background: rgba(22, 163, 74, 0.14);
+    color: #16a34a;
+}
+
+.fleet-stat.alert .stat-icon {
+    background: rgba(217, 119, 6, 0.15);
     color: #d97706;
 }
 
-.metric.danger strong {
-    color: #dc2626;
+.fleet-list {
+    display: grid;
+    gap: 12px;
 }
 
-
-
-.section-header {
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    border-bottom: 1px solid #f1f1f1;
-}
-
-.section-body {
-    padding: 12px 16px;
-    padding-top: 0;
+.fleet-card {
+    border-radius: 24px;
+    padding: 16px;
     overflow: hidden;
+    position: relative;
 }
 
-.info-row {
+.fleet-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), rgba(var(--primary-color-rgb), 0.15));
+}
+
+.fleet-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.fleet-metrics div {
+    border-radius: 14px;
+    padding: 10px;
+    background: var(--surface-muted);
+    min-width: 0;
+}
+
+.fleet-metrics strong {
+    display: block;
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+}
+
+.fleet-actions {
+    margin-top: 10px;
+}
+
+.admin-review-panel {
+    margin-top: 14px;
+    border-radius: 18px;
+    background: var(--surface-muted);
+    padding: 12px;
+}
+
+.review-panel-head {
     display: flex;
     justify-content: space-between;
-    padding: 6px;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 10px;
 }
 
-.maintenance-card {
-    background: #f8f9fa;
-    border-radius: 8px;
+.review-panel-head h6 {
+    margin: 0;
+    color: var(--text-strong);
+}
+
+.review-panel-head .button-comp {
+    min-height: 34px;
+    padding: 4px 10px;
+    white-space: nowrap;
+}
+
+.review-timeline {
+    display: grid;
+    gap: 10px;
+}
+
+.review-item {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 8px;
+    position: relative;
+}
+
+.review-item::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 18px;
+    bottom: -10px;
+    width: 2px;
+    background: var(--border-soft);
+}
+
+.review-item:last-child::before {
+    display: none;
+}
+
+.review-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-top: 4px;
+    background: var(--primary-color);
+    box-shadow: 0 0 0 4px var(--primary-soft);
+    z-index: 1;
+}
+
+.review-content {
+    background: var(--surface-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
     padding: 10px;
-    margin-bottom: 8px;
 }
 
-.collapse-enter-active,
-.collapse-leave-active {
-    transition: height 0.3s ease, opacity 0.2s ease;
+.review-title {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.review-title strong {
+    color: var(--text-strong);
+}
+
+.review-title span {
+    color: #ef4444;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.review-content small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.review-content p {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+
+.review-empty {
+    border: 1px dashed var(--border-soft);
+    color: var(--text-muted);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-head {
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.modal-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: var(--primary-soft);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.modal-scroll {
+    max-height: 65vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.maintenance-note {
+    min-height: 110px;
+    overflow: auto !important;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+@media (min-width: 820px) {
+    .driver-grid,
+    .fleet-summary {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .fleet-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .vehicle-hero,
+    .fleet-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .fleet-metrics,
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .fleet-summary {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

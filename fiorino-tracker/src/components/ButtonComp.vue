@@ -1,5 +1,5 @@
 <template>
-  <button class="button-comp" :class="[btnClass]" @click="handleClick" :disabled="isLoading || isDisabled">
+  <button class="button-comp" :class="[btnClass]" @click="handleClick" :disabled="isLoading || isDisabled || disabled">
     <slot></slot> <span class="loader" v-if="isLoading"></span>
   </button>
 </template>
@@ -26,6 +26,9 @@ export default {
     isDisabled: {
       type: Boolean
     },
+    disabled: {
+      type: Boolean
+    },
 
     to: {
       type: String,
@@ -37,7 +40,7 @@ export default {
     handleClick() {
       if (this.to) {
         this.$router.push(this.to);
-      } else {
+      } else if (this.clickAction) {
         this.clickAction();
       }
     },
@@ -47,11 +50,16 @@ export default {
 
 <style scoped>
 .button-comp {
-  display: flex;
-  gap: 5px;
+  appearance: none;
+  display: inline-flex;
+  gap: 8px;
   align-items: center;
-  line-height: normal;
   justify-content: center;
+  border-radius: 10px;
+  line-height: 1.2 !important;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .loader {

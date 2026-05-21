@@ -1,87 +1,119 @@
 <template>
-    <div class="dashboard-container min-vh-100">
-        <div class="container py-2">
-            <!-- Cards resumo -->
-            <div class="row g-2 mb-2">
-                <div class="col-6" v-for="card in summaryCards" :key="card.title">
-                    <div class="card">
-                        <div class="card-body">
-                            <h6 class="text-muted mb-1">{{ card.title }}</h6>
-                            <h5 class="fw-bold mb-0 text-primary">{{ card.value }}</h5>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Gráficos -->
-            <div class="row g-3">
-                <div class="col-12 col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h6 class="fw-bold mb-3">KM rodados por dia</h6>
-                            <div class="chart-wrapper">
-                                <Line :data="kmChartData" :options="chartOptions" />
-                            </div>
-                        </div>
-                    </div>
+    <div class="dashboard-container premium-page min-vh-100">
+        <div class="container py-1">
+            <section class="dash-hero">
+                <div>
+                    <span class="eyebrow">Resumo do mês</span>
+                    <h4>{{ formatMoney(finalBalance) }}</h4>
+                    <p>{{ monthLabel }} • {{ totalRoutes }} rotas • {{ formatKm(totalKm) }} km rodados</p>
                 </div>
 
-                <div class="col-12 col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h6 class="fw-bold mb-3">Ganho diário (R$)</h6>
-                            <div class="chart-wrapper">
-                                <Bar :data="gainChartData" :options="chartOptions" />
-                            </div>
-                        </div>
+                <div class="hero-badge" :class="{ negative: finalBalance < 0 }">
+                    <i class="fa-solid" :class="finalBalance >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'"></i>
+                    {{ finalBalance >= 0 ? 'Positivo' : 'Negativo' }}
+                </div>
+            </section>
+
+            <section class="quick-grid">
+                <article class="quick-card income">
+                    <small>Ganhos</small>
+                    <strong>{{ formatMoney(totalRevenue) }}</strong>
+                    <span>Entradas registradas</span>
+                </article>
+
+                <article class="quick-card expense">
+                    <small>Gastos</small>
+                    <strong>{{ formatMoney(totalExpenses) }}</strong>
+                    <span>Despesas do mês</span>
+                </article>
+
+                <article class="quick-card balance">
+                    <small>Lucro</small>
+                    <strong>{{ formatMoney(finalBalance) }}</strong>
+                    <span>Antes das reservas</span>
+                </article>
+
+                <article class="quick-card city">
+                    <small>Cidade mais frequente</small>
+                    <strong>{{ topCity.name }}</strong>
+                    <span>{{ topCity.count }} visita(s)</span>
+                </article>
+            </section>
+
+            <section class="insight-strip">
+                <div>
+                    <small>1 quinzena</small>
+                    <strong>{{ formatMoney(firstHalfBalance) }}</strong>
+                </div>
+                <div>
+                    <small>2 quinzena</small>
+                    <strong>{{ formatMoney(secondHalfBalance) }}</strong>
+                </div>
+                <div>
+                    <small>Média por rota</small>
+                    <strong>{{ formatMoney(averagePerRoute) }}</strong>
+                </div>
+            </section>
+
+            <section class="chart-card city-frequency">
+                <div class="section-head">
+                    <div>
+                            <span class="eyebrow">Operação</span>
+                            <h5>Frequência por cidade</h5>
+                    </div>
+                    <span>{{ cityFrequency.length }} cidades</span>
+                </div>
+
+                <div class="chart-wrapper city-chart">
+                    <Bar v-if="cityFrequency.length" :data="cityFrequencyChartData" :options="cityChartOptions" />
+                    <div v-else class="empty-chart">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <p>Nenhuma cidade registrada ainda</p>
                     </div>
                 </div>
-            </div>
-            <div class="row g-3">
-                <div class="col-12 col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h6 class="fw-bold mb-3">Frequência por cidade</h6>
-                            <div class="chart-wrapper">
-                                <Bar :data="cityFrequencyChartData" :options="cityFrequencyChartOptions" />
-                            </div>
+            </section>
+
+            <section class="dashboard-stack">
+                <article class="chart-card">
+                    <div class="section-head">
+                        <div>
+                            <span class="eyebrow">Financeiro</span>
+                            <h5>Ganhos x gastos</h5>
                         </div>
                     </div>
-                </div>
-                <div class="col-12 col-md-6">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <h6 class="fw-bold mb-3">Comparativo: Ganhos x Despesas</h6>
 
-                            <div class="chart-wrapper mb-3">
-                                <Doughnut :data="gainVsExpenseChartData" :options="gainVsExpenseDoughnutOptions" />
-                            </div>
+                    <div class="chart-wrapper">
+                        <Doughnut :data="gainVsExpenseChartData" :options="doughnutOptions" />
+                    </div>
+                </article>
 
-                            <div class="d-flex justify-content-around flex-wrap text-center">
-                                <div class="p-2">
-                                    <h6 class="text-success mb-0 fw-bold">{{ formatMoney(totalGain) }}</h6>
-                                    <small class="text-muted">Ganhos</small>
-                                </div>
-                                <div class="p-2">
-                                    <h6 class="text-danger mb-0 fw-bold">{{ formatMoney(totalGas + totalToll) }}</h6>
-                                    <small class="text-muted">Despesas</small>
-                                </div>
-                                <div class="p-2">
-                                    <h6 :class="[
-                                        'fw-bold mb-0',
-                                        totalNet >= 0 ? 'text-primary' : 'text-danger'
-                                    ]">
-                                        {{ formatMoney(totalNet) }}
-                                    </h6>
-                                    <small class="text-muted">Saldo Líquido</small>
-                                </div>
-                            </div>
+                <article class="focus-card">
+                    <div class="section-head">
+                        <div>
+                            <span class="eyebrow">Atenção</span>
+                            <h5>Maiores gastos</h5>
                         </div>
                     </div>
-                </div>
 
-            </div>
+                    <div class="expense-line" v-for="expense in topExpenses" :key="expense.category">
+                        <div>
+                            <strong>{{ expense.category }}</strong>
+                            <small>{{ expense.count }} lancamento(s)</small>
+                        </div>
+                        <span>{{ formatMoney(expense.total) }}</span>
+                    </div>
 
+                    <div v-if="!topExpenses.length" class="soft-empty-state compact">
+                        <span class="empty-icon">
+                            <i class="fa-solid fa-receipt"></i>
+                        </span>
+                        <div>
+                            <strong>Nenhum gasto no período</strong>
+                            <p>Quando houver despesas lançadas, as maiores categorias aparecem aqui.</p>
+                        </div>
+                    </div>
+                </article>
+            </section>
         </div>
     </div>
 </template>
@@ -92,149 +124,63 @@ import {
     Title,
     Tooltip,
     Legend,
-    LineElement,
     BarElement,
     CategoryScale,
     LinearScale,
-    PointElement,
     ArcElement
 } from 'chart.js'
-import { Line, Bar, Doughnut } from 'vue-chartjs'
+import { Bar, Doughnut } from 'vue-chartjs'
+import { getFinanceData, money } from '@/services/financeStore'
+import { listExpenses, listRevenues, listRoutes, parseLocalDate } from '@/services/backendService'
 
-ChartJS.register(Title, Tooltip, Legend, LineElement, ArcElement, BarElement, CategoryScale, LinearScale, PointElement)
+ChartJS.register(Title, Tooltip, Legend, ArcElement, BarElement, CategoryScale, LinearScale)
 
 export default {
     name: 'DashboardView',
-    components: { Line, Bar, Doughnut },
+
+    components: { Bar, Doughnut },
+
     data() {
         return {
-            dailyData: [
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-01', city: 'São Paulo', km: 140, gas: 180, toll: 30 },
-                { date: '2025-10-02', city: 'Campinas', km: 100, gas: 150, toll: 25 },
-                { date: '2025-10-02', city: 'Campinas', km: 100, gas: 150, toll: 25 },
-                { date: '2025-10-02', city: 'Campinas', km: 100, gas: 150, toll: 25 },
-                { date: '2025-10-03', city: 'Itu', km: 180, gas: 200, toll: 40 },
-                { date: '2025-10-03', city: 'Itu', km: 180, gas: 200, toll: 40 },
-                { date: '2025-10-04', city: 'Boituva', km: 90, gas: 140, toll: 0 },
-                { date: '2025-10-04', city: 'Caraguatatuba', km: 90, gas: 140, toll: 0 },
-                { date: '2025-10-04', city: 'Praia Grande', km: 90, gas: 140, toll: 0 },
-                { date: '2025-10-04', city: 'Boituva', km: 90, gas: 140, toll: 0 },
-                { date: '2025-10-04', city: 'Praia Grande', km: 90, gas: 140, toll: 0 },
-                { date: '2025-10-04', city: 'Boituva', km: 90, gas: 140, toll: 0 },
-                { date: '2025-10-04', city: 'Boituva', km: 90, gas: 140, toll: 0 },
-                { date: '2025-10-04', city: 'Boituva', km: 90, gas: 140, toll: 0 },
+            finance: getFinanceData(),
+            routes: [],
+            selectedMonth: new Date().getMonth() + 1,
+            selectedYear: new Date().getFullYear(),
+            months: [
+                { value: 1, label: 'Jan' },
+                { value: 2, label: 'Fev' },
+                { value: 3, label: 'Mar' },
+                { value: 4, label: 'Abr' },
+                { value: 5, label: 'Mai' },
+                { value: 6, label: 'Jun' },
+                { value: 7, label: 'Jul' },
+                { value: 8, label: 'Ago' },
+                { value: 9, label: 'Set' },
+                { value: 10, label: 'Out' },
+                { value: 11, label: 'Nov' },
+                { value: 12, label: 'Dez' }
             ],
-            dailyAllowance: 400,
-            kmLimit: 120,
-            extraKmRate: 1.5,
-            chartOptions: {
+            doughnutOptions: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '72%',
                 plugins: {
                     legend: {
-                        display: false
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            padding: 14
+                        }
                     }
-                },
-                scales: {
-                    y: { beginAtZero: true }
                 }
-            }
-        }
-    },
-    computed: {
-        totalKm() {
-            return this.dailyData.reduce((sum, d) => sum + d.km, 0)
-        },
-        totalGas() {
-            return this.dailyData.reduce((sum, d) => sum + d.gas, 0)
-        },
-        totalToll() {
-            return this.dailyData.reduce((sum, d) => sum + d.toll, 0)
-        },
-        totalGain() {
-            return this.dailyData.reduce((sum, d) => sum + this.calcDailyGain(d.km), 0)
-        },
-        totalNet() {
-            return this.totalGain - (this.totalGas + this.totalToll)
-        },
-        summaryCards() {
-            return [
-                { title: 'Total rodado (km)', value: this.totalKm.toFixed(1), class: 'text-primary' },
-                { title: 'Ganhos brutos', value: this.formatMoney(this.totalGain), class: 'text-success' },
-                { title: 'Despesas', value: this.formatMoney(this.totalGas + this.totalToll), class: 'text-danger' },
-                { title: 'Saldo final', value: this.formatMoney(this.totalNet), class: 'text-dark' }
-            ]
-        },
-        kmChartData() {
-            return {
-                labels: this.dailyData.map(d => d.date),
-                datasets: [
-                    {
-                        label: 'KM rodado',
-                        data: this.dailyData.map(d => d.km),
-                        borderColor: '#0d6efd',
-                        backgroundColor: 'rgba(13,110,253,0.1)',
-                        tension: 0.2
-                    }
-                ]
-            }
-        },
-        gainChartData() {
-            return {
-                labels: this.dailyData.map(d => d.date),
-                datasets: [
-                    {
-                        label: 'Ganho líquido',
-                        data: this.dailyData.map(d => this.calcDailyGain(d.km) - (d.gas + d.toll)),
-                        backgroundColor: '#198754',
-                        borderRadius: 4,
-                        maxBarThickness: 25
-                    }
-                ]
-            }
-        },
-        cityFrequencyChartData() {
-            const cityCount = this.dailyData.reduce((acc, d) => {
-                acc[d.city] = (acc[d.city] || 0) + 1
-                return acc
-            }, {})
-
-            const labels = Object.keys(cityCount)
-            const values = Object.values(cityCount)
-
-            return {
-                labels,
-                datasets: [
-                    {
-                        label: 'Visitas no mês',
-                        data: values,
-                        backgroundColor: '#0d6efd',
-                        borderRadius: 4,
-                        maxBarThickness: 25
-                    }
-                ]
-            }
-        },
-        cityFrequencyChartOptions() {
-            return {
+            },
+            cityChartOptions: {
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => `${context.parsed.x} visita(s)`
-                        }
-                    }
+                    legend: { display: false }
                 },
                 scales: {
                     x: {
@@ -243,81 +189,465 @@ export default {
                     },
                     y: {
                         ticks: {
-                            stepSize: 1,
-                            precision: 0,
-                            callback: (value) => Number.isInteger(value) ? value : null,
-                            color: '#212529', font: { size: 12 }
-                        },
-                    }
-                }
-            }
-        },
-
-        gainVsExpenseChartData() {
-            const totalGain = this.totalGain
-            const totalExpense = this.totalGas + this.totalToll
-
-            return {
-                labels: ['Ganhos', 'Despesas'],
-                datasets: [
-                    {
-                        data: [totalGain, totalExpense],
-                        backgroundColor: ['#198754', '#dc3545'],
-                        hoverBackgroundColor: ['#20c997', '#e35d6a'],
-                        borderWidth: 3,
-                        cutout: '65%'
-                    }
-                ]
-            }
-        },
-        gainVsExpenseDoughnutOptions() {
-            return {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            boxWidth: 10
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) =>
-                                `${ctx.label}: R$ ${ctx.parsed.toLocaleString('pt-BR', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                })}`
+                            font: { size: 11 }
                         }
                     }
                 }
             }
         }
-
     },
-    methods: {
-        calcDailyGain(km) {
-            const extraKm = Math.max(0, km - this.kmLimit)
-            return this.dailyAllowance + extraKm * this.extraKmRate
+
+    mounted() {
+        this.fetchDashboardData()
+    },
+
+    computed: {
+        monthLabel() {
+            const month = this.months.find(item => item.value === this.selectedMonth)?.label
+            return `${month}/${this.selectedYear}`
         },
-        formatMoney(v) {
-            return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+        filteredRevenues() {
+            return this.finance.revenues.filter(item => this.matchesPeriod(item.date))
+        },
+
+        filteredExpenses() {
+            return this.finance.expenses.filter(item => this.matchesPeriod(item.date))
+        },
+
+        filteredRoutes() {
+            return this.routes.filter(route => this.matchesPeriod(route.finishedAt || route.data))
+        },
+
+        totalRevenue() {
+            return this.filteredRevenues.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+        },
+
+        totalExpenses() {
+            return this.filteredExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+        },
+
+        finalBalance() {
+            return this.totalRevenue - this.totalExpenses
+        },
+
+        totalRoutes() {
+            return this.filteredRoutes.length
+        },
+
+        totalKm() {
+            return this.filteredRoutes.reduce((sum, route) => {
+                if (!route.kmFinal) return sum
+                return sum + Math.max(0, Number(route.kmFinal) - Number(route.kmInicial))
+            }, 0)
+        },
+
+        averagePerRoute() {
+            return this.totalRoutes ? this.totalRevenue / this.totalRoutes : 0
+        },
+
+        firstHalfBalance() {
+            return this.sumByHalf(this.filteredRevenues, 1) - this.sumByHalf(this.filteredExpenses, 1)
+        },
+
+        secondHalfBalance() {
+            return this.sumByHalf(this.filteredRevenues, 2) - this.sumByHalf(this.filteredExpenses, 2)
+        },
+
+        cityFrequency() {
+            const count = {}
+
+            this.filteredRoutes.forEach(route => {
+                route.cidades?.forEach(city => {
+                    count[city] = (count[city] || 0) + 1
+                })
+            })
+
+            return Object.entries(count)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 6)
+        },
+
+        topCity() {
+            const [city] = this.cityFrequency
+            return city ? { name: city.name, count: city.value } : { name: 'Sem dados', count: 0 }
+        },
+
+        topExpenses() {
+            const grouped = {}
+
+            this.filteredExpenses.forEach(expense => {
+                if (!grouped[expense.category]) {
+                    grouped[expense.category] = { category: expense.category, total: 0, count: 0 }
+                }
+
+                grouped[expense.category].total += Number(expense.amount || 0)
+                grouped[expense.category].count += 1
+            })
+
+            return Object.values(grouped)
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 4)
+        },
+
+        cityFrequencyChartData() {
+            return {
+                labels: this.cityFrequency.map(city => city.name),
+                datasets: [
+                    {
+                        data: this.cityFrequency.map(city => city.value),
+                        backgroundColor: '#62a8ff',
+                        borderRadius: 8,
+                        barThickness: 18
+                    }
+                ]
+            }
+        },
+
+        gainVsExpenseChartData() {
+            return {
+                labels: ['Ganhos', 'Gastos'],
+                datasets: [
+                    {
+                        data: [this.totalRevenue, this.totalExpenses],
+                        backgroundColor: ['#16a34a', '#ef4444'],
+                        borderWidth: 0
+                    }
+                ]
+            }
+        }
+    },
+
+    methods: {
+        async fetchDashboardData() {
+            try {
+                const [revenues, expenses, routes] = await Promise.all([
+                    listRevenues(),
+                    listExpenses(),
+                    listRoutes()
+                ])
+
+                this.finance.revenues = revenues
+                this.finance.expenses = expenses
+                this.routes = routes
+            } catch (error) {
+                console.error(error)
+            }
+        },
+
+        matchesPeriod(date) {
+            const parsed = parseLocalDate(date)
+            return parsed.getMonth() + 1 === this.selectedMonth && parsed.getFullYear() === this.selectedYear
+        },
+
+        sumByHalf(list, half) {
+            return list
+                .filter(item => item.quinzenna === half)
+                .reduce((sum, item) => sum + Number(item.amount || 0), 0)
+        },
+
+        formatMoney(value) {
+            return money(value)
+        },
+
+        formatKm(value) {
+            return Number(value || 0).toLocaleString('pt-BR')
         }
     }
 }
 </script>
 
 <style scoped>
+.dash-hero,
+.quick-card,
+.insight-strip,
+.chart-card,
+.focus-card {
+    border: 1px solid var(--border-soft);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-soft);
+}
+
+.dash-hero {
+    border-radius: 24px;
+    padding: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    background:
+        radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.2), transparent 42%),
+        linear-gradient(145deg, var(--surface-card), var(--surface-strong));
+}
+
+.eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--primary-color);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.dash-hero h4 {
+    margin: 4px 0;
+    color: var(--text-strong);
+    font-size: clamp(30px, 8vw, 46px);
+    line-height: 1;
+}
+
+.dash-hero p,
+.quick-card small,
+.quick-card span,
+.section-head span,
+.expense-line small {
+    color: var(--text-muted);
+}
+
+.hero-badge {
+    border-radius: 999px;
+    padding: 8px 11px;
+    color: #16a34a;
+    background: rgba(22, 163, 74, 0.14);
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.hero-badge.negative {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.14);
+}
+
+.quick-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.quick-card {
+    border-radius: 18px;
+    padding: 16px;
+    min-width: 0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quick-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-elevated);
+}
+
+.quick-card strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 20px;
+    line-height: 1.08;
+    margin: 6px 0;
+    overflow-wrap: anywhere;
+}
+
+.quick-card.income strong {
+    color: #16a34a;
+}
+
+.quick-card.expense strong {
+    color: #ef4444;
+}
+
+.quick-card.balance strong,
+.quick-card.city strong {
+    color: var(--primary-color);
+}
+
+.insight-strip {
+    border-radius: 20px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.insight-strip div {
+    background: var(--surface-muted);
+    border-radius: 14px;
+    padding: 10px;
+}
+
+.insight-strip small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.insight-strip strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 14px;
+    margin-top: 3px;
+    overflow-wrap: anywhere;
+}
+
+.chart-card,
+.focus-card {
+    border-radius: 18px;
+    padding: 18px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.city-frequency {
+    margin-bottom: 12px;
+}
+
+.section-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.section-head h5 {
+    margin: 0;
+    color: var(--text-strong);
+}
+
 .chart-wrapper {
     position: relative;
     width: 100%;
+    max-width: 100%;
     height: 230px;
+    overflow: hidden;
 }
 
-@media (min-width: 768px) {
+.city-chart {
+    height: 250px;
+}
+
+.dashboard-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.expense-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.expense-line:hover {
+    background: var(--surface-muted);
+    border-radius: 12px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.expense-line:last-child {
+    border-bottom: 0;
+}
+
+.expense-line strong {
+    display: block;
+    color: var(--text-strong);
+}
+
+.expense-line span {
+    color: #ef4444;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.empty-chart,
+.soft-empty-state {
+    height: 100%;
+    border-radius: 18px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.empty-chart {
+    flex-direction: column;
+    border: 1px dashed var(--border-soft);
+}
+
+.empty-chart i {
+    color: var(--primary-color);
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.soft-empty-state {
+    min-height: 150px;
+    padding: 18px;
+    gap: 12px;
+    text-align: left;
+    justify-content: flex-start;
+    border: 1px dashed var(--border-soft);
+}
+
+.soft-empty-state.compact {
+    min-height: 168px;
+}
+
+.empty-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: var(--primary-soft);
+    color: var(--primary-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.soft-empty-state strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 15px;
+}
+
+.soft-empty-state p {
+    color: var(--text-muted);
+    margin-top: 3px;
+    line-height: 1.35;
+}
+
+@media (min-width: 820px) {
+    .quick-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .dashboard-stack {
+        grid-template-columns: 0.9fr 1.1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .dash-hero {
+        flex-direction: column;
+    }
+
+    .hero-badge {
+        align-self: flex-start;
+    }
+
+    .quick-grid,
+    .insight-strip {
+        grid-template-columns: 1fr;
+    }
+
     .chart-wrapper {
-        height: 300px;
+        height: 220px;
     }
 }
 </style>
