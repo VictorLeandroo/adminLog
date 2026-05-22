@@ -52,6 +52,13 @@ export function formatLocalDate(value, options = {}) {
   return parsed ? parsed.toLocaleDateString('pt-BR', options) : '-'
 }
 
+export function money(value) {
+  return Number(value || 0).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  })
+}
+
 function normalizePhoto(photo) {
   const fileUrl = photo.fileUrl || photo.url || photo.preview
 
@@ -162,6 +169,11 @@ async function photosPayload(photos = []) {
 export async function listVehicles() {
   const response = await api.get('/vehicles')
   return response.data.map(normalizeVehicle)
+}
+
+export async function getDashboardData(query = {}) {
+  const response = await api.get('/dashboard', { params: query })
+  return response.data
 }
 
 export async function listDrivers() {

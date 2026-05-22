@@ -246,13 +246,14 @@
 import ButtonComp from '@/components/ButtonComp.vue'
 import ModalDefault from '@/components/modals/ModalDefault.vue'
 import PhotoUploadComp from '@/components/PhotoUploadComp.vue'
-import { getFinanceData, getQuinzenna, money } from '@/services/financeStore'
 import {
     createStatementRequestApi,
     formatLocalDate,
+    getQuinzenna,
     listExpenses,
     listRevenues,
     listStatementRequests,
+    money,
     parseLocalDate,
     removeExpenseApi,
     removeRevenueApi,
@@ -271,7 +272,11 @@ export default {
 
     data() {
         return {
-            finance: getFinanceData(),
+            finance: {
+                revenues: [],
+                expenses: [],
+                statementRequests: []
+            },
             profileType: localStorage.getItem('profileType') || 'driver',
             selectedMonth: new Date().getMonth() + 1,
             selectedYear: new Date().getFullYear(),

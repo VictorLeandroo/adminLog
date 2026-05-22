@@ -130,8 +130,7 @@ import {
     ArcElement
 } from 'chart.js'
 import { Bar, Doughnut } from 'vue-chartjs'
-import { getFinanceData, money } from '@/services/financeStore'
-import { listExpenses, listRevenues, listRoutes, parseLocalDate } from '@/services/backendService'
+import { getDashboardData, money } from '@/services/backendService'
 
 ChartJS.register(Title, Tooltip, Legend, ArcElement, BarElement, CategoryScale, LinearScale)
 
@@ -142,8 +141,19 @@ export default {
 
     data() {
         return {
-            finance: getFinanceData(),
-            routes: [],
+            dashboard: {
+                totalRevenue: 0,
+                totalExpenses: 0,
+                finalBalance: 0,
+                totalRoutes: 0,
+                totalKm: 0,
+                averagePerRoute: 0,
+                firstHalfBalance: 0,
+                secondHalfBalance: 0,
+                cityFrequency: [],
+                topCity: { name: 'Sem dados', count: 0 },
+                topExpenses: []
+            },
             selectedMonth: new Date().getMonth() + 1,
             selectedYear: new Date().getFullYear(),
             months: [
@@ -207,88 +217,48 @@ export default {
             return `${month}/${this.selectedYear}`
         },
 
-        filteredRevenues() {
-            return this.finance.revenues.filter(item => this.matchesPeriod(item.date))
-        },
-
-        filteredExpenses() {
-            return this.finance.expenses.filter(item => this.matchesPeriod(item.date))
-        },
-
-        filteredRoutes() {
-            return this.routes.filter(route => this.matchesPeriod(route.finishedAt || route.data))
-        },
-
         totalRevenue() {
-            return this.filteredRevenues.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+            return this.dashboard.totalRevenue
         },
 
         totalExpenses() {
-            return this.filteredExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+            return this.dashboard.totalExpenses
         },
 
         finalBalance() {
-            return this.totalRevenue - this.totalExpenses
+            return this.dashboard.finalBalance
         },
 
         totalRoutes() {
-            return this.filteredRoutes.length
+            return this.dashboard.totalRoutes
         },
 
         totalKm() {
-            return this.filteredRoutes.reduce((sum, route) => {
-                if (!route.kmFinal) return sum
-                return sum + Math.max(0, Number(route.kmFinal) - Number(route.kmInicial))
-            }, 0)
+            return this.dashboard.totalKm
         },
 
         averagePerRoute() {
-            return this.totalRoutes ? this.totalRevenue / this.totalRoutes : 0
+            return this.dashboard.averagePerRoute
         },
 
         firstHalfBalance() {
-            return this.sumByHalf(this.filteredRevenues, 1) - this.sumByHalf(this.filteredExpenses, 1)
+            return this.dashboard.firstHalfBalance
         },
 
         secondHalfBalance() {
-            return this.sumByHalf(this.filteredRevenues, 2) - this.sumByHalf(this.filteredExpenses, 2)
+            return this.dashboard.secondHalfBalance
         },
 
         cityFrequency() {
-            const count = {}
-
-            this.filteredRoutes.forEach(route => {
-                route.cidades?.forEach(city => {
-                    count[city] = (count[city] || 0) + 1
-                })
-            })
-
-            return Object.entries(count)
-                .map(([name, value]) => ({ name, value }))
-                .sort((a, b) => b.value - a.value)
-                .slice(0, 6)
+            return this.dashboard.cityFrequency
         },
 
         topCity() {
-            const [city] = this.cityFrequency
-            return city ? { name: city.name, count: city.value } : { name: 'Sem dados', count: 0 }
+            return this.dashboard.topCity
         },
 
         topExpenses() {
-            const grouped = {}
-
-            this.filteredExpenses.forEach(expense => {
-                if (!grouped[expense.category]) {
-                    grouped[expense.category] = { category: expense.category, total: 0, count: 0 }
-                }
-
-                grouped[expense.category].total += Number(expense.amount || 0)
-                grouped[expense.category].count += 1
-            })
-
-            return Object.values(grouped)
-                .sort((a, b) => b.total - a.total)
-                .slice(0, 4)
+            return this.dashboard.topExpenses
         },
 
         cityFrequencyChartData() {
@@ -322,29 +292,13 @@ export default {
     methods: {
         async fetchDashboardData() {
             try {
-                const [revenues, expenses, routes] = await Promise.all([
-                    listRevenues(),
-                    listExpenses(),
-                    listRoutes()
-                ])
-
-                this.finance.revenues = revenues
-                this.finance.expenses = expenses
-                this.routes = routes
+                this.dashboard = await getDashboardData({
+                    month: this.selectedMonth,
+                    year: this.selectedYear
+                })
             } catch (error) {
                 console.error(error)
             }
-        },
-
-        matchesPeriod(date) {
-            const parsed = parseLocalDate(date)
-            return parsed.getMonth() + 1 === this.selectedMonth && parsed.getFullYear() === this.selectedYear
-        },
-
-        sumByHalf(list, half) {
-            return list
-                .filter(item => item.quinzenna === half)
-                .reduce((sum, item) => sum + Number(item.amount || 0), 0)
         },
 
         formatMoney(value) {
