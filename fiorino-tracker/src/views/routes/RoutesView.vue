@@ -435,9 +435,9 @@ import PhotoUploadComp from '@/components/PhotoUploadComp.vue';
 import { notifyError, notifySuccess } from '@/services/notificationService';
 import {
     createRouteApi,
-    downloadFreightPdf,
     finishRouteApi,
     formatLocalDate,
+    getFreightReportHtml,
     getMyVehicle,
     parseLocalDate,
     listVehicles,
@@ -989,25 +989,27 @@ export default {
         async generateFreightPdf() {
             if (!this.canGenerateFreightPdf) return
 
+            const reportWindow = window.open('', '_blank')
+            if (!reportWindow) {
+                notifyError(new Error('Pop-up bloqueado'), 'Permita pop-ups para abrir o relatório de frete.')
+                return
+            }
+
+            reportWindow.document.write('<p style="font-family: Arial, sans-serif; padding: 24px;">Gerando relatório...</p>')
             this.isModalLoading = true
             try {
-                const file = await downloadFreightPdf({
+                const html = await getFreightReportHtml({
                     startDate: this.freightForm.startDate,
                     endDate: this.freightForm.endDate,
                     title: this.freightForm.title
                 })
-                const blob = file.blob
-                const url = URL.createObjectURL(blob)
-                const link = document.createElement('a')
-                link.href = url
-                link.download = file.filename || `frete-${this.freightForm.startDate}-${this.freightForm.endDate}.xlsx`
-                document.body.appendChild(link)
-                link.click()
-                link.remove()
-                URL.revokeObjectURL(url)
+                reportWindow.document.open()
+                reportWindow.document.write(html)
+                reportWindow.document.close()
                 this.cancelFreightModal()
-                notifySuccess('Relatório de frete gerado com sucesso.')
+                notifySuccess('Relatorio de frete aberto para salvar como PDF.')
             } catch (error) {
+                reportWindow.close()
                 console.error(error)
                 notifyError(error, 'Nao foi possivel gerar o relatorio de frete.')
             } finally {

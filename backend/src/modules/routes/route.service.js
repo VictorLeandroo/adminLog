@@ -328,6 +328,13 @@ function formatDate(value) {
   return value.toLocaleDateString('pt-BR');
 }
 
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+}
+
 function formatDateShort(value) {
   return value.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
@@ -382,6 +389,46 @@ function setCellValue(worksheet, address, value) {
 
 function moneyOrBlank(value) {
   return numberValue(value) > 0 ? numberValue(value) : null;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+async function getFreightData(query) {
+  const { start, end } = parseDateRange(query);
+  const routes = await prisma.route.findMany({
+    where: {
+      date: { gte: start, lte: end },
+      status: { not: RouteStatus.IN_PROGRESS },
+    },
+    include,
+    orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+  });
+
+  const expenses = await prisma.expense.findMany({
+    where: { date: { gte: start, lte: end } },
+    select: {
+      vehicleId: true,
+      date: true,
+      category: true,
+      description: true,
+      amount: true,
+    },
+  });
+
+  return {
+    start,
+    end,
+    routes,
+    expenses,
+    title: getFreightTitle(query, routes, start, end),
+  };
 }
 
 function hideBlockRows(worksheet, startRow) {
@@ -521,28 +568,7 @@ async function convertXlsxToPdf(xlsxBuffer, filename) {
 }
 
 async function generateFreightPdf(query) {
-  const { start, end } = parseDateRange(query);
-  const routes = await prisma.route.findMany({
-    where: {
-      date: { gte: start, lte: end },
-      status: { not: RouteStatus.IN_PROGRESS },
-    },
-    include,
-    orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
-  });
-
-  const expenses = await prisma.expense.findMany({
-    where: { date: { gte: start, lte: end } },
-    select: {
-      vehicleId: true,
-      date: true,
-      category: true,
-      description: true,
-      amount: true,
-    },
-  });
-
-  const title = getFreightTitle(query, routes, start, end);
+  const { start, end, routes, expenses, title } = await getFreightData(query);
   const xlsxFilename = `frete-${dateOnly(start)}-${dateOnly(end)}.xlsx`;
   const xlsxBuffer = Buffer.from(await buildFreightWorkbook(routes, expenses, { start, end, title }));
   const pdfBuffer = await convertXlsxToPdf(xlsxBuffer, xlsxFilename);
@@ -560,6 +586,249 @@ async function generateFreightPdf(query) {
   return { buffer: pdfBuffer, filename, contentType: 'application/pdf' };
 }
 
+function renderFreightRouteBlock(route, expenses) {
+  const values = routeFreightValues(route, expenses);
+  const cities = route.cities.map((city) => city.name).join(', ') || 'ENTREGA';
+  const invoices = route.invoices.map((invoice) => invoice.number).join(', ');
+
+  return `
+    <section class="route-block">
+      <div class="grid head">
+        <div class="date-head">DATA</div>
+        <div>DISCRIMINACAO</div>
+        <div class="value-head">VALOR</div>
+      </div>
+      <div class="grid main-row">
+        <div class="date-cell">${escapeHtml(formatDate(route.date))}</div>
+        <div class="description">${escapeHtml(cities)}</div>
+        <div class="value-cell"></div>
+      </div>
+      <div class="grid">
+        <div class="left notes">${escapeHtml(invoices)}</div>
+        <div class="label">Saida (ate 120km)</div>
+        <div class="amount">${formatMoney(BASE_FREIGHT_AMOUNT)}</div>
+      </div>
+      <div class="grid">
+        <div class="left strong">Quilometragem</div>
+        <div class="label">Kms excedentes (${formatMoney(EXCESS_KM_AMOUNT)})</div>
+        <div class="amount">${formatMoney(values.excessAmount)}</div>
+      </div>
+      <div class="grid">
+        <div class="km-pair">
+          <span>Inicial</span>
+          <strong>${numberValue(route.initialKm)}</strong>
+        </div>
+        <div class="label">Pedagios</div>
+        <div class="amount">${values.toll ? formatMoney(values.toll) : ''}</div>
+      </div>
+      <div class="grid">
+        <div class="km-pair">
+          <span>Final</span>
+          <strong>${numberValue(route.finalKm)}</strong>
+        </div>
+        <div class="label">Zona Azul</div>
+        <div class="amount">${values.blueZone ? formatMoney(values.blueZone) : ''}</div>
+      </div>
+      <div class="grid">
+        <div class="km-pair">
+          <span>KM rodados</span>
+          <strong>${values.km}</strong>
+        </div>
+        <div class="label">Descarga</div>
+        <div class="amount">${values.unloading ? formatMoney(values.unloading) : ''}</div>
+      </div>
+      <div class="grid total-row">
+        <div class="km-pair">
+          <span>Km excedente</span>
+          <strong>${values.excessKm}</strong>
+        </div>
+        <div class="label">TOTAL</div>
+        <div class="amount">${formatMoney(values.total)}</div>
+      </div>
+    </section>
+  `;
+}
+
+async function generateFreightHtml(query) {
+  const { routes, expenses, title } = await getFreightData(query);
+  const total = routes.reduce((sum, route) => sum + routeFreightValues(route, expenses).total, 0);
+  const blocks = routes.length
+    ? routes.map((route) => renderFreightRouteBlock(route, expenses)).join('')
+    : '<p class="empty">Nenhuma rota concluida encontrada nesse periodo.</p>';
+
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 8mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #111;
+      background: #f3f4f6;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10px;
+    }
+    .sheet {
+      width: 190mm;
+      min-height: 277mm;
+      margin: 12px auto;
+      background: #fff;
+      padding: 0;
+    }
+    .title {
+      display: grid;
+      grid-template-columns: 1fr 30mm;
+      background: #fff200;
+      border: 1px solid #111;
+      border-bottom: 0;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .title div {
+      min-height: 14px;
+      padding: 2px 4px;
+      border-right: 1px solid #111;
+    }
+    .title div:last-child { border-right: 0; }
+    .route-block {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      border: 1px solid #111;
+      border-bottom: 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 47mm 1fr 30mm;
+      min-height: 15px;
+      border-bottom: 1px solid #555;
+    }
+    .grid > * {
+      padding: 2px 4px;
+      border-right: 1px solid #555;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+    .grid > *:last-child { border-right: 0; }
+    .head {
+      min-height: 13px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .head > * { justify-content: center; }
+    .date-head { grid-column: 1; }
+    .value-head { grid-column: 3; }
+    .main-row { min-height: 17px; }
+    .date-cell, .description { font-weight: 600; }
+    .description {
+      justify-content: center;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+    .notes {
+      align-items: flex-start;
+      overflow-wrap: anywhere;
+      line-height: 1.25;
+    }
+    .strong { font-weight: 700; justify-content: center; }
+    .label { justify-content: center; text-align: center; }
+    .amount {
+      justify-content: flex-end;
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .km-pair {
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .km-pair strong { font-variant-numeric: tabular-nums; }
+    .total-row {
+      min-height: 16px;
+      font-weight: 700;
+    }
+    .grand-total {
+      display: grid;
+      grid-template-columns: 1fr 30mm;
+      min-height: 17px;
+      background: #fff200;
+      border: 1px solid #111;
+      font-weight: 700;
+    }
+    .grand-total div {
+      padding: 3px 5px;
+      border-right: 1px solid #111;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .grand-total div:last-child { border-right: 0; }
+    .empty {
+      border: 1px solid #111;
+      margin: 0;
+      padding: 18px;
+      text-align: center;
+    }
+    .print-hint {
+      position: sticky;
+      top: 0;
+      margin: 0 auto;
+      padding: 10px 12px;
+      width: 190mm;
+      background: #111827;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .print-hint button {
+      border: 0;
+      background: #fff200;
+      color: #111;
+      padding: 8px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    @media print {
+      body { background: #fff; }
+      .sheet { width: auto; min-height: 0; margin: 0; }
+      .print-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-hint">
+    <span>Relatorio pronto. Na janela de impressao, escolha "Salvar como PDF".</span>
+    <button onclick="window.print()">Imprimir / salvar PDF</button>
+  </div>
+  <main class="sheet">
+    <header class="title">
+      <div>${escapeHtml(title)}</div>
+      <div>PLACA</div>
+    </header>
+    ${blocks}
+    <footer class="grand-total">
+      <div>TOTAL GERAL</div>
+      <div>${formatMoney(total)}</div>
+    </footer>
+  </main>
+  <script>
+    window.addEventListener('load', () => {
+      setTimeout(() => window.print(), 350);
+    });
+  </script>
+</body>
+</html>`;
+}
+
 module.exports = {
   listRoutes,
   getActiveRoute,
@@ -570,4 +839,5 @@ module.exports = {
   reviewRoute,
   removeRoute,
   generateFreightPdf,
+  generateFreightHtml,
 };

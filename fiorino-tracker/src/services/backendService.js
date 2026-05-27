@@ -373,6 +373,14 @@ export async function downloadFreightPdf(params) {
   }
 }
 
+export async function getFreightReportHtml(params) {
+  const response = await api.get('/routes/freight-report', {
+    params,
+    responseType: 'text'
+  })
+  return response.data
+}
+
 export async function listExpenses(query = {}) {
   const response = await api.get('/finance/expenses', { params: query })
   return response.data.map(normalizeExpense)

@@ -42,4 +42,11 @@ const freightPdf = asyncHandler(async (req, res) => {
   res.send(buffer);
 });
 
-module.exports = { list, active, start, create, finish, reportError, review, remove, freightPdf };
+const freightReport = asyncHandler(async (req, res) => {
+  const html = await service.generateFreightHtml(req.query);
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+module.exports = { list, active, start, create, finish, reportError, review, remove, freightPdf, freightReport };
