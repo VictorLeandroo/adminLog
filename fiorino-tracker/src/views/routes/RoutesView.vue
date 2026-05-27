@@ -24,14 +24,14 @@
                 </div>
             </section>
 
-            <section class="active-route-panel" :class="{ empty: !activeRoute }">
+            <section class="active-route-panel" :class="{ empty: !activeRoute, blocked: driverVehicleMissing }">
                 <div class="panel-top">
                     <div>
                         <span class="eyebrow">Rota atual</span>
-                        <h5>{{ activeRoute ? formatDate(activeRoute.data) : 'Nenhuma rota ativa' }}</h5>
+                        <h5>{{ routePanelTitle }}</h5>
                     </div>
-                    <span class="status-pill" :class="activeRoute ? 'running' : 'idle'">
-                        {{ activeRoute ? 'Em andamento' : 'Pronto' }}
+                    <span class="status-pill" :class="routePanelStatusClass">
+                        {{ routePanelStatus }}
                     </span>
                 </div>
 
@@ -51,13 +51,19 @@
                 </div>
 
                 <p v-else class="empty-copy">
-                    Informe o KM atual do painel para abrir a viagem. Enquanto ela estiver ativa, uma nova rota fica bloqueada.
+                    {{ routePanelMessage }}
                 </p>
+
+                <div v-if="driverVehicleMissing" class="route-warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Seu usuário ainda não possui veículo vinculado. Peça para a administração cadastrar ou vincular um veículo antes de iniciar uma rota.</span>
+                </div>
 
                 <div class="panel-actions" v-if="isDriver">
                     <ButtonComp
                         v-if="!activeRoute"
                         btn-class="button-primary button-big w-100"
+                        :is-disabled="!canOpenStartRoute"
                         :click-action="openStartModal">
                         <i class="fa-solid fa-play"></i>
                         Iniciar rota
@@ -191,9 +197,9 @@
             </div>
 
             <label class="form-label">KM inicial</label>
-            <input type="number" v-model.number="startForm.kmInicial" class="w-100 mb-2" placeholder="Ex: 42380" />
+            <input type="number" v-model.number="startForm.kmInicial" class="w-100 mb-2" placeholder="Ex: 42380" :disabled="!myVehicle" />
 
-            <ButtonComp :click-action="startRoute" :is-disabled="!startForm.kmInicial" btn-class="button-primary button-big w-100">
+            <ButtonComp :click-action="startRoute" :is-disabled="!canStartRoute" btn-class="button-primary button-big w-100">
                 Iniciar rota
             </ButtonComp>
         </ModalDefault>
@@ -395,6 +401,8 @@ export default {
             profileType: localStorage.getItem('profileType') || 'driver',
             routes: [],
             myVehicle: null,
+            myVehicleLoaded: false,
+            isVehicleLoading: false,
             searchTerm: '',
             statusFilter: 'all',
             adminVehicles: [],
@@ -447,6 +455,53 @@ export default {
 
         activeRoute() {
             return this.routes.find(route => route.status === 'Em andamento')
+        },
+
+        driverVehicleMissing() {
+            return this.isDriver && this.myVehicleLoaded && !this.myVehicle
+        },
+
+        hasStartKm() {
+            return this.startForm.kmInicial !== '' && this.startForm.kmInicial !== null && this.startForm.kmInicial !== undefined
+        },
+
+        canOpenStartRoute() {
+            return Boolean(this.isDriver && !this.activeRoute && this.myVehicle && !this.isVehicleLoading)
+        },
+
+        canStartRoute() {
+            return Boolean(this.canOpenStartRoute && this.hasStartKm)
+        },
+
+        routePanelTitle() {
+            if (this.activeRoute) return this.formatDate(this.activeRoute.data)
+            if (this.driverVehicleMissing) return 'Nenhum veículo vinculado'
+            return 'Nenhuma rota ativa'
+        },
+
+        routePanelStatus() {
+            if (this.activeRoute) return 'Em andamento'
+            if (this.driverVehicleMissing) return 'Sem veículo'
+            if (this.isVehicleLoading) return 'Carregando'
+            return 'Pronto'
+        },
+
+        routePanelStatusClass() {
+            if (this.activeRoute) return 'running'
+            if (this.driverVehicleMissing) return 'warning'
+            return 'idle'
+        },
+
+        routePanelMessage() {
+            if (this.driverVehicleMissing) {
+                return 'Não é possível iniciar uma rota enquanto não houver um veículo vinculado ao seu usuário.'
+            }
+
+            if (this.isVehicleLoading) {
+                return 'Carregando o veículo vinculado ao motorista.'
+            }
+
+            return 'Informe o KM atual do painel para abrir a viagem. Enquanto ela estiver ativa, uma nova rota fica bloqueada.'
         },
 
         heroTitle() {
@@ -539,8 +594,13 @@ export default {
         },
 
         async fetchMyVehicle() {
-            if (!this.isDriver) return
+            if (!this.isDriver) {
+                this.myVehicle = null
+                this.myVehicleLoaded = false
+                return
+            }
 
+            this.isVehicleLoading = true
             try {
                 const [vehicle] = await getMyVehicle()
                 this.myVehicle = vehicle
@@ -548,7 +608,12 @@ export default {
             } catch (error) {
                 console.error(error)
                 this.myVehicle = null
-                notifyError(error, 'Não foi possível carregar o veículo vinculado.')
+                if (error.response?.status !== 404) {
+                    notifyError(error, 'Não foi possível carregar o veículo vinculado.')
+                }
+            } finally {
+                this.myVehicleLoaded = true
+                this.isVehicleLoading = false
             }
         },
 
@@ -567,7 +632,7 @@ export default {
         },
 
         openStartModal() {
-            if (this.activeRoute) return
+            if (this.activeRoute || !this.myVehicle) return
             this.showStartModal = true
         },
 
@@ -611,7 +676,7 @@ export default {
         },
 
         async startRoute() {
-            if (!this.startForm.kmInicial || this.activeRoute || !this.myVehicle) return
+            if (!this.canStartRoute) return
 
             this.isModalLoading = true
 
@@ -939,6 +1004,10 @@ export default {
     margin-top: 12px;
 }
 
+.active-route-panel.blocked {
+    border-color: rgba(217, 119, 6, 0.35);
+}
+
 .panel-top,
 .route-card-head,
 .route-actions,
@@ -1000,6 +1069,29 @@ export default {
 
 .status-pill.idle {
     color: var(--text-muted);
+}
+
+.status-pill.warning {
+    color: #d97706;
+    background: rgba(217, 119, 6, 0.14);
+}
+
+.route-warning {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    color: #92400e;
+    background: rgba(217, 119, 6, 0.12);
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.route-warning i {
+    margin-top: 2px;
+    flex: 0 0 auto;
 }
 
 .route-card-head {
