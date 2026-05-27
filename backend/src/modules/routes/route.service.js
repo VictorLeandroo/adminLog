@@ -272,7 +272,7 @@ async function reviewRoute(id, input) {
       });
     }
 
-    return tx.route.update({
+    await tx.route.update({
       where: { id },
       data: {
         initialKm: data.initialKm,
@@ -291,8 +291,21 @@ async function reviewRoute(id, input) {
           create: payload.invoices.map((number) => ({ number })),
         },
       },
-      include,
     });
+
+    await tx.routePhoto.deleteMany({ where: { routeId: id } });
+
+    if (payload.photos.length) {
+      await tx.routePhoto.createMany({
+        data: payload.photos.map((photo) => ({
+          routeId: id,
+          fileUrl: photo.fileUrl,
+          fileName: photo.fileName || null,
+        })),
+      });
+    }
+
+    return tx.route.findUnique({ where: { id }, include });
   });
 }
 
