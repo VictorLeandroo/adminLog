@@ -9,17 +9,13 @@
                 </div>
 
                 <div class="hero-route-actions">
-                    <ButtonComp
-                        v-if="!isDriver"
-                        btn-class="button-primary button-big"
+                    <ButtonComp v-if="!isDriver" btn-class="button-primary button-big"
                         :click-action="openCreateRouteModal">
                         <i class="fa-solid fa-plus"></i>
                         Nova rota
                     </ButtonComp>
 
-                    <ButtonComp
-                        v-if="!isDriver"
-                        btn-class="button-secundary button-big"
+                    <ButtonComp v-if="!isDriver" btn-class="button-secundary button-big"
                         :click-action="openFreightModal">
                         <i class="fa-solid fa-file-pdf"></i>
                         Frete PDF
@@ -64,22 +60,18 @@
 
                 <div v-if="driverVehicleMissing" class="route-warning">
                     <i class="fa-solid fa-triangle-exclamation"></i>
-                    <span>Seu usuário ainda não possui veículo vinculado. Peça para a administração cadastrar ou vincular um veículo antes de iniciar uma rota.</span>
+                    <span>Seu usuário ainda não possui veículo vinculado. Peça para a administração cadastrar ou
+                        vincular um veículo antes de iniciar uma rota.</span>
                 </div>
 
                 <div class="panel-actions" v-if="isDriver">
-                    <ButtonComp
-                        v-if="!activeRoute"
-                        btn-class="button-primary button-big w-100"
-                        :is-disabled="!canOpenStartRoute"
-                        :click-action="openStartModal">
+                    <ButtonComp v-if="!activeRoute" btn-class="button-primary button-big w-100"
+                        :is-disabled="!canOpenStartRoute" :click-action="openStartModal">
                         <i class="fa-solid fa-play"></i>
                         Iniciar rota
                     </ButtonComp>
 
-                    <ButtonComp
-                        v-else
-                        btn-class="button-primary button-big w-100"
+                    <ButtonComp v-else btn-class="button-primary button-big w-100"
                         :click-action="() => openFinishModal(activeRoute)">
                         <i class="fa-solid fa-flag-checkered"></i>
                         Finalizar rota
@@ -153,7 +145,8 @@
                     </div>
 
                     <div class="photo-strip" v-if="route.photos.length">
-                        <img v-for="(photo, index) in route.photos" :key="index" :src="photo.url || photo.preview" @click="openLightbox(photo.url || photo.preview)" />
+                        <img v-for="(photo, index) in route.photos" :key="index" :src="photo.url || photo.preview"
+                            @click="openLightbox(photo.url || photo.preview)" />
                     </div>
 
                     <div class="correction-card" v-if="route.correctionRequested">
@@ -165,31 +158,23 @@
                     </div>
 
                     <div class="route-actions">
-                        <ButtonComp
-                            v-if="isDriver && route.status === 'Em andamento'"
-                            btn-class="button-primary w-100"
+                        <ButtonComp v-if="isDriver && route.status === 'Em andamento'" btn-class="button-primary w-100"
                             :click-action="() => openFinishModal(route)">
                             Finalizar
                         </ButtonComp>
 
-                        <ButtonComp
-                            v-if="isDriver && route.status !== 'Em andamento'"
-                            btn-class="button-secundary w-100"
-                            :click-action="() => openCorrectionModal(route)">
+                        <ButtonComp v-if="isDriver && route.status !== 'Em andamento'"
+                            btn-class="button-secundary w-100" :click-action="() => openCorrectionModal(route)">
                             <i class="fa-solid fa-circle-exclamation"></i>
                             {{ route.correctionRequested ? 'Atualizar relato' : 'Relatar erro' }}
                         </ButtonComp>
 
-                        <ButtonComp
-                            v-if="!isDriver"
-                            btn-class="button-secundary w-100"
+                        <ButtonComp v-if="!isDriver" btn-class="button-secundary w-100"
                             :click-action="() => openAdminModal(route)">
                             Revisar dados
                         </ButtonComp>
 
-                        <ButtonComp
-                            v-if="!isDriver"
-                            btn-class="button-secundary-red w-100"
+                        <ButtonComp v-if="!isDriver" btn-class="button-secundary-red w-100"
                             :click-action="() => { showConfirmDeleteModal = true; routeSelected = route }">
                             Excluir
                         </ButtonComp>
@@ -215,9 +200,11 @@
             </div>
 
             <label class="form-label">KM inicial</label>
-            <input type="number" v-model.number="startForm.kmInicial" class="w-100 mb-2" placeholder="Ex: 42380" :disabled="!myVehicle" />
+            <input type="number" v-model.number="startForm.kmInicial" class="w-100 mb-2" placeholder="Ex: 42380"
+                :disabled="!myVehicle" />
 
-            <ButtonComp :click-action="startRoute" :is-disabled="!canStartRoute" btn-class="button-primary button-big w-100">
+            <ButtonComp :click-action="startRoute" :is-disabled="!canStartRoute"
+                btn-class="button-primary button-big w-100">
                 Iniciar rota
             </ButtonComp>
         </ModalDefault>
@@ -234,7 +221,8 @@
 
             <div class="modal-scroll-content">
                 <label class="form-label">Veículo</label>
-                <select v-model="createRouteForm.vehicleId" class="form-select w-100 mb-2" @change="syncCreateVehicleKm">
+                <select v-model="createRouteForm.vehicleId" class="form-select w-100 mb-2"
+                    @change="syncCreateVehicleKm">
                     <option value="">Selecione um veículo</option>
                     <option v-for="vehicle in adminVehiclesWithDriver" :key="vehicle.id" :value="vehicle.id">
                         {{ vehicle.plate }} - {{ vehicle.model }} / {{ vehicle.driver }}
@@ -256,13 +244,16 @@
                 </div>
 
                 <label class="form-label">Cidades</label>
-                <input type="text" v-model="createRouteForm.cidadesStr" class="w-100 mb-2" placeholder="Ex: São Paulo, Itu, Campinas" />
+                <input type="text" v-model="createRouteForm.cidadesStr" class="w-100 mb-2"
+                    placeholder="Ex: São Paulo, Itu, Campinas" />
 
                 <label class="form-label">Notas fiscais</label>
-                <input type="text" v-model="createRouteForm.notasStr" class="w-100 mb-2" placeholder="Ex: 5674, 5675, 5676" />
+                <input type="text" v-model="createRouteForm.notasStr" class="w-100 mb-2"
+                    placeholder="Ex: 5674, 5675, 5676" />
 
                 <label class="form-label">Valor do frete</label>
-                <input type="number" v-model.number="createRouteForm.freightAmount" class="w-100 mb-2" placeholder="0,00" />
+                <input type="number" v-model.number="createRouteForm.freightAmount" class="w-100 mb-2"
+                    placeholder="0,00" />
 
                 <label class="form-label">Status</label>
                 <select v-model="createRouteForm.status" class="form-select w-100 mb-2">
@@ -272,7 +263,8 @@
                 </select>
             </div>
 
-            <ButtonComp :click-action="createAdminRoute" :is-disabled="!canCreateAdminRoute" btn-class="button-primary button-big w-100">
+            <ButtonComp :click-action="createAdminRoute" :is-disabled="!canCreateAdminRoute"
+                btn-class="button-primary button-big w-100">
                 Criar rota
             </ButtonComp>
         </ModalDefault>
@@ -289,17 +281,21 @@
 
             <div class="modal-scroll-content">
                 <label class="form-label">KM final</label>
-                <input type="number" v-model.number="finishForm.kmFinal" class="w-100 mb-1" :class="{ 'input-error': kmFinalInvalid }" />
-                <small v-if="kmFinalInvalid" class="text-danger d-block mb-2">O KM final não pode ser menor que o KM inicial.</small>
+                <input type="number" v-model.number="finishForm.kmFinal" class="w-100 mb-1"
+                    :class="{ 'input-error': kmFinalInvalid }" />
+                <small v-if="kmFinalInvalid" class="text-danger d-block mb-2">O KM final não pode ser menor que o KM
+                    inicial.</small>
 
                 <label class="form-label">Fotos das notas</label>
                 <PhotoUploadComp v-model="photos" />
 
                 <label class="form-label mt-2">Cidades entregues</label>
-                <input type="text" v-model="finishForm.cidadesStr" class="w-100" placeholder="Ex: São Paulo, Itu, Campinas" />
+                <input type="text" v-model="finishForm.cidadesStr" class="w-100"
+                    placeholder="Ex: São Paulo, Itu, Campinas" />
 
                 <label class="form-label mt-2">Números das notas</label>
-                <input type="text" v-model="finishForm.notasStr" class="w-100 mb-2" placeholder="Ex: 5674, 5675, 5676" />
+                <input type="text" v-model="finishForm.notasStr" class="w-100 mb-2"
+                    placeholder="Ex: 5674, 5675, 5676" />
             </div>
 
             <div class="analysis-note" v-if="willNeedAnalysis">
@@ -307,7 +303,8 @@
                 Sem cidades ou notas preenchidas, a rota será finalizada como pendente de análise.
             </div>
 
-            <ButtonComp :click-action="finishRoute" :is-disabled="!canFinishRoute" btn-class="button-primary button-big w-100">
+            <ButtonComp :click-action="finishRoute" :is-disabled="!canFinishRoute"
+                btn-class="button-primary button-big w-100">
                 Finalizar rota
             </ButtonComp>
         </ModalDefault>
@@ -354,7 +351,8 @@
                 </div>
             </div>
 
-            <ButtonComp :click-action="saveAdminRoute" :is-disabled="!adminForm.kmFinal" btn-class="button-primary button-big w-100">
+            <ButtonComp :click-action="saveAdminRoute" :is-disabled="!adminForm.kmFinal"
+                btn-class="button-primary button-big w-100">
                 Salvar revisão
             </ButtonComp>
         </ModalDefault>
@@ -373,7 +371,8 @@
             <textarea v-model="correctionForm.note" class="w-100 correction-textarea"
                 placeholder="Ex: Esqueci a nota 5682, a cidade correta era Itu, ou informei o KM final errado."></textarea>
 
-            <ButtonComp :click-action="saveCorrectionReport" :is-disabled="!correctionForm.note.trim()" btn-class="button-primary button-big w-100 mt-2">
+            <ButtonComp :click-action="saveCorrectionReport" :is-disabled="!correctionForm.note.trim()"
+                btn-class="button-primary button-big w-100 mt-2">
                 Enviar relato
             </ButtonComp>
         </ModalDefault>
@@ -410,7 +409,8 @@
             <label class="form-label">Titulo</label>
             <input type="text" v-model="freightForm.title" class="w-100 mb-2" />
 
-            <ButtonComp :click-action="generateFreightPdf" :is-disabled="!canGenerateFreightPdf" btn-class="button-primary button-big w-100">
+            <ButtonComp :click-action="generateFreightPdf" :is-disabled="!canGenerateFreightPdf"
+                btn-class="button-primary button-big w-100">
                 Gerar PDF
             </ButtonComp>
         </ModalDefault>
@@ -947,14 +947,17 @@ export default {
         defaultFreightForm() {
             const today = new Date()
             const periodType = today.getDate() <= 15 ? 'first-half' : 'second-half'
-            return this.freightPeriodForm(periodType, today)
+            return this.freightPeriodForm(periodType, today, "JOSE ESTEVAO DE ALMEIDA ELEUTERIO")
         },
 
-        freightPeriodForm(periodType, date = new Date()) {
+        freightPeriodForm(periodType, date = new Date(), driverName = '') {
             const year = date.getFullYear()
             const month = date.getMonth()
-            const monthLabel = String(month + 1).padStart(2, '0')
-            const start = periodType === 'second-half' ? new Date(year, month, 16) : new Date(year, month, 1)
+
+            const start = periodType === 'second-half'
+                ? new Date(year, month, 16)
+                : new Date(year, month, 1)
+
             const end = periodType === 'first-half'
                 ? new Date(year, month, 15)
                 : new Date(year, month + 1, 0)
@@ -964,11 +967,17 @@ export default {
                 end.setDate(new Date(year, month + 1, 0).getDate())
             }
 
+            const formatBR = (date) => {
+                const day = String(date.getDate()).padStart(2, '0')
+                const month = String(date.getMonth() + 1).padStart(2, '0')
+                return `${day}/${month}`
+            }
+
             return {
                 periodType,
                 startDate: this.toInputDate(start),
                 endDate: this.toInputDate(end),
-                title: `Frete - ${periodType === 'first-half' ? '1' : periodType === 'second-half' ? '2' : 'Mes'} quinzena ${monthLabel}/${year}`
+                title: `FRETE ${formatBR(start)} - ${formatBR(end)} - ${driverName.toUpperCase()}`
             }
         },
 
@@ -982,24 +991,25 @@ export default {
 
             this.isModalLoading = true
             try {
-                const blob = await downloadFreightPdf({
+                const file = await downloadFreightPdf({
                     startDate: this.freightForm.startDate,
                     endDate: this.freightForm.endDate,
                     title: this.freightForm.title
                 })
+                const blob = file.blob
                 const url = URL.createObjectURL(blob)
                 const link = document.createElement('a')
                 link.href = url
-                link.download = `frete-${this.freightForm.startDate}-${this.freightForm.endDate}.pdf`
+                link.download = file.filename || `frete-${this.freightForm.startDate}-${this.freightForm.endDate}.xlsx`
                 document.body.appendChild(link)
                 link.click()
                 link.remove()
                 URL.revokeObjectURL(url)
                 this.cancelFreightModal()
-                notifySuccess('PDF de frete gerado com sucesso.')
+                notifySuccess('Relatório de frete gerado com sucesso.')
             } catch (error) {
                 console.error(error)
-                notifyError(error, 'Nao foi possivel gerar o PDF de frete.')
+                notifyError(error, 'Nao foi possivel gerar o relatorio de frete.')
             } finally {
                 this.isModalLoading = false
             }
@@ -1516,7 +1526,7 @@ export default {
         justify-content: stretch;
     }
 
-    .hero-route-actions > * {
+    .hero-route-actions>* {
         flex: 1;
     }
 

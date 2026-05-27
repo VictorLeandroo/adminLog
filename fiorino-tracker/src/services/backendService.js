@@ -365,7 +365,12 @@ export async function downloadFreightPdf(params) {
     params,
     responseType: 'blob'
   })
-  return response.data
+  const disposition = response.headers['content-disposition'] || ''
+  const filenameMatch = disposition.match(/filename="?([^"]+)"?/)
+  return {
+    blob: response.data,
+    filename: filenameMatch?.[1]
+  }
 }
 
 export async function listExpenses(query = {}) {

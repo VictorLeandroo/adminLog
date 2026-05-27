@@ -1,8 +1,20 @@
 const { z } = require('zod');
 const { RouteStatus } = require('@prisma/client');
+const fs = require('fs/promises');
+const os = require('os');
+const path = require('path');
+const { spawn } = require('child_process');
+const ExcelJS = require('exceljs');
 
 const prisma = require('../../lib/prisma');
 const AppError = require('../../utils/AppError');
+
+const FREIGHT_TEMPLATE_PATH = path.resolve(__dirname, '../../templates/frete-base.xlsx');
+const FREIGHT_BLOCK_ROWS = [2, 11, 20, 29, 38, 47, 56, 65, 74, 83, 92];
+const FREIGHT_TOTAL_ROW = 100;
+const BASE_FREIGHT_AMOUNT = 400;
+const INCLUDED_KM = 120;
+const EXCESS_KM_AMOUNT = 1.5;
 
 const startSchema = z.object({
   vehicleId: z.string().min(1),
@@ -316,179 +328,196 @@ function formatDate(value) {
   return value.toLocaleDateString('pt-BR');
 }
 
-function formatMoney(value) {
-  return Number(value || 0).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  });
+function formatDateShort(value) {
+  return value.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
-function escapePdfText(value) {
-  return String(value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\x20-\x7E]/g, '')
-    .replace(/\\/g, '\\\\')
-    .replace(/\(/g, '\\(')
-    .replace(/\)/g, '\\)');
+function numberValue(value) {
+  return Number(value || 0);
 }
 
-function truncate(value, max = 32) {
-  const text = String(value ?? '');
-  return text.length > max ? `${text.slice(0, max - 3)}...` : text;
+function routeKm(route) {
+  return Math.max(0, numberValue(route.finalKm) - numberValue(route.initialKm));
 }
 
-function drawText(commands, text, x, y, size = 8) {
-  commands.push(`BT /F1 ${size} Tf ${x} ${y} Td (${escapePdfText(text)}) Tj ET`);
+function routeExcessKm(route) {
+  return Math.max(0, routeKm(route) - INCLUDED_KM);
 }
 
-function drawTextRight(commands, text, x, y, size = 8) {
-  const safeText = escapePdfText(text);
-  commands.push(`BT /F1 ${size} Tf ${x} ${y} Td (${safeText}) Tj ET`);
+function getDriverName(routes) {
+  const names = [...new Set(routes.map((route) => route.driver?.name).filter(Boolean))];
+  return names.length === 1 ? names[0] : 'GERAL';
 }
 
-function drawLine(commands, x1, y1, x2, y2) {
-  commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
+function getFreightTitle(query, routes, start, end) {
+  if (query.title) return String(query.title).toUpperCase();
+  return `FRETE ${formatDateShort(start)} - ${formatDateShort(end)} - ${getDriverName(routes)}`.toUpperCase();
 }
 
-function drawRect(commands, x, y, width, height) {
-  commands.push(`${x} ${y} ${width} ${height} re S`);
+function expenseText(expense) {
+  return `${expense.category || ''} ${expense.description || ''}`.toLowerCase();
 }
 
-function fillRect(commands, x, y, width, height, color = '1 1 0') {
-  commands.push('q');
-  commands.push(`${color} rg`);
-  commands.push(`${x} ${y} ${width} ${height} re f`);
-  commands.push('Q');
+function routeExtraAmount(route, expenses, keywords) {
+  return expenses
+    .filter((expense) => expense.vehicleId === route.vehicleId && dateOnly(expense.date) === dateOnly(route.date))
+    .filter((expense) => keywords.some((keyword) => expenseText(expense).includes(keyword)))
+    .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
 }
 
-function textWidth(text, size) {
-  return String(text ?? '').length * size * 0.48;
+function routeFreightValues(route, expenses) {
+  const excessKm = routeExcessKm(route);
+  const toll = routeExtraAmount(route, expenses, ['pedagio', 'pedágio']);
+  const blueZone = routeExtraAmount(route, expenses, ['zona azul']);
+  const unloading = routeExtraAmount(route, expenses, ['descarga']);
+  const excessAmount = excessKm * EXCESS_KM_AMOUNT;
+  const total = BASE_FREIGHT_AMOUNT + excessAmount + toll + blueZone + unloading;
+
+  return { km: routeKm(route), excessKm, excessAmount, toll, blueZone, unloading, total };
 }
 
-function drawMoneyRight(commands, value, rightX, y, size = 6) {
-  const text = formatMoney(value);
-  drawTextRight(commands, text, rightX - textWidth(text, size), y, size);
+function setCellValue(worksheet, address, value) {
+  worksheet.getCell(address).value = value;
 }
 
-function buildPdf(routes, { start, end, title = 'Relatorio de frete' }) {
-  const width = 595;
-  const height = 842;
-  const margin = 14;
-  const tableWidth = width - (margin * 2);
-  const blockHeight = 70;
-  const rowsPerPage = 10;
-  const leftW = 92;
-  const labelW = 78;
-  const valueW = tableWidth - leftW - labelW - 88;
-  const amountW = 88;
-  const x0 = margin;
-  const x1 = x0 + leftW;
-  const x2 = x1 + labelW;
-  const x3 = x2 + valueW;
-  const x4 = x3 + amountW;
-  const pages = [];
-  const totalPages = Math.max(1, Math.ceil(routes.length / rowsPerPage));
-  const totalKm = routes.reduce((sum, route) => sum + Math.max(0, Number(route.finalKm || 0) - Number(route.initialKm || 0)), 0);
-  const totalFreight = routes.reduce((sum, route) => sum + Number(route.freightAmount || 0), 0);
+function moneyOrBlank(value) {
+  return numberValue(value) > 0 ? numberValue(value) : null;
+}
 
-  for (let pageIndex = 0; pageIndex < totalPages; pageIndex += 1) {
-    const commands = ['0.45 w'];
-    const pageRows = routes.slice(pageIndex * rowsPerPage, (pageIndex + 1) * rowsPerPage);
-    let y = height - 28;
+function hideBlockRows(worksheet, startRow) {
+  for (let rowNumber = startRow; rowNumber <= startRow + 8; rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber);
+    row.hidden = true;
+    row.height = 0;
+  }
+}
 
-    fillRect(commands, x0, y, tableWidth - amountW, 12);
-    fillRect(commands, x3, y, amountW, 12);
-    drawRect(commands, x0, y, tableWidth - amountW, 12);
-    drawRect(commands, x3, y, amountW, 12);
-    drawText(commands, title.toUpperCase(), x0 + 4, y + 3, 7);
-    drawText(commands, 'PLACA', x3 + 4, y + 3, 7);
-    drawText(commands, routes[0]?.vehicle?.plate || '', x3 + 34, y + 3, 7);
-    y -= 12;
+function showBlockRows(worksheet, startRow) {
+  for (let rowNumber = startRow; rowNumber <= startRow + 8; rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber);
+    row.hidden = false;
+  }
+}
 
-    pageRows.forEach((route) => {
-      const km = Math.max(0, Number(route.finalKm || 0) - Number(route.initialKm || 0));
-      const cityText = route.cities.map((city) => city.name).join(', ');
-      const invoiceText = route.invoices.map((invoice) => invoice.number).join(', ');
-      const vehicleText = `${route.vehicle.plate || ''} ${route.vehicle.model || ''}`.trim();
-      const rowY = y - blockHeight;
-      const rowLines = [12, 24, 36, 48, 58, 70];
+function fillRouteBlock(worksheet, route, expenses, startRow) {
+  const values = routeFreightValues(route, expenses);
+  const cities = route.cities.map((city) => city.name).join(', ') || 'ENTREGA';
+  const invoices = route.invoices.map((invoice) => invoice.number).join(', ');
 
-      drawRect(commands, x0, rowY, tableWidth, blockHeight);
-      drawLine(commands, x1, rowY, x1, y);
-      drawLine(commands, x2, rowY, x2, y);
-      drawLine(commands, x3, rowY, x3, y);
-      rowLines.forEach((offset) => drawLine(commands, x0, y - offset, x4, y - offset));
+  showBlockRows(worksheet, startRow);
+  setCellValue(worksheet, `A${startRow + 1}`, formatDate(route.date));
+  setCellValue(worksheet, `C${startRow + 1}`, cities);
+  setCellValue(worksheet, `D${startRow + 2}`, BASE_FREIGHT_AMOUNT);
+  setCellValue(worksheet, `A${startRow + 3}`, invoices);
+  setCellValue(worksheet, `D${startRow + 3}`, values.excessAmount);
+  setCellValue(worksheet, `A${startRow + 5}`, numberValue(route.initialKm));
+  setCellValue(worksheet, `B${startRow + 5}`, numberValue(route.finalKm));
+  setCellValue(worksheet, `D${startRow + 4}`, moneyOrBlank(values.toll));
+  setCellValue(worksheet, `D${startRow + 5}`, moneyOrBlank(values.blueZone));
+  setCellValue(worksheet, `B${startRow + 6}`, values.km);
+  setCellValue(worksheet, `D${startRow + 6}`, moneyOrBlank(values.unloading));
+  setCellValue(worksheet, `B${startRow + 7}`, values.excessKm);
+  setCellValue(worksheet, `D${startRow + 7}`, values.total);
 
-      drawText(commands, formatDate(route.date), x0 + 5, y - 9, 6);
-      drawText(commands, truncate(cityText || 'ENTREGA', 39), x1 + 4, y - 9, 6);
-      drawText(commands, 'R$', x3 + 5, y - 9, 6);
-      drawMoneyRight(commands, route.freightAmount, x4 - 5, y - 9, 6);
+  return values.total;
+}
 
-      drawText(commands, 'MOTORISTA', x1 + 4, y - 21, 5);
-      drawText(commands, truncate(route.driver.name, 33), x2 + 4, y - 21, 6);
-      drawText(commands, 'KM', x3 + 5, y - 21, 5);
-      drawText(commands, `${km}`, x4 - 28, y - 21, 6);
-
-      drawText(commands, 'NOTAS', x1 + 4, y - 33, 5);
-      drawText(commands, truncate(invoiceText || '-', 35), x2 + 4, y - 33, 6);
-      drawText(commands, 'VEICULO', x3 + 5, y - 33, 5);
-      drawText(commands, truncate(vehicleText, 14), x3 + 34, y - 33, 6);
-
-      drawText(commands, 'KM INICIAL', x1 + 4, y - 45, 5);
-      drawText(commands, String(route.initialKm || 0), x2 + 4, y - 45, 6);
-      drawText(commands, 'KM FINAL', x3 + 5, y - 45, 5);
-      drawText(commands, String(route.finalKm || 0), x4 - 38, y - 45, 6);
-
-      drawText(commands, 'OBS', x1 + 4, y - 56, 5);
-      drawText(commands, 'FRETE', x2 + 4, y - 56, 6);
-      drawText(commands, 'TOTAL', x3 + 5, y - 56, 5);
-      drawMoneyRight(commands, route.freightAmount, x4 - 5, y - 56, 6);
-
-      drawText(commands, 'CIDADES', x1 + 4, y - 67, 5);
-      drawText(commands, truncate(cityText || '-', 47), x2 + 4, y - 67, 6);
-
-      y = rowY - 4;
+function applyFreightFormatting(worksheet) {
+  FREIGHT_BLOCK_ROWS.forEach((startRow) => {
+    [startRow + 2, startRow + 3, startRow + 4, startRow + 5, startRow + 6, startRow + 7].forEach((rowNumber) => {
+      worksheet.getCell(`D${rowNumber}`).numFmt = '"R$" #,##0.00';
     });
+  });
+  worksheet.getCell(`D${FREIGHT_TOTAL_ROW}`).numFmt = '"R$" #,##0.00';
+  worksheet.pageSetup = {
+    ...worksheet.pageSetup,
+    orientation: 'portrait',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    paperSize: 9,
+    printArea: `A1:D${FREIGHT_TOTAL_ROW}`,
+  };
+}
 
-    if (pageIndex === totalPages - 1) {
-      fillRect(commands, x0, y - 15, tableWidth, 14);
-      drawRect(commands, x0, y - 15, tableWidth, 14);
-      drawText(commands, `TOTAL GERAL`, x3 - 70, y - 10, 7);
-      drawText(commands, `${totalKm} KM`, x3 + 6, y - 10, 7);
-      drawMoneyRight(commands, totalFreight, x4 - 5, y - 10, 7);
-    }
+async function buildFreightWorkbook(routes, expenses, { start, end, title }) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(FREIGHT_TEMPLATE_PATH);
 
-    pages.push(commands.join('\n'));
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) throw new AppError('Template de frete invalido', 500);
+
+  if (routes.length > FREIGHT_BLOCK_ROWS.length) {
+    throw new AppError(`O template de frete suporta ate ${FREIGHT_BLOCK_ROWS.length} rotas por arquivo`, 400);
   }
 
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    `<< /Type /Pages /Kids [${pages.map((_, index) => `${(index * 2) + 3} 0 R`).join(' ')}] /Count ${pages.length} >>`,
-  ];
+  setCellValue(worksheet, 'A1', title);
 
-  pages.forEach((content, index) => {
-    const pageObjectNumber = (index * 2) + 3;
-    const contentObjectNumber = pageObjectNumber + 1;
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents ${contentObjectNumber} 0 R >>`);
-    objects.push(`<< /Length ${Buffer.byteLength(content, 'latin1')} >>\nstream\n${content}\nendstream`);
+  let total = 0;
+  FREIGHT_BLOCK_ROWS.forEach((startRow, index) => {
+    const route = routes[index];
+    if (!route) {
+      hideBlockRows(worksheet, startRow);
+      return;
+    }
+
+    total += fillRouteBlock(worksheet, route, expenses, startRow);
   });
 
-  let body = '%PDF-1.4\n';
-  const offsets = [0];
-  objects.forEach((object, index) => {
-    offsets.push(Buffer.byteLength(body, 'latin1'));
-    body += `${index + 1} 0 obj\n${object}\nendobj\n`;
-  });
+  setCellValue(worksheet, `A${FREIGHT_TOTAL_ROW}`, 'TOTAL GERAL');
+  setCellValue(worksheet, `D${FREIGHT_TOTAL_ROW}`, total);
+  worksheet.getRow(FREIGHT_TOTAL_ROW).hidden = false;
+  applyFreightFormatting(worksheet);
 
-  const xrefOffset = Buffer.byteLength(body, 'latin1');
-  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  offsets.slice(1).forEach((offset) => {
-    body += `${String(offset).padStart(10, '0')} 00000 n \n`;
-  });
-  body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return workbook.xlsx.writeBuffer();
+}
 
-  return Buffer.from(body, 'latin1');
+function runProcess(command, args) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { windowsHide: true });
+    let stderr = '';
+
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on('error', () => resolve({ ok: false }));
+    child.on('close', (code) => resolve({ ok: code === 0, stderr }));
+  });
+}
+
+async function convertXlsxToPdf(xlsxBuffer, filename) {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'frete-'));
+  const xlsxPath = path.join(tempDir, filename);
+  const pdfPath = xlsxPath.replace(/\.xlsx$/i, '.pdf');
+  const commands = [process.env.LIBREOFFICE_PATH, 'soffice', 'libreoffice'].filter(Boolean);
+
+  try {
+    await fs.writeFile(xlsxPath, xlsxBuffer);
+
+    for (const command of commands) {
+      const result = await runProcess(command, [
+        '--headless',
+        '--convert-to',
+        'pdf',
+        '--outdir',
+        tempDir,
+        xlsxPath,
+      ]);
+
+      if (!result.ok) continue;
+
+      try {
+        return await fs.readFile(pdfPath);
+      } catch (error) {
+        continue;
+      }
+    }
+
+    return null;
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
 }
 
 async function generateFreightPdf(query) {
@@ -502,11 +531,33 @@ async function generateFreightPdf(query) {
     orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
   });
 
-  const title = query.title || `Frete - ${dateOnly(start)} a ${dateOnly(end)}`;
-  const buffer = buildPdf(routes, { start, end, title });
-  const filename = `frete-${dateOnly(start)}-${dateOnly(end)}.pdf`;
+  const expenses = await prisma.expense.findMany({
+    where: { date: { gte: start, lte: end } },
+    select: {
+      vehicleId: true,
+      date: true,
+      category: true,
+      description: true,
+      amount: true,
+    },
+  });
 
-  return { buffer, filename };
+  const title = getFreightTitle(query, routes, start, end);
+  const xlsxFilename = `frete-${dateOnly(start)}-${dateOnly(end)}.xlsx`;
+  const xlsxBuffer = Buffer.from(await buildFreightWorkbook(routes, expenses, { start, end, title }));
+  const pdfBuffer = await convertXlsxToPdf(xlsxBuffer, xlsxFilename);
+
+  if (!pdfBuffer) {
+    return {
+      buffer: xlsxBuffer,
+      filename: xlsxFilename,
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    };
+  }
+
+  const filename = xlsxFilename.replace(/\.xlsx$/i, '.pdf');
+
+  return { buffer: pdfBuffer, filename, contentType: 'application/pdf' };
 }
 
 module.exports = {

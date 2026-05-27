@@ -35,9 +35,9 @@ const remove = asyncHandler(async (req, res) => {
 });
 
 const freightPdf = asyncHandler(async (req, res) => {
-  const { buffer, filename } = await service.generateFreightPdf(req.query);
+  const { buffer, filename, contentType } = await service.generateFreightPdf(req.query);
 
-  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Type', contentType);
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(buffer);
 });
