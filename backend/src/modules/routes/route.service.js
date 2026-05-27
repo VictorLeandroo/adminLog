@@ -15,6 +15,7 @@ const createSchema = z.object({
   date: z.string().optional(),
   initialKm: z.number().int(),
   finalKm: z.number().int().optional().nullable(),
+  freightAmount: z.number().optional().nullable(),
   status: z.enum(['IN_PROGRESS', 'PENDING_REVIEW', 'COMPLETED']).optional(),
   cities: z.array(z.string()).optional(),
   cidades: z.array(z.string()).optional(),
@@ -38,6 +39,7 @@ const finishSchema = z.object({
 
 const reviewSchema = finishSchema.extend({
   initialKm: z.number().int().optional(),
+  freightAmount: z.number().optional().nullable(),
   status: z.enum(['IN_PROGRESS', 'PENDING_REVIEW', 'COMPLETED']).optional(),
 });
 
@@ -151,6 +153,7 @@ async function createRoute(input) {
         date: data.date ? new Date(data.date) : new Date(),
         initialKm: data.initialKm,
         finalKm: hasFinishedData ? data.finalKm : null,
+        freightAmount: data.freightAmount,
         status,
         finishedAt: hasFinishedData ? new Date() : null,
         cities: {
@@ -262,6 +265,7 @@ async function reviewRoute(id, input) {
       data: {
         initialKm: data.initialKm,
         finalKm: data.finalKm,
+        freightAmount: data.freightAmount,
         status: data.status ? RouteStatus[data.status] : undefined,
         finishedAt: data.finalKm !== undefined && data.finalKm !== null && data.status !== 'IN_PROGRESS' ? new Date() : undefined,
         correctionRequested: data.status === 'COMPLETED' ? false : undefined,
@@ -285,6 +289,176 @@ async function removeRoute(id) {
   await prisma.route.delete({ where: { id } });
 }
 
+function dateOnly(value) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateRange(query) {
+  const now = new Date();
+  const start = query.startDate
+    ? new Date(`${query.startDate}T00:00:00`)
+    : new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16);
+  const end = query.endDate
+    ? new Date(`${query.endDate}T23:59:59.999`)
+    : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    throw new AppError('Periodo invalido para gerar o frete', 400);
+  }
+
+  return { start, end };
+}
+
+function formatDate(value) {
+  return value.toLocaleDateString('pt-BR');
+}
+
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+}
+
+function escapePdfText(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)');
+}
+
+function truncate(value, max = 32) {
+  const text = String(value ?? '');
+  return text.length > max ? `${text.slice(0, max - 3)}...` : text;
+}
+
+function drawText(commands, text, x, y, size = 8) {
+  commands.push(`BT /F1 ${size} Tf ${x} ${y} Td (${escapePdfText(text)}) Tj ET`);
+}
+
+function drawLine(commands, x1, y1, x2, y2) {
+  commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
+}
+
+function buildPdf(routes, { start, end, title = 'Relatorio de frete' }) {
+  const width = 842;
+  const height = 595;
+  const margin = 32;
+  const rowHeight = 22;
+  const rowsPerPage = 18;
+  const columns = [
+    { title: 'DATA', x: 36, w: 55 },
+    { title: 'MOTORISTA', x: 96, w: 98 },
+    { title: 'VEICULO', x: 200, w: 92 },
+    { title: 'CIDADES', x: 298, w: 140 },
+    { title: 'NOTAS', x: 444, w: 108 },
+    { title: 'KM', x: 558, w: 70 },
+    { title: 'VALOR', x: 634, w: 84 },
+  ];
+  const pages = [];
+  const totalPages = Math.max(1, Math.ceil(routes.length / rowsPerPage));
+  const totalKm = routes.reduce((sum, route) => sum + Math.max(0, Number(route.finalKm || 0) - Number(route.initialKm || 0)), 0);
+  const totalFreight = routes.reduce((sum, route) => sum + Number(route.freightAmount || 0), 0);
+
+  for (let pageIndex = 0; pageIndex < totalPages; pageIndex += 1) {
+    const commands = ['0.8 w'];
+    const pageRows = routes.slice(pageIndex * rowsPerPage, (pageIndex + 1) * rowsPerPage);
+    const tableTop = 485;
+
+    drawText(commands, title.toUpperCase(), margin, 550, 16);
+    drawText(commands, `Periodo: ${formatDate(start)} a ${formatDate(end)}`, margin, 528, 10);
+    drawText(commands, `Gerado em: ${formatDate(new Date())}`, 650, 528, 9);
+
+    drawLine(commands, margin, 516, width - margin, 516);
+
+    columns.forEach((column) => drawText(commands, column.title, column.x, tableTop + 8, 8));
+    drawLine(commands, margin, tableTop, 722, tableTop);
+    drawLine(commands, margin, tableTop + rowHeight, 722, tableTop + rowHeight);
+
+    pageRows.forEach((route, index) => {
+      const y = tableTop - ((index + 1) * rowHeight) + 8;
+      const km = Math.max(0, Number(route.finalKm || 0) - Number(route.initialKm || 0));
+      const cityText = route.cities.map((city) => city.name).join(', ');
+      const invoiceText = route.invoices.map((invoice) => invoice.number).join(', ');
+      const vehicleText = `${route.vehicle.plate || ''} ${route.vehicle.model || ''}`.trim();
+
+      drawText(commands, formatDate(route.date), columns[0].x, y, 7);
+      drawText(commands, truncate(route.driver.name, 17), columns[1].x, y, 7);
+      drawText(commands, truncate(vehicleText, 16), columns[2].x, y, 7);
+      drawText(commands, truncate(cityText, 26), columns[3].x, y, 7);
+      drawText(commands, truncate(invoiceText, 20), columns[4].x, y, 7);
+      drawText(commands, `${km} km`, columns[5].x, y, 7);
+      drawText(commands, formatMoney(route.freightAmount), columns[6].x, y, 7);
+      drawLine(commands, margin, tableTop - ((index + 1) * rowHeight), 722, tableTop - ((index + 1) * rowHeight));
+    });
+
+    columns.forEach((column) => {
+      drawLine(commands, column.x - 4, tableTop + rowHeight, column.x - 4, tableTop - (rowsPerPage * rowHeight));
+    });
+    drawLine(commands, 722, tableTop + rowHeight, 722, tableTop - (rowsPerPage * rowHeight));
+
+    if (pageIndex === totalPages - 1) {
+      drawText(commands, `TOTAL KM: ${totalKm} km`, 500, 58, 10);
+      drawText(commands, `TOTAL FRETE: ${formatMoney(totalFreight)}`, 620, 58, 10);
+    }
+
+    drawText(commands, `Pagina ${pageIndex + 1}`, 760, 28, 8);
+    pages.push(commands.join('\n'));
+  }
+
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    `<< /Type /Pages /Kids [${pages.map((_, index) => `${(index * 2) + 3} 0 R`).join(' ')}] /Count ${pages.length} >>`,
+  ];
+
+  pages.forEach((content, index) => {
+    const pageObjectNumber = (index * 2) + 3;
+    const contentObjectNumber = pageObjectNumber + 1;
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents ${contentObjectNumber} 0 R >>`);
+    objects.push(`<< /Length ${Buffer.byteLength(content, 'latin1')} >>\nstream\n${content}\nendstream`);
+  });
+
+  let body = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(body, 'latin1'));
+    body += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+
+  const xrefOffset = Buffer.byteLength(body, 'latin1');
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach((offset) => {
+    body += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  });
+  body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return Buffer.from(body, 'latin1');
+}
+
+async function generateFreightPdf(query) {
+  const { start, end } = parseDateRange(query);
+  const routes = await prisma.route.findMany({
+    where: {
+      date: { gte: start, lte: end },
+      status: { not: RouteStatus.IN_PROGRESS },
+    },
+    include,
+    orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+  });
+
+  const title = query.title || `Frete - ${dateOnly(start)} a ${dateOnly(end)}`;
+  const buffer = buildPdf(routes, { start, end, title });
+  const filename = `frete-${dateOnly(start)}-${dateOnly(end)}.pdf`;
+
+  return { buffer, filename };
+}
+
 module.exports = {
   listRoutes,
   getActiveRoute,
@@ -294,4 +468,5 @@ module.exports = {
   reportError,
   reviewRoute,
   removeRoute,
+  generateFreightPdf,
 };

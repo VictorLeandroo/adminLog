@@ -12,6 +12,8 @@ const vehicleSchema = z.object({
   nextMaintenanceAtKm: z.number().int().optional().nullable(),
   renavam: z.string().optional().nullable(),
   chassis: z.string().optional().nullable(),
+  photoUrl: z.string().optional().nullable(),
+  photoName: z.string().optional().nullable(),
   licenseValidUntil: z.string().optional().nullable(),
   insuranceValidUntil: z.string().optional().nullable(),
   status: z.enum(['OK', 'ATTENTION', 'MAINTENANCE']).default('OK'),

@@ -9,6 +9,7 @@ router.use(authenticate);
 
 router.get('/', controller.list);
 router.get('/active', controller.active);
+router.get('/freight-pdf', requireRole('ADMIN'), controller.freightPdf);
 router.post('/', requireRole('ADMIN'), controller.create);
 router.post('/start', requireRole('DRIVER'), controller.start);
 router.patch('/:id/finish', requireRole('DRIVER', 'ADMIN'), controller.finish);

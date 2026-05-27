@@ -34,4 +34,12 @@ const remove = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
-module.exports = { list, active, start, create, finish, reportError, review, remove };
+const freightPdf = asyncHandler(async (req, res) => {
+  const { buffer, filename } = await service.generateFreightPdf(req.query);
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(buffer);
+});
+
+module.exports = { list, active, start, create, finish, reportError, review, remove, freightPdf };

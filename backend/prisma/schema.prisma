@@ -64,6 +64,8 @@ model Vehicle {
   nextMaintenanceAtKm Int?
   renavam             String?
   chassis             String?
+  photoUrl            String?
+  photoName           String?
   licenseValidUntil   DateTime?
   insuranceValidUntil DateTime?
   status              VehicleStatus @default(OK)
@@ -114,6 +116,7 @@ model Route {
   date                DateTime
   initialKm           Int
   finalKm             Int?
+  freightAmount       Decimal?    @db.Decimal(12, 2)
   status              RouteStatus @default(IN_PROGRESS)
   correctionRequested Boolean     @default(false)
   correctionNote      String?
