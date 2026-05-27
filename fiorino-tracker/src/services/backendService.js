@@ -127,7 +127,8 @@ export function normalizeRoute(route) {
     data: dateOnly(route.date),
     kmInicial: route.initialKm,
     kmFinal: route.finalKm,
-    freightAmount: Number(route.freightAmount || 0),
+    freightAmount: route.freightAmount === null || route.freightAmount === undefined ? null : Number(route.freightAmount),
+    hasManualFreightAmount: route.freightAmount !== null && route.freightAmount !== undefined,
     cidades: (route.cities || []).map(city => city.name),
     notas: (route.invoices || []).map(invoice => invoice.number),
     photos: (route.photos || []).map(normalizePhoto),
@@ -323,6 +324,20 @@ export async function listRoutes() {
   return response.data.map(normalizeRoute)
 }
 
+export async function getFreightSettingsApi() {
+  const response = await api.get('/routes/freight-settings')
+  return response.data
+}
+
+export async function updateFreightSettingsApi(settings) {
+  const response = await api.put('/routes/freight-settings', {
+    baseAmount: Number(settings.baseAmount || 0),
+    includedKm: Number(settings.includedKm || 0),
+    excessKmAmount: Number(settings.excessKmAmount || 0)
+  })
+  return response.data
+}
+
 export async function getActiveRoute() {
   const response = await api.get('/routes/active')
   return response.data ? normalizeRoute(response.data) : null
@@ -343,7 +358,7 @@ export async function createRouteApi(payload) {
     date: payload.date,
     initialKm: Number(payload.kmInicial),
     finalKm: payload.kmFinal ? Number(payload.kmFinal) : null,
-    freightAmount: payload.freightAmount ? Number(payload.freightAmount) : null,
+    freightAmount: payload.useManualFreightAmount ? Number(payload.freightAmount || 0) : null,
     cidades: payload.cidades,
     notas: payload.notas,
     status: routeStatusToApi[payload.status]
@@ -365,7 +380,7 @@ export async function reviewRouteApi(id, payload) {
   const response = await api.patch(`/routes/${id}/review`, {
     initialKm: Number(payload.kmInicial),
     finalKm: Number(payload.kmFinal),
-    freightAmount: payload.freightAmount ? Number(payload.freightAmount) : null,
+    freightAmount: payload.useManualFreightAmount ? Number(payload.freightAmount || 0) : null,
     cidades: payload.cidades,
     notas: payload.notas,
     status: routeStatusToApi[payload.status],

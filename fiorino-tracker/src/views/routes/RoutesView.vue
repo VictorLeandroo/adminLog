@@ -21,6 +21,12 @@
                         Frete PDF
                     </ButtonComp>
 
+                    <ButtonComp v-if="!isDriver" btn-class="button-secundary button-big"
+                        :click-action="openFreightSettingsModal">
+                        <i class="fa-solid fa-sliders"></i>
+                        Configurar frete
+                    </ButtonComp>
+
                     <button class="role-chip" @click="toggleProfile">
                         <i class="fa-solid" :class="isDriver ? 'fa-truck-fast' : 'fa-user-shield'"></i>
                         {{ isDriver ? 'Motorista' : 'Admin' }}
@@ -145,7 +151,7 @@
                         </div>
                         <div v-if="!isDriver">
                             <small>Frete</small>
-                            <strong>{{ formatMoney(route.freightAmount) }}</strong>
+                            <strong>{{ formatMoney(routeFreightAmount(route)) }}</strong>
                         </div>
                     </div>
 
@@ -267,9 +273,13 @@
                 <input type="text" v-model="createRouteForm.notasStr" class="w-100 mb-2"
                     placeholder="Ex: 5674, 5675, 5676" />
 
-                <label class="form-label">Valor do frete</label>
-                <input type="number" v-model.number="createRouteForm.freightAmount" class="w-100 mb-2"
-                    placeholder="0,00" />
+                <div class="freight-summary mb-2">
+                    <div>
+                        <small>Frete calculado</small>
+                        <strong>{{ formatMoney(createRouteFreightAmount) }}</strong>
+                    </div>
+                    <span>{{ freightSettings.includedKm }} km inclusos</span>
+                </div>
 
                 <label class="form-label">Status</label>
                 <select v-model="createRouteForm.status" class="form-select w-100 mb-2">
@@ -429,21 +439,26 @@
                         <label class="form-label">Fotos das notas</label>
                         <PhotoUploadComp v-model="adminRoutePhotos" />
 
-                        <div class="form-grid">
+                        <div class="freight-review-box">
                             <div>
-                                <label class="form-label">Valor do frete</label>
-                                <input type="number" v-model.number="adminForm.freightAmount" class="w-100 mb-2"
-                                    placeholder="0,00" />
+                                <small>Frete calculado</small>
+                                <strong>{{ formatMoney(adminCalculatedFreightAmount) }}</strong>
+                                <span>{{ freightSettings.includedKm }} km inclusos + {{ formatMoney(freightSettings.excessKmAmount) }} por km excedente</span>
                             </div>
-                            <div>
-                                <label class="form-label">Status</label>
-                                <select v-model="adminForm.status" class="form-select w-100 mb-2">
-                                    <option value="Em andamento">Em andamento</option>
-                                    <option value="Pendente de analise">Pendente de análise</option>
-                                    <option value="Concluida">Concluída</option>
-                                </select>
-                            </div>
+                            <label class="freight-manual-toggle">
+                                <input type="checkbox" v-model="adminForm.useManualFreightAmount" />
+                                <span>Usar valor manual de frete</span>
+                            </label>
+                            <input v-if="adminForm.useManualFreightAmount" type="number"
+                                v-model.number="adminForm.freightAmount" class="w-100" placeholder="0,00" />
                         </div>
+
+                        <label class="form-label">Status</label>
+                        <select v-model="adminForm.status" class="form-select w-100 mb-2">
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Pendente de analise">Pendente de análise</option>
+                            <option value="Concluida">Concluída</option>
+                        </select>
 
                         <div class="correction-card mb-2" v-if="adminForm.correctionRequested">
                             <i class="fa-solid fa-triangle-exclamation"></i>
@@ -520,6 +535,34 @@
             </ButtonComp>
         </ModalDefault>
 
+        <ModalDefault :isLoading="isModalLoading" :is-visible="showFreightSettingsModal" max-width="460px"
+            min-width="320px" @update:isVisible="cancelFreightSettingsModal">
+            <div class="route-modal-head">
+                <span class="modal-icon"><i class="fa-solid fa-sliders"></i></span>
+                <div>
+                    <h6>Configurações de frete</h6>
+                    <p>Defina o padrão usado para calcular rotas sem valor manual.</p>
+                </div>
+            </div>
+
+            <label class="form-label">Valor base</label>
+            <input type="number" v-model.number="freightSettingsForm.baseAmount" class="w-100 mb-2"
+                placeholder="400,00" />
+
+            <label class="form-label">KM incluso</label>
+            <input type="number" v-model.number="freightSettingsForm.includedKm" class="w-100 mb-2"
+                placeholder="120" />
+
+            <label class="form-label">Valor por KM excedente</label>
+            <input type="number" v-model.number="freightSettingsForm.excessKmAmount" class="w-100 mb-2"
+                placeholder="1,50" />
+
+            <ButtonComp :click-action="saveFreightSettings" :is-disabled="!canSaveFreightSettings"
+                btn-class="button-primary button-big w-100">
+                Salvar configurações
+            </ButtonComp>
+        </ModalDefault>
+
         <ModalDelete :isVisible="showConfirmDeleteModal" title="Excluir rota" icon="fa-solid fa-trash"
             :isLoading="isModalLoading" @update:isVisible="showConfirmDeleteModal = $event" @confirm="deleteRoute" />
 
@@ -542,6 +585,7 @@ import {
     createRouteApi,
     finishRouteApi,
     formatLocalDate,
+    getFreightSettingsApi,
     getFreightReportHtml,
     getMyVehicle,
     parseLocalDate,
@@ -551,6 +595,7 @@ import {
     reportRouteErrorApi,
     reviewRouteApi,
     startRouteApi,
+    updateFreightSettingsApi,
     money
 } from '@/services/backendService';
 
@@ -583,6 +628,7 @@ export default {
             showAdminModal: false,
             showCorrectionModal: false,
             showFreightModal: false,
+            showFreightSettingsModal: false,
             showConfirmDeleteModal: false,
             isModalLoading: false,
             routeSelected: null,
@@ -597,6 +643,7 @@ export default {
                 cidadesStr: '',
                 notasStr: '',
                 freightAmount: null,
+                useManualFreightAmount: false,
                 status: 'Concluida'
             },
             finishForm: {
@@ -610,6 +657,7 @@ export default {
                 cidadesStr: '',
                 notasStr: '',
                 freightAmount: null,
+                useManualFreightAmount: false,
                 status: 'Pendente de analise',
                 correctionRequested: false,
                 correctionNote: ''
@@ -618,6 +666,8 @@ export default {
                 note: ''
             },
             freightForm: this.defaultFreightForm(),
+            freightSettings: this.defaultFreightSettings(),
+            freightSettingsForm: this.defaultFreightSettings(),
             photos: [],
             adminRoutePhotos: [],
             lightboxPhoto: null,
@@ -769,6 +819,22 @@ export default {
             return Boolean(this.freightForm.startDate && this.freightForm.endDate && this.freightForm.title)
         },
 
+        canSaveFreightSettings() {
+            return Boolean(
+                Number(this.freightSettingsForm.baseAmount) >= 0 &&
+                Number(this.freightSettingsForm.includedKm) >= 0 &&
+                Number(this.freightSettingsForm.excessKmAmount) >= 0
+            )
+        },
+
+        createRouteFreightAmount() {
+            return this.calculateFreightAmount(this.createRouteForm.kmInicial, this.createRouteForm.kmFinal)
+        },
+
+        adminCalculatedFreightAmount() {
+            return this.calculateFreightAmount(this.adminForm.kmInicial, this.adminForm.kmFinal)
+        },
+
         adminPhotos() {
             return this.adminRoutePhotos || []
         },
@@ -790,6 +856,7 @@ export default {
         this.fetchRoutes()
         this.fetchMyVehicle()
         this.fetchAdminVehicles()
+        this.fetchFreightSettings()
     },
 
     beforeUnmount() {
@@ -838,6 +905,7 @@ export default {
             this.fetchRoutes()
             this.fetchMyVehicle()
             this.fetchAdminVehicles()
+            this.fetchFreightSettings()
         },
 
         toggleProfile() {
@@ -879,7 +947,8 @@ export default {
                 kmFinal: route.kmFinal || '',
                 cidadesStr: route.cidades.join(', '),
                 notasStr: route.notas.join(', '),
-                freightAmount: route.freightAmount || null,
+                freightAmount: route.freightAmount ?? null,
+                useManualFreightAmount: Boolean(route.hasManualFreightAmount),
                 status: route.status,
                 correctionRequested: Boolean(route.correctionRequested),
                 correctionNote: route.correctionNote || ''
@@ -898,6 +967,11 @@ export default {
         openFreightModal() {
             this.freightForm = this.defaultFreightForm()
             this.showFreightModal = true
+        },
+
+        openFreightSettingsModal() {
+            this.freightSettingsForm = { ...this.freightSettings }
+            this.showFreightSettingsModal = true
         },
 
         async startRoute() {
@@ -936,6 +1010,19 @@ export default {
             }
         },
 
+        async fetchFreightSettings() {
+            if (this.isDriver) return
+
+            try {
+                const settings = await getFreightSettingsApi()
+                this.freightSettings = this.normalizeFreightSettings(settings)
+                this.freightSettingsForm = { ...this.freightSettings }
+            } catch (error) {
+                console.error(error)
+                notifyError(error, 'Não foi possível carregar as configurações de frete.')
+            }
+        },
+
         async createAdminRoute() {
             if (!this.canCreateAdminRoute) return
 
@@ -950,6 +1037,7 @@ export default {
                     cidades: this.toList(this.createRouteForm.cidadesStr),
                     notas: this.toList(this.createRouteForm.notasStr),
                     freightAmount: this.createRouteForm.freightAmount,
+                    useManualFreightAmount: this.createRouteForm.useManualFreightAmount,
                     status: this.createRouteForm.status
                 })
                 await this.fetchRoutes()
@@ -1031,6 +1119,7 @@ export default {
                     cidades: this.toList(this.adminForm.cidadesStr),
                     notas: this.toList(this.adminForm.notasStr),
                     freightAmount: this.adminForm.freightAmount,
+                    useManualFreightAmount: this.adminForm.useManualFreightAmount,
                     status: this.adminForm.status,
                     photos: routePhotos
                 })
@@ -1097,6 +1186,46 @@ export default {
 
         cancelFreightModal() {
             this.showFreightModal = false
+        },
+
+        cancelFreightSettingsModal() {
+            this.showFreightSettingsModal = false
+            this.freightSettingsForm = { ...this.freightSettings }
+        },
+
+        defaultFreightSettings() {
+            return {
+                baseAmount: 400,
+                includedKm: 120,
+                excessKmAmount: 1.5
+            }
+        },
+
+        normalizeFreightSettings(settings = {}) {
+            return {
+                baseAmount: Number(settings.baseAmount ?? 400),
+                includedKm: Number(settings.includedKm ?? 120),
+                excessKmAmount: Number(settings.excessKmAmount ?? 1.5)
+            }
+        },
+
+        async saveFreightSettings() {
+            if (!this.canSaveFreightSettings) return
+
+            this.isModalLoading = true
+
+            try {
+                const settings = await updateFreightSettingsApi(this.freightSettingsForm)
+                this.freightSettings = this.normalizeFreightSettings(settings)
+                this.freightSettingsForm = { ...this.freightSettings }
+                this.showFreightSettingsModal = false
+                notifySuccess('Configurações de frete salvas com sucesso.')
+            } catch (error) {
+                console.error(error)
+                notifyError(error, 'Não foi possível salvar as configurações de frete.')
+            } finally {
+                this.isModalLoading = false
+            }
         },
 
         defaultFreightForm() {
@@ -1188,6 +1317,7 @@ export default {
                 cidadesStr: '',
                 notasStr: '',
                 freightAmount: null,
+                useManualFreightAmount: false,
                 status: 'Concluida'
             }
         },
@@ -1251,7 +1381,7 @@ export default {
             if (!this.adminPhotos.length) return
 
             this.adminPhotoIndex = Math.min(Math.max(index, 0), this.adminPhotos.length - 1)
-            this.resetAdminPhotoView()
+            this.isAdminPhotoDragging = false
         },
 
         selectAdjacentAdminPhoto(direction) {
@@ -1285,6 +1415,10 @@ export default {
         resetAdminPhotoView() {
             this.adminPhotoZoom = 1
             this.adminPhotoRotation = 0
+            this.resetAdminPhotoPan()
+        },
+
+        resetAdminPhotoPan() {
             this.adminPhotoPanX = 0
             this.adminPhotoPanY = 0
             this.isAdminPhotoDragging = false
@@ -1349,6 +1483,22 @@ export default {
 
         formatMoney(value) {
             return money(value)
+        },
+
+        calculateFreightAmount(initialKm, finalKm) {
+            if (!initialKm || !finalKm) return Number(this.freightSettings.baseAmount || 0)
+
+            const routeKm = Math.max(0, Number(finalKm) - Number(initialKm))
+            const excessKm = Math.max(0, routeKm - Number(this.freightSettings.includedKm || 0))
+
+            return Number(this.freightSettings.baseAmount || 0) +
+                (excessKm * Number(this.freightSettings.excessKmAmount || 0))
+        },
+
+        routeFreightAmount(route) {
+            return route.hasManualFreightAmount
+                ? route.freightAmount
+                : this.calculateFreightAmount(route.kmInicial, route.kmFinal)
         },
 
         toInputDate(date) {
@@ -1974,6 +2124,57 @@ export default {
     color: #d97706;
     margin: 10px 0;
     font-size: 13px;
+}
+
+.freight-summary,
+.freight-review-box {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background: var(--surface-muted);
+}
+
+.freight-summary small,
+.freight-review-box small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.freight-summary strong,
+.freight-review-box strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 18px;
+    line-height: 1.2;
+}
+
+.freight-summary span,
+.freight-review-box span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.freight-review-box {
+    flex-direction: column;
+    margin: 12px 0;
+}
+
+.freight-manual-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--text-strong);
+    font-weight: 600;
+}
+
+.freight-manual-toggle input {
+    width: auto;
+    margin: 0;
 }
 
 .correction-card {
