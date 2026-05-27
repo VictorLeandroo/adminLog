@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const defaultApiUrl = process.env.NODE_ENV === 'production'
     ? 'https://adminlog-pljf.onrender.com/api'
-    : 'http://localhost:4000/api'
+    : '/api'
 
 const api = axios.create({
     baseURL: process.env.VUE_APP_API_URL || defaultApiUrl,

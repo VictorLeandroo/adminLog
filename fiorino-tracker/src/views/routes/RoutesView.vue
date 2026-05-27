@@ -1594,12 +1594,22 @@ export default {
 
 .route-list {
     display: grid;
-    gap: 12px;
+    gap: 14px;
 }
 
 .route-card {
-    border-radius: 20px;
-    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    border-radius: 16px;
+    padding: 16px;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.route-card:hover {
+    border-color: rgba(var(--primary-color-rgb), 0.28);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
 }
 
 .route-card.pending {
@@ -1608,27 +1618,52 @@ export default {
 
 .route-details {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     margin-top: 10px;
 }
 
+.route-details div {
+    min-width: 0;
+    padding: 10px;
+    border-radius: 12px;
+    background: var(--surface-muted);
+}
+
 .route-details p {
     margin: 0;
+    display: -webkit-box;
+    min-height: 38px;
+    overflow: hidden;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .photo-strip {
     display: flex;
     gap: 8px;
     margin-top: 12px;
+    padding: 8px;
     overflow-x: auto;
+    border-radius: 12px;
+    background: var(--surface-muted);
 }
 
 .photo-strip img {
-    width: 64px;
-    height: 64px;
-    border-radius: 12px;
+    flex: 0 0 auto;
+    width: 68px;
+    height: 68px;
+    border: 2px solid transparent;
+    border-radius: 10px;
     object-fit: cover;
     cursor: pointer;
+    transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.photo-strip img:hover {
+    border-color: var(--primary-color);
+    transform: scale(1.03);
 }
 
 .admin-review-shell {
@@ -1813,7 +1848,9 @@ export default {
 }
 
 .route-actions {
-    margin-top: 12px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-soft);
 }
 
 .route-modal-head {
@@ -1939,38 +1976,18 @@ export default {
 
 @media (min-width: 768px) {
     .route-list {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .route-hero,
     .active-route-panel {
         padding: 22px;
     }
+}
 
+@media (min-width: 1180px) {
     .route-card {
-        display: grid;
-        grid-template-columns: minmax(190px, 0.75fr) minmax(310px, 1.2fr) minmax(220px, 0.9fr) minmax(180px, 0.7fr);
-        gap: 14px;
-        align-items: start;
-    }
-
-    .route-card-head,
-    .route-details,
-    .photo-strip,
-    .route-actions {
-        margin-top: 0;
-    }
-
-    .route-metrics {
-        margin: 0;
-    }
-
-    .route-details {
-        align-self: stretch;
-    }
-
-    .route-actions {
-        flex-direction: column;
+        padding: 18px;
     }
 }
 
@@ -2022,6 +2039,7 @@ export default {
     }
 
     .route-actions,
+    .route-details,
     .form-grid {
         flex-direction: column;
         grid-template-columns: 1fr;

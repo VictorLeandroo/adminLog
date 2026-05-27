@@ -1,13 +1,27 @@
-const { defineConfig } = require('@vue/cli-service')
-module.exports = defineConfig({
-  transpileDependencies: true,
-  pwa: {
-    name: 'Fiorino Tracker',
-    themeColor: '#0d6efd',
-    manifestOptions: {
-      short_name: 'Fiorino',
-      start_url: '.',
-      display: 'standalone'
+const productionOrigin = 'https://jfv-transportes.vercel.app'
+const apiTarget = process.env.VUE_APP_PROXY_TARGET || 'https://adminlog-pljf.onrender.com'
+
+module.exports = {
+  devServer: {
+    proxy: {
+      '/api': {
+        target: apiTarget,
+        changeOrigin: true,
+        secure: true,
+        headers: {
+          Origin: productionOrigin,
+          Referer: `${productionOrigin}/`
+        }
+      },
+      '/uploads': {
+        target: apiTarget,
+        changeOrigin: true,
+        secure: true,
+        headers: {
+          Origin: productionOrigin,
+          Referer: `${productionOrigin}/`
+        }
+      }
     }
   }
-})
+}
