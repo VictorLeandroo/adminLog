@@ -84,6 +84,22 @@
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input type="text" v-model="searchTerm" placeholder="Buscar por cidade, nota, motorista ou data" />
                 </div>
+                <div class="date-filter-group">
+                    <label>
+                        <span>De</span>
+                        <input type="date" v-model="dateFilterStart" />
+                    </label>
+                    <label>
+                        <span>Ate</span>
+                        <input type="date" v-model="dateFilterEnd" />
+                    </label>
+                </div>
+                <div class="date-shortcuts">
+                    <button type="button" @click="setDateShortcut('today')">Hoje</button>
+                    <button type="button" @click="setDateShortcut('week')">7 dias</button>
+                    <button type="button" @click="setDateShortcut('month')">Mes</button>
+                    <button type="button" @click="setDateShortcut('clear')">Limpar</button>
+                </div>
                 <select v-model="statusFilter" class="form-select">
                     <option value="all">Todos</option>
                     <option value="Em andamento">Em andamento</option>
@@ -146,7 +162,7 @@
 
                     <div class="photo-strip" v-if="route.photos.length">
                         <img v-for="(photo, index) in route.photos" :key="index" :src="photo.url || photo.preview"
-                            @click="openLightbox(photo.url || photo.preview)" />
+                            @click="openPhotoPreview(route, index)" />
                     </div>
 
                     <div class="correction-card" v-if="route.correctionRequested">
@@ -309,52 +325,133 @@
             </ButtonComp>
         </ModalDefault>
 
-        <ModalDefault :isLoading="isModalLoading" :is-visible="showAdminModal" max-width="500px" min-width="320px"
+        <ModalDefault :isLoading="isModalLoading" :is-visible="showAdminModal" max-width="1180px" min-width="320px"
             @update:isVisible="cancelAdminEdit">
             <div class="route-modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-clipboard-check"></i></span>
                 <div>
                     <h6>Revisar rota</h6>
-                    <p>Complete notas e cidades para liberar a rota como concluida.</p>
+                    <p>Complete notas e cidades com as fotos abertas ao lado.</p>
                 </div>
             </div>
 
-            <div class="modal-scroll-content">
-                <label class="form-label">KM inicial</label>
-                <input type="number" v-model.number="adminForm.kmInicial" class="w-100 mb-2" />
-
-                <label class="form-label">KM final</label>
-                <input type="number" v-model.number="adminForm.kmFinal" class="w-100 mb-2" />
-
-                <label class="form-label">Cidades</label>
-                <input type="text" v-model="adminForm.cidadesStr" class="w-100 mb-2" />
-
-                <label class="form-label">Notas fiscais</label>
-                <input type="text" v-model="adminForm.notasStr" class="w-100 mb-2" />
-
-                <label class="form-label">Valor do frete</label>
-                <input type="number" v-model.number="adminForm.freightAmount" class="w-100 mb-2" placeholder="0,00" />
-
-                <label class="form-label">Status</label>
-                <select v-model="adminForm.status" class="form-select w-100 mb-2">
-                    <option value="Em andamento">Em andamento</option>
-                    <option value="Pendente de analise">Pendente de análise</option>
-                    <option value="Concluida">Concluída</option>
-                </select>
-
-                <div class="correction-card mb-2" v-if="adminForm.correctionRequested">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    <div>
-                        <strong>Relato do motorista</strong>
-                        <p>{{ adminForm.correctionNote }}</p>
+            <div class="admin-review-shell">
+                <section class="admin-photo-workspace">
+                    <div class="photo-workspace-head">
+                        <div>
+                            <span class="eyebrow">Fotos da rota</span>
+                            <strong>{{ adminPhotos.length ? `${adminPhotoIndex + 1} de ${adminPhotos.length}` : 'Sem fotos' }}</strong>
+                        </div>
+                        <div class="photo-tool-group" v-if="adminPhotos.length">
+                            <button type="button" title="Diminuir zoom" @click="zoomAdminPhoto(-0.2)">
+                                <i class="fa-solid fa-magnifying-glass-minus"></i>
+                            </button>
+                            <button type="button" title="Aumentar zoom" @click="zoomAdminPhoto(0.2)">
+                                <i class="fa-solid fa-magnifying-glass-plus"></i>
+                            </button>
+                            <button type="button" title="Girar foto" @click="rotateAdminPhoto">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                            <button type="button" title="Resetar imagem" @click="resetAdminPhotoView">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            <ButtonComp :click-action="saveAdminRoute" :is-disabled="!adminForm.kmFinal"
-                btn-class="button-primary button-big w-100">
-                Salvar revisão
-            </ButtonComp>
+                    <div class="photo-stage" :class="{ empty: !adminPhotos.length }">
+                        <button v-if="adminPhotos.length > 1" type="button" class="photo-nav prev"
+                            @click="selectAdjacentAdminPhoto(-1)">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+
+                        <img v-if="adminCurrentPhoto" :src="adminCurrentPhoto" class="admin-review-photo"
+                            :style="adminPhotoStyle" />
+
+                        <div v-else class="photo-empty-state">
+                            <i class="fa-regular fa-image"></i>
+                            <strong>Nenhuma foto enviada</strong>
+                            <span>Revise os dados informados pelo motorista.</span>
+                        </div>
+
+                        <button v-if="adminPhotos.length > 1" type="button" class="photo-nav next"
+                            @click="selectAdjacentAdminPhoto(1)">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="admin-photo-strip" v-if="adminPhotos.length > 1">
+                        <button v-for="(photo, index) in adminPhotos" :key="index" type="button"
+                            :class="{ active: index === adminPhotoIndex }" @click="selectAdminPhoto(index)">
+                            <img :src="photo.url || photo.preview" />
+                        </button>
+                    </div>
+                </section>
+
+                <section class="admin-form-workspace">
+                    <div class="admin-route-summary" v-if="routeSelected">
+                        <div>
+                            <small>Data</small>
+                            <strong>{{ formatDate(routeSelected.data) }}</strong>
+                        </div>
+                        <div>
+                            <small>Motorista</small>
+                            <strong>{{ routeSelected.driver }}</strong>
+                        </div>
+                        <div>
+                            <small>Total</small>
+                            <strong>{{ calcPercorrido(adminForm.kmInicial, adminForm.kmFinal) }} km</strong>
+                        </div>
+                    </div>
+
+                    <div class="modal-scroll-content admin-review-form">
+                        <div class="form-grid">
+                            <div>
+                                <label class="form-label">KM inicial</label>
+                                <input type="number" v-model.number="adminForm.kmInicial" class="w-100 mb-2" />
+                            </div>
+                            <div>
+                                <label class="form-label">KM final</label>
+                                <input type="number" v-model.number="adminForm.kmFinal" class="w-100 mb-2" />
+                            </div>
+                        </div>
+
+                        <label class="form-label">Cidades</label>
+                        <textarea v-model="adminForm.cidadesStr" class="w-100 admin-textarea mb-2"></textarea>
+
+                        <label class="form-label">Notas fiscais</label>
+                        <textarea v-model="adminForm.notasStr" class="w-100 admin-textarea notes mb-2"></textarea>
+
+                        <div class="form-grid">
+                            <div>
+                                <label class="form-label">Valor do frete</label>
+                                <input type="number" v-model.number="adminForm.freightAmount" class="w-100 mb-2"
+                                    placeholder="0,00" />
+                            </div>
+                            <div>
+                                <label class="form-label">Status</label>
+                                <select v-model="adminForm.status" class="form-select w-100 mb-2">
+                                    <option value="Em andamento">Em andamento</option>
+                                    <option value="Pendente de analise">Pendente de análise</option>
+                                    <option value="Concluida">Concluída</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="correction-card mb-2" v-if="adminForm.correctionRequested">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <div>
+                                <strong>Relato do motorista</strong>
+                                <p>{{ adminForm.correctionNote }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <ButtonComp :click-action="saveAdminRoute" :is-disabled="!adminForm.kmFinal"
+                        btn-class="button-primary button-big w-100">
+                        Salvar revisão
+                    </ButtonComp>
+                </section>
+            </div>
         </ModalDefault>
 
         <ModalDefault :isLoading="isModalLoading" :is-visible="showCorrectionModal" max-width="460px" min-width="320px"
@@ -469,6 +566,8 @@ export default {
             isVehicleLoading: false,
             searchTerm: '',
             statusFilter: 'all',
+            dateFilterStart: '',
+            dateFilterEnd: '',
             adminVehicles: [],
             showStartModal: false,
             showCreateRouteModal: false,
@@ -512,7 +611,10 @@ export default {
             },
             freightForm: this.defaultFreightForm(),
             photos: [],
-            lightboxPhoto: null
+            lightboxPhoto: null,
+            adminPhotoIndex: 0,
+            adminPhotoZoom: 1,
+            adminPhotoRotation: 0
         }
     },
 
@@ -592,6 +694,9 @@ export default {
 
             return this.decoratedRoutes.filter(route => {
                 const matchesStatus = this.statusFilter === 'all' || route.status === this.statusFilter
+                const routeDate = this.routeInputDate(route)
+                const matchesStart = !this.dateFilterStart || routeDate >= this.dateFilterStart
+                const matchesEnd = !this.dateFilterEnd || routeDate <= this.dateFilterEnd
                 const haystack = [
                     route.data,
                     route.driver,
@@ -600,7 +705,10 @@ export default {
                     ...route.notas.map(String)
                 ].join(' ').toLowerCase()
 
-                return matchesStatus && (!term || haystack.includes(term) || this.formatDate(route.data).toLowerCase().includes(term))
+                return matchesStatus &&
+                    matchesStart &&
+                    matchesEnd &&
+                    (!term || haystack.includes(term) || this.formatDate(route.data).toLowerCase().includes(term))
             })
         },
 
@@ -641,6 +749,21 @@ export default {
 
         canGenerateFreightPdf() {
             return Boolean(this.freightForm.startDate && this.freightForm.endDate && this.freightForm.title)
+        },
+
+        adminPhotos() {
+            return this.routeSelected?.photos || []
+        },
+
+        adminCurrentPhoto() {
+            const photo = this.adminPhotos[this.adminPhotoIndex]
+            return photo?.url || photo?.preview || ''
+        },
+
+        adminPhotoStyle() {
+            return {
+                transform: `scale(${this.adminPhotoZoom}) rotate(${this.adminPhotoRotation}deg)`
+            }
         }
     },
 
@@ -730,6 +853,8 @@ export default {
 
         openAdminModal(route) {
             this.routeSelected = route
+            this.adminPhotoIndex = 0
+            this.resetAdminPhotoView()
             this.adminForm = {
                 kmInicial: route.kmInicial,
                 kmFinal: route.kmFinal || '',
@@ -932,6 +1057,8 @@ export default {
         cancelAdminEdit() {
             this.showAdminModal = false
             this.routeSelected = null
+            this.adminPhotoIndex = 0
+            this.resetAdminPhotoView()
         },
 
         cancelCorrection() {
@@ -1057,6 +1184,69 @@ export default {
             }
         },
 
+        setDateShortcut(type) {
+            const today = new Date()
+
+            if (type === 'clear') {
+                this.dateFilterStart = ''
+                this.dateFilterEnd = ''
+                return
+            }
+
+            const end = new Date(today)
+            const start = new Date(today)
+
+            if (type === 'week') {
+                start.setDate(today.getDate() - 6)
+            }
+
+            if (type === 'month') {
+                start.setDate(1)
+            }
+
+            this.dateFilterStart = this.toInputDate(start)
+            this.dateFilterEnd = this.toInputDate(end)
+        },
+
+        openPhotoPreview(route, index = 0) {
+            if (!this.isDriver) {
+                this.openAdminModal(route)
+                this.selectAdminPhoto(index)
+                return
+            }
+
+            const photo = route.photos[index]
+            this.openLightbox(photo?.url || photo?.preview)
+        },
+
+        selectAdminPhoto(index) {
+            if (!this.adminPhotos.length) return
+
+            this.adminPhotoIndex = Math.min(Math.max(index, 0), this.adminPhotos.length - 1)
+            this.resetAdminPhotoView()
+        },
+
+        selectAdjacentAdminPhoto(direction) {
+            if (!this.adminPhotos.length) return
+
+            const nextIndex = (this.adminPhotoIndex + direction + this.adminPhotos.length) % this.adminPhotos.length
+            this.selectAdminPhoto(nextIndex)
+        },
+
+        zoomAdminPhoto(step) {
+            const nextZoom = this.adminPhotoZoom + step
+            this.adminPhotoZoom = Math.min(Math.max(nextZoom, 0.6), 3)
+        },
+
+        rotateAdminPhoto() {
+            this.adminPhotoRotation = (this.adminPhotoRotation + 90) % 360
+        },
+
+        resetAdminPhotoView() {
+            this.adminPhotoZoom = 1
+            this.adminPhotoRotation = 0
+        },
+
         openLightbox(url) {
             this.lightboxPhoto = url
         },
@@ -1090,6 +1280,19 @@ export default {
             const month = String(date.getMonth() + 1).padStart(2, '0')
             const day = String(date.getDate()).padStart(2, '0')
             return `${year}-${month}-${day}`
+        },
+
+        routeInputDate(route) {
+            const value = route?.data || route?.createdAt
+
+            if (!value) return ''
+
+            if (/^\d{4}-\d{2}-\d{2}/.test(String(value))) {
+                return String(value).slice(0, 10)
+            }
+
+            const parsed = parseLocalDate(value)
+            return Number.isNaN(parsed.getTime()) ? '' : this.toInputDate(parsed)
         },
 
         calcPercorrido(inicial, final) {
@@ -1319,6 +1522,7 @@ export default {
     margin: 12px 0;
     border-radius: 18px;
     padding: 10px;
+    flex-wrap: wrap;
 }
 
 .search-box {
@@ -1340,6 +1544,52 @@ export default {
 
 .route-toolbar select {
     max-width: 160px;
+}
+
+.date-filter-group,
+.date-shortcuts {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.date-filter-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.date-filter-group input {
+    min-height: 32px;
+    width: 132px;
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+.date-shortcuts button,
+.photo-tool-group button,
+.photo-nav,
+.admin-photo-strip button {
+    border: 1px solid var(--border-soft);
+    background: var(--surface-card);
+    color: var(--text-strong);
+}
+
+.date-shortcuts button {
+    min-height: 34px;
+    border-radius: 10px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 800;
 }
 
 .route-list {
@@ -1379,6 +1629,187 @@ export default {
     border-radius: 12px;
     object-fit: cover;
     cursor: pointer;
+}
+
+.admin-review-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.85fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.admin-photo-workspace,
+.admin-form-workspace {
+    min-width: 0;
+}
+
+.admin-photo-workspace {
+    border: 1px solid var(--border-soft);
+    border-radius: 18px;
+    background: var(--surface-muted);
+    padding: 12px;
+}
+
+.photo-workspace-head,
+.photo-tool-group,
+.admin-route-summary {
+    display: flex;
+    align-items: center;
+}
+
+.photo-workspace-head {
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.photo-workspace-head strong {
+    display: block;
+    color: var(--text-strong);
+    line-height: 1.2;
+}
+
+.photo-tool-group {
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.photo-tool-group button {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+}
+
+.photo-stage {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    max-height: 64vh;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #101820;
+}
+
+.photo-stage.empty {
+    background: var(--surface-card);
+}
+
+.admin-review-photo {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.18s ease;
+    transform-origin: center;
+}
+
+.photo-nav {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    width: 38px;
+    height: 46px;
+    border-radius: 12px;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.photo-nav.prev {
+    left: 10px;
+}
+
+.photo-nav.next {
+    right: 10px;
+}
+
+.photo-empty-state {
+    display: grid;
+    place-items: center;
+    gap: 5px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.photo-empty-state i {
+    color: var(--primary-color);
+    font-size: 32px;
+}
+
+.photo-empty-state strong {
+    color: var(--text-strong);
+}
+
+.admin-photo-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+    max-height: 116px;
+    overflow-y: auto;
+}
+
+.admin-photo-strip button {
+    aspect-ratio: 1;
+    padding: 3px;
+    border-radius: 10px;
+    overflow: hidden;
+    opacity: 0.68;
+}
+
+.admin-photo-strip button.active {
+    border-color: var(--primary-color);
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.admin-photo-strip img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 7px;
+}
+
+.admin-route-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.admin-route-summary div {
+    padding: 10px;
+    border-radius: 12px;
+    background: var(--surface-muted);
+}
+
+.admin-route-summary small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.admin-route-summary strong {
+    display: block;
+    overflow: hidden;
+    color: var(--text-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-review-form {
+    max-height: 58vh;
+}
+
+.admin-textarea {
+    min-height: 76px;
+    resize: vertical;
+}
+
+.admin-textarea.notes {
+    min-height: 96px;
 }
 
 .route-actions {
@@ -1508,12 +1939,52 @@ export default {
 
 @media (min-width: 768px) {
     .route-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
     }
 
     .route-hero,
     .active-route-panel {
         padding: 22px;
+    }
+
+    .route-card {
+        display: grid;
+        grid-template-columns: minmax(190px, 0.75fr) minmax(310px, 1.2fr) minmax(220px, 0.9fr) minmax(180px, 0.7fr);
+        gap: 14px;
+        align-items: start;
+    }
+
+    .route-card-head,
+    .route-details,
+    .photo-strip,
+    .route-actions {
+        margin-top: 0;
+    }
+
+    .route-metrics {
+        margin: 0;
+    }
+
+    .route-details {
+        align-self: stretch;
+    }
+
+    .route-actions {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 980px) {
+    .admin-review-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-form-workspace {
+        order: 2;
+    }
+
+    .admin-photo-workspace {
+        order: 1;
     }
 }
 
@@ -1536,9 +2007,27 @@ export default {
         max-width: none;
     }
 
+    .date-filter-group,
+    .date-shortcuts {
+        width: 100%;
+    }
+
+    .date-filter-group label,
+    .date-shortcuts button {
+        flex: 1;
+    }
+
+    .date-filter-group input {
+        width: 100%;
+    }
+
     .route-actions,
     .form-grid {
         flex-direction: column;
+        grid-template-columns: 1fr;
+    }
+
+    .admin-route-summary {
         grid-template-columns: 1fr;
     }
 }
