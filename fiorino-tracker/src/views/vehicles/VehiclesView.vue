@@ -28,6 +28,10 @@
 
             <template v-else-if="isDriver && hasVehicle">
                 <section class="vehicle-status-card">
+                    <div class="vehicle-photo large">
+                        <img v-if="currentVehicle.photoUrl" :src="currentVehicle.photoUrl" :alt="currentVehicle.model" />
+                        <i v-else class="fa-solid fa-van-shuttle"></i>
+                    </div>
                     <div>
                         <span class="status-pill" :class="currentVehicle.status === 'Em dia' ? 'done' : 'pending'">
                             {{ currentVehicle.status }}
@@ -35,7 +39,9 @@
                         <h5>{{ formatKm(currentVehicle.currentKm) }} km</h5>
                         <p>Proxima manutencao em {{ formatKm(nextMaintenanceKm) }} km</p>
                     </div>
-                    <i class="fa-solid fa-van-shuttle"></i>
+                    <ButtonComp btn-class="button-secundary" :click-action="() => openVehicleDetails(currentVehicle)">
+                        Detalhes
+                    </ButtonComp>
                 </section>
 
                 <section class="driver-grid">
@@ -83,14 +89,22 @@
                             <span class="eyebrow">Manutencao</span>
                             <h5>Histórico recente</h5>
                         </div>
+                        <ButtonComp btn-class="button-secundary" :click-action="() => openVehicleDetails(currentVehicle)">
+                            Ver todas
+                        </ButtonComp>
                     </div>
 
-                    <div v-for="item in currentVehicle.maintenances" :key="item.id" class="maintenance-row">
+                    <div v-for="item in recentMaintenances(currentVehicle)" :key="item.id" class="maintenance-row">
                         <div>
                             <strong>{{ item.type }}</strong>
                             <small>{{ formatDate(item.date) }} • {{ formatKm(item.km) }} km</small>
                         </div>
                         <span>{{ formatMoney(item.amount) }}</span>
+                    </div>
+
+                    <div v-if="!currentVehicle.maintenances?.length" class="review-empty">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                        <span>Nenhuma revisao registrada</span>
                     </div>
                 </section>
             </template>
@@ -123,6 +137,10 @@
                 <section class="fleet-list">
                     <article v-for="vehicle in vehicles" :key="vehicle.id" class="fleet-card">
                         <div class="fleet-head">
+                            <div class="vehicle-photo">
+                                <img v-if="vehicle.photoUrl" :src="vehicle.photoUrl" :alt="vehicle.model" />
+                                <i v-else class="fa-solid fa-van-shuttle"></i>
+                            </div>
                             <div>
                                 <strong>{{ vehicle.model }}</strong>
                                 <small>{{ vehicle.plate }} • {{ vehicle.year }} • {{ vehicle.driver }}</small>
@@ -148,6 +166,9 @@
                         </div>
 
                         <div class="fleet-actions">
+                            <ButtonComp btn-class="button-primary w-100" :click-action="() => openVehicleDetails(vehicle)">
+                                Detalhes
+                            </ButtonComp>
                             <ButtonComp btn-class="button-secundary w-100" :click-action="() => openVehicleModal(vehicle)">
                                 Editar
                             </ButtonComp>
@@ -156,7 +177,15 @@
                             </ButtonComp>
                         </div>
 
-                        <div class="admin-review-panel">
+                        <div class="fleet-review-summary">
+                            <span>{{ vehicle.maintenances?.length || 0 }} revisao(oes)</span>
+                            <ButtonComp btn-class="button-secundary" :click-action="() => openMaintenanceModal(vehicle)">
+                                <i class="fa-solid fa-plus"></i>
+                                Revisao
+                            </ButtonComp>
+                        </div>
+
+                        <div class="admin-review-panel hidden-review-panel">
                             <div class="review-panel-head">
                                 <div>
                                     <span class="eyebrow">Revisoes</span>
@@ -206,6 +235,18 @@
             </div>
 
             <div class="modal-scroll">
+                <label class="form-label">Foto do veiculo</label>
+                <div class="vehicle-photo-upload mb-2">
+                    <div class="vehicle-photo preview">
+                        <img v-if="vehiclePhotoPreview" :src="vehiclePhotoPreview" :alt="vehicleForm.model || 'Foto do veiculo'" />
+                        <i v-else class="fa-solid fa-camera"></i>
+                    </div>
+                    <div>
+                        <input type="file" accept="image/*" class="w-100 mb-1" @change="handleVehiclePhoto" />
+                        <small class="text-muted d-block">Use uma foto frontal ou lateral para identificar rapido na frota.</small>
+                    </div>
+                </div>
+
                 <label class="form-label">Modelo</label>
                 <input v-model="vehicleForm.model" type="text" class="w-100 mb-2" />
 
@@ -326,6 +367,104 @@
                 Salvar revisão
             </ButtonComp>
         </ModalDefault>
+
+        <ModalDefault :is-visible="showDetailsModal" :isLoading="false" max-width="760px" min-width="320px"
+            @update:isVisible="cancelDetailsModal">
+            <div v-if="selectedDetailVehicle" class="vehicle-detail">
+                <div class="detail-hero">
+                    <div class="vehicle-photo detail">
+                        <img v-if="selectedDetailVehicle.photoUrl" :src="selectedDetailVehicle.photoUrl" :alt="selectedDetailVehicle.model" />
+                        <i v-else class="fa-solid fa-van-shuttle"></i>
+                    </div>
+                    <div>
+                        <span class="eyebrow">Detalhes do veiculo</span>
+                        <h6>{{ selectedDetailVehicle.model }}</h6>
+                        <p>{{ selectedDetailVehicle.plate }} - {{ selectedDetailVehicle.year }} - {{ selectedDetailVehicle.driver }}</p>
+                    </div>
+                </div>
+
+                <div class="detail-metrics">
+                    <div>
+                        <small>KM atual</small>
+                        <strong>{{ formatKm(selectedDetailVehicle.currentKm) }}</strong>
+                    </div>
+                    <div>
+                        <small>Proxima manutencao</small>
+                        <strong>{{ formatKm(selectedDetailVehicle.nextMaintenanceAt) }}</strong>
+                    </div>
+                    <div>
+                        <small>Status</small>
+                        <strong>{{ selectedDetailVehicle.status }}</strong>
+                    </div>
+                </div>
+
+                <div class="detail-actions" v-if="!isDriver">
+                    <ButtonComp btn-class="button-primary" :click-action="() => openMaintenanceModal(selectedDetailVehicle)">
+                        <i class="fa-solid fa-plus"></i>
+                        Nova revisao
+                    </ButtonComp>
+                    <ButtonComp btn-class="button-secundary" :click-action="() => openVehicleModal(selectedDetailVehicle)">
+                        Editar veiculo
+                    </ButtonComp>
+                </div>
+
+                <div class="detail-section">
+                    <div class="section-head">
+                        <div>
+                            <span class="eyebrow">Documentos</span>
+                            <h5>Arquivos do veiculo</h5>
+                        </div>
+                    </div>
+                    <div v-if="selectedDetailVehicle.documents?.length">
+                        <div v-for="document in selectedDetailVehicle.documents" :key="document.id" class="document-row">
+                            <div>
+                                <strong>{{ document.name }}</strong>
+                                <small>{{ document.type }} - atualizado em {{ formatDate(document.updatedAt) }}</small>
+                            </div>
+                            <a class="doc-action" :href="document.url" target="_blank" rel="noreferrer">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                Abrir
+                            </a>
+                        </div>
+                    </div>
+                    <div v-else class="review-empty">
+                        <i class="fa-solid fa-file-circle-xmark"></i>
+                        <span>Nenhum documento cadastrado</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="section-head">
+                        <div>
+                            <span class="eyebrow">Revisoes</span>
+                            <h5>Historico completo</h5>
+                        </div>
+                        <span>{{ selectedDetailVehicle.maintenances?.length || 0 }} registro(s)</span>
+                    </div>
+
+                    <div v-if="selectedDetailVehicle.maintenances?.length" class="review-timeline detail-list">
+                        <div v-for="item in selectedDetailVehicle.maintenances" :key="item.id" class="review-item">
+                            <div class="review-dot"></div>
+                            <div class="review-content">
+                                <div class="review-title">
+                                    <strong>{{ item.type }}</strong>
+                                    <span>{{ formatMoney(item.amount) }}</span>
+                                </div>
+                                <small>
+                                    {{ formatDate(item.date) }} - {{ formatKm(item.km) }} km
+                                    <template v-if="item.workshop"> - {{ item.workshop }}</template>
+                                </small>
+                                <p v-if="item.note">{{ item.note }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="review-empty">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                        <span>Nenhuma revisao registrada</span>
+                    </div>
+                </div>
+            </div>
+        </ModalDefault>
     </div>
 </template>
 
@@ -360,9 +499,11 @@ export default {
             errorMessage: '',
             showVehicleModal: false,
             showMaintenanceModal: false,
+            showDetailsModal: false,
             vehicleForm: this.emptyVehicleForm(),
             maintenanceForm: this.emptyMaintenanceForm(),
-            selectedVehicle: null
+            selectedVehicle: null,
+            selectedDetailVehicle: null
         }
     },
 
@@ -397,6 +538,10 @@ export default {
 
         canSaveMaintenance() {
             return Boolean(this.selectedVehicle && this.maintenanceForm.type && this.maintenanceForm.date && this.maintenanceForm.km)
+        },
+
+        vehiclePhotoPreview() {
+            return this.vehicleForm.photo?.preview || this.vehicleForm.photoUrl
         }
     },
 
@@ -455,6 +600,9 @@ export default {
                 nextMaintenanceAt: '',
                 renavam: '',
                 chassis: '',
+                photo: null,
+                photoUrl: '',
+                photoName: '',
                 licenseValidUntil: '',
                 insuranceValidUntil: '',
                 status: 'Em dia',
@@ -483,7 +631,7 @@ export default {
 
         openVehicleModal(vehicle = null) {
             this.vehicleForm = vehicle
-                ? JSON.parse(JSON.stringify(vehicle))
+                ? { ...JSON.parse(JSON.stringify(vehicle)), photo: null }
                 : this.emptyVehicleForm()
             this.showVehicleModal = true
         },
@@ -543,6 +691,16 @@ export default {
             this.maintenanceForm = this.emptyMaintenanceForm()
         },
 
+        openVehicleDetails(vehicle) {
+            this.selectedDetailVehicle = vehicle
+            this.showDetailsModal = true
+        },
+
+        cancelDetailsModal() {
+            this.showDetailsModal = false
+            this.selectedDetailVehicle = null
+        },
+
         async saveMaintenance() {
             if (!this.canSaveMaintenance) return
 
@@ -575,6 +733,22 @@ export default {
                 }
             ]
             event.target.value = ''
+        },
+
+        handleVehiclePhoto(event) {
+            const file = event.target.files?.[0]
+            if (!file) return
+
+            this.vehicleForm.photo = {
+                file,
+                name: file.name,
+                preview: URL.createObjectURL(file)
+            }
+            event.target.value = ''
+        },
+
+        recentMaintenances(vehicle) {
+            return (vehicle.maintenances || []).slice(0, 3)
         },
 
         formatDate(date) {
@@ -652,6 +826,7 @@ export default {
     background:
         radial-gradient(circle at top right, rgba(var(--primary-color-rgb), 0.18), transparent 40%),
         var(--surface-card);
+    gap: 14px;
 }
 
 .vehicle-status-card h5 {
@@ -663,6 +838,60 @@ export default {
 .vehicle-status-card > i {
     color: var(--primary-color);
     font-size: 44px;
+}
+
+.vehicle-photo {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: var(--primary-soft);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    overflow: hidden;
+    font-size: 24px;
+}
+
+.vehicle-photo.large {
+    width: 92px;
+    height: 92px;
+    border-radius: 22px;
+}
+
+.vehicle-photo.preview {
+    width: 86px;
+    height: 64px;
+    border-radius: 14px;
+}
+
+.vehicle-photo.detail {
+    width: 120px;
+    height: 92px;
+    border-radius: 20px;
+}
+
+.vehicle-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vehicle-photo-upload,
+.detail-hero,
+.detail-actions,
+.fleet-review-summary {
+    display: flex;
+    gap: 12px;
+}
+
+.vehicle-photo-upload {
+    align-items: center;
+    border: 1px dashed var(--border-soft);
+    border-radius: 16px;
+    padding: 10px;
+    background: var(--surface-muted);
 }
 
 .driver-empty-state {
@@ -764,6 +993,11 @@ export default {
     align-items: flex-start;
     padding: 12px 0;
     border-bottom: 1px solid var(--border-soft);
+}
+
+.fleet-head > div:nth-child(2) {
+    flex: 1;
+    min-width: 0;
 }
 
 .document-row:last-child,
@@ -900,6 +1134,26 @@ export default {
     border-radius: 18px;
     background: var(--surface-muted);
     padding: 12px;
+}
+
+.hidden-review-panel {
+    display: none;
+}
+
+.fleet-review-summary {
+    margin-top: 12px;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 16px;
+    padding: 10px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-weight: 800;
+}
+
+.fleet-review-summary .button-comp {
+    min-height: 34px;
+    padding: 4px 10px;
 }
 
 .review-panel-head {
@@ -1039,6 +1293,70 @@ export default {
     gap: 10px;
 }
 
+.vehicle-detail {
+    display: grid;
+    gap: 14px;
+}
+
+.detail-hero {
+    align-items: center;
+}
+
+.detail-hero h6 {
+    margin: 4px 0;
+    color: var(--text-strong);
+    font-size: 22px;
+}
+
+.detail-hero p {
+    color: var(--text-muted);
+}
+
+.detail-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.detail-metrics div,
+.detail-section {
+    border-radius: 16px;
+    background: var(--surface-muted);
+    border: 1px solid var(--border-soft);
+}
+
+.detail-metrics div {
+    padding: 12px;
+}
+
+.detail-metrics small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.detail-metrics strong {
+    display: block;
+    color: var(--text-strong);
+    margin-top: 4px;
+    overflow-wrap: anywhere;
+}
+
+.detail-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.detail-section {
+    padding: 14px;
+}
+
+.detail-list {
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
 @media (min-width: 820px) {
     .driver-grid,
     .fleet-summary {
@@ -1052,13 +1370,18 @@ export default {
 
 @media (max-width: 560px) {
     .vehicle-hero,
-    .fleet-actions {
+    .fleet-actions,
+    .vehicle-status-card,
+    .vehicle-photo-upload,
+    .detail-hero,
+    .detail-actions {
         flex-direction: column;
         align-items: stretch;
     }
 
     .fleet-metrics,
-    .form-grid {
+    .form-grid,
+    .detail-metrics {
         grid-template-columns: 1fr;
     }
 

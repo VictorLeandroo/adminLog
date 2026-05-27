@@ -17,6 +17,14 @@
                         Nova rota
                     </ButtonComp>
 
+                    <ButtonComp
+                        v-if="!isDriver"
+                        btn-class="button-secundary button-big"
+                        :click-action="openFreightModal">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        Frete PDF
+                    </ButtonComp>
+
                     <button class="role-chip" @click="toggleProfile">
                         <i class="fa-solid" :class="isDriver ? 'fa-truck-fast' : 'fa-user-shield'"></i>
                         {{ isDriver ? 'Motorista' : 'Admin' }}
@@ -126,6 +134,10 @@
                         <div>
                             <small>Total</small>
                             <strong>{{ calcPercorrido(route.kmInicial, route.kmFinal) }} km</strong>
+                        </div>
+                        <div v-if="!isDriver">
+                            <small>Frete</small>
+                            <strong>{{ formatMoney(route.freightAmount) }}</strong>
                         </div>
                     </div>
 
@@ -249,6 +261,9 @@
                 <label class="form-label">Notas fiscais</label>
                 <input type="text" v-model="createRouteForm.notasStr" class="w-100 mb-2" placeholder="Ex: 5674, 5675, 5676" />
 
+                <label class="form-label">Valor do frete</label>
+                <input type="number" v-model.number="createRouteForm.freightAmount" class="w-100 mb-2" placeholder="0,00" />
+
                 <label class="form-label">Status</label>
                 <select v-model="createRouteForm.status" class="form-select w-100 mb-2">
                     <option value="Em andamento">Em andamento</option>
@@ -320,6 +335,9 @@
                 <label class="form-label">Notas fiscais</label>
                 <input type="text" v-model="adminForm.notasStr" class="w-100 mb-2" />
 
+                <label class="form-label">Valor do frete</label>
+                <input type="number" v-model.number="adminForm.freightAmount" class="w-100 mb-2" placeholder="0,00" />
+
                 <label class="form-label">Status</label>
                 <select v-model="adminForm.status" class="form-select w-100 mb-2">
                     <option value="Em andamento">Em andamento</option>
@@ -360,6 +378,43 @@
             </ButtonComp>
         </ModalDefault>
 
+        <ModalDefault :isLoading="isModalLoading" :is-visible="showFreightModal" max-width="480px" min-width="320px"
+            @update:isVisible="cancelFreightModal">
+            <div class="route-modal-head">
+                <span class="modal-icon"><i class="fa-solid fa-file-pdf"></i></span>
+                <div>
+                    <h6>Gerar PDF de frete</h6>
+                    <p>O periodo quinzenal ja vem preenchido, mas voce pode ajustar as datas.</p>
+                </div>
+            </div>
+
+            <label class="form-label">Periodo</label>
+            <select v-model="freightForm.periodType" class="form-select w-100 mb-2" @change="syncFreightPeriod">
+                <option value="first-half">1 quinzena</option>
+                <option value="second-half">2 quinzena</option>
+                <option value="month">Mes inteiro</option>
+                <option value="custom">Personalizado</option>
+            </select>
+
+            <div class="form-grid">
+                <div>
+                    <label class="form-label">Data inicial</label>
+                    <input type="date" v-model="freightForm.startDate" class="w-100 mb-2" />
+                </div>
+                <div>
+                    <label class="form-label">Data final</label>
+                    <input type="date" v-model="freightForm.endDate" class="w-100 mb-2" />
+                </div>
+            </div>
+
+            <label class="form-label">Titulo</label>
+            <input type="text" v-model="freightForm.title" class="w-100 mb-2" />
+
+            <ButtonComp :click-action="generateFreightPdf" :is-disabled="!canGenerateFreightPdf" btn-class="button-primary button-big w-100">
+                Gerar PDF
+            </ButtonComp>
+        </ModalDefault>
+
         <ModalDelete :isVisible="showConfirmDeleteModal" title="Excluir rota" icon="fa-solid fa-trash"
             :isLoading="isModalLoading" @update:isVisible="showConfirmDeleteModal = $event" @confirm="deleteRoute" />
 
@@ -380,6 +435,7 @@ import PhotoUploadComp from '@/components/PhotoUploadComp.vue';
 import { notifyError, notifySuccess } from '@/services/notificationService';
 import {
     createRouteApi,
+    downloadFreightPdf,
     finishRouteApi,
     formatLocalDate,
     getMyVehicle,
@@ -389,7 +445,8 @@ import {
     removeRouteApi,
     reportRouteErrorApi,
     reviewRouteApi,
-    startRouteApi
+    startRouteApi,
+    money
 } from '@/services/backendService';
 
 export default {
@@ -418,6 +475,7 @@ export default {
             showFinishModal: false,
             showAdminModal: false,
             showCorrectionModal: false,
+            showFreightModal: false,
             showConfirmDeleteModal: false,
             isModalLoading: false,
             routeSelected: null,
@@ -431,6 +489,7 @@ export default {
                 kmFinal: '',
                 cidadesStr: '',
                 notasStr: '',
+                freightAmount: null,
                 status: 'Concluida'
             },
             finishForm: {
@@ -443,6 +502,7 @@ export default {
                 kmFinal: '',
                 cidadesStr: '',
                 notasStr: '',
+                freightAmount: null,
                 status: 'Pendente de analise',
                 correctionRequested: false,
                 correctionNote: ''
@@ -450,6 +510,7 @@ export default {
             correctionForm: {
                 note: ''
             },
+            freightForm: this.defaultFreightForm(),
             photos: [],
             lightboxPhoto: null
         }
@@ -576,6 +637,10 @@ export default {
                 this.createRouteForm.kmInicial &&
                 (this.createRouteForm.status === 'Em andamento' || this.createRouteForm.kmFinal)
             )
+        },
+
+        canGenerateFreightPdf() {
+            return Boolean(this.freightForm.startDate && this.freightForm.endDate && this.freightForm.title)
         }
     },
 
@@ -670,6 +735,7 @@ export default {
                 kmFinal: route.kmFinal || '',
                 cidadesStr: route.cidades.join(', '),
                 notasStr: route.notas.join(', '),
+                freightAmount: route.freightAmount || null,
                 status: route.status,
                 correctionRequested: Boolean(route.correctionRequested),
                 correctionNote: route.correctionNote || ''
@@ -683,6 +749,11 @@ export default {
                 note: route.correctionNote || ''
             }
             this.showCorrectionModal = true
+        },
+
+        openFreightModal() {
+            this.freightForm = this.defaultFreightForm()
+            this.showFreightModal = true
         },
 
         async startRoute() {
@@ -734,6 +805,7 @@ export default {
                     kmFinal: this.createRouteForm.status === 'Em andamento' ? null : this.createRouteForm.kmFinal,
                     cidades: this.toList(this.createRouteForm.cidadesStr),
                     notas: this.toList(this.createRouteForm.notasStr),
+                    freightAmount: this.createRouteForm.freightAmount,
                     status: this.createRouteForm.status
                 })
                 await this.fetchRoutes()
@@ -807,6 +879,7 @@ export default {
                     kmFinal: this.adminForm.kmFinal,
                     cidades: this.toList(this.adminForm.cidadesStr),
                     notas: this.toList(this.adminForm.notasStr),
+                    freightAmount: this.adminForm.freightAmount,
                     status: this.adminForm.status
                 })
                 await this.fetchRoutes()
@@ -867,6 +940,71 @@ export default {
             this.correctionForm = { note: '' }
         },
 
+        cancelFreightModal() {
+            this.showFreightModal = false
+        },
+
+        defaultFreightForm() {
+            const today = new Date()
+            const periodType = today.getDate() <= 15 ? 'first-half' : 'second-half'
+            return this.freightPeriodForm(periodType, today)
+        },
+
+        freightPeriodForm(periodType, date = new Date()) {
+            const year = date.getFullYear()
+            const month = date.getMonth()
+            const monthLabel = String(month + 1).padStart(2, '0')
+            const start = periodType === 'second-half' ? new Date(year, month, 16) : new Date(year, month, 1)
+            const end = periodType === 'first-half'
+                ? new Date(year, month, 15)
+                : new Date(year, month + 1, 0)
+
+            if (periodType === 'month') {
+                start.setDate(1)
+                end.setDate(new Date(year, month + 1, 0).getDate())
+            }
+
+            return {
+                periodType,
+                startDate: this.toInputDate(start),
+                endDate: this.toInputDate(end),
+                title: `Frete - ${periodType === 'first-half' ? '1' : periodType === 'second-half' ? '2' : 'Mes'} quinzena ${monthLabel}/${year}`
+            }
+        },
+
+        syncFreightPeriod() {
+            if (this.freightForm.periodType === 'custom') return
+            this.freightForm = this.freightPeriodForm(this.freightForm.periodType)
+        },
+
+        async generateFreightPdf() {
+            if (!this.canGenerateFreightPdf) return
+
+            this.isModalLoading = true
+            try {
+                const blob = await downloadFreightPdf({
+                    startDate: this.freightForm.startDate,
+                    endDate: this.freightForm.endDate,
+                    title: this.freightForm.title
+                })
+                const url = URL.createObjectURL(blob)
+                const link = document.createElement('a')
+                link.href = url
+                link.download = `frete-${this.freightForm.startDate}-${this.freightForm.endDate}.pdf`
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+                URL.revokeObjectURL(url)
+                this.cancelFreightModal()
+                notifySuccess('PDF de frete gerado com sucesso.')
+            } catch (error) {
+                console.error(error)
+                notifyError(error, 'Nao foi possivel gerar o PDF de frete.')
+            } finally {
+                this.isModalLoading = false
+            }
+        },
+
         toList(value) {
             return String(value || '')
                 .split(',')
@@ -882,6 +1020,7 @@ export default {
                 kmFinal: '',
                 cidadesStr: '',
                 notasStr: '',
+                freightAmount: null,
                 status: 'Concluida'
             }
         },
@@ -928,6 +1067,17 @@ export default {
 
         formatKm(value) {
             return Number(value || 0).toLocaleString('pt-BR')
+        },
+
+        formatMoney(value) {
+            return money(value)
+        },
+
+        toInputDate(date) {
+            const year = date.getFullYear()
+            const month = String(date.getMonth() + 1).padStart(2, '0')
+            const day = String(date.getDate()).padStart(2, '0')
+            return `${year}-${month}-${day}`
         },
 
         calcPercorrido(inicial, final) {
@@ -1037,9 +1187,16 @@ export default {
 .active-grid,
 .route-metrics {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin: 14px 0;
+}
+
+.active-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.route-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
 }
 
 .active-grid div,

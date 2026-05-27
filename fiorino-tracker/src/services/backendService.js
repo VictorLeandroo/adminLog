@@ -76,9 +76,13 @@ export function getQuinzenna(date) {
 }
 
 export function normalizeVehicle(vehicle) {
+  const photoUrl = vehicle.photoUrl?.startsWith('/uploads') ? `${apiOrigin}${vehicle.photoUrl}` : vehicle.photoUrl
+
   return {
     ...vehicle,
     driver: vehicle.driver?.name || 'Sem motorista',
+    photoUrl,
+    photoName: vehicle.photoName,
     nextMaintenanceAt: vehicle.nextMaintenanceAtKm || '',
     status: statusFromApi[vehicle.status] || vehicle.status,
     licenseValidUntil: dateOnly(vehicle.licenseValidUntil),
@@ -102,6 +106,7 @@ export function normalizeRoute(route) {
     data: dateOnly(route.date),
     kmInicial: route.initialKm,
     kmFinal: route.finalKm,
+    freightAmount: Number(route.freightAmount || 0),
     cidades: (route.cities || []).map(city => city.name),
     notas: (route.invoices || []).map(invoice => invoice.number),
     photos: (route.photos || []).map(normalizePhoto),
@@ -139,12 +144,62 @@ export function normalizeStatementRequest(request) {
 }
 
 async function uploadFile(file) {
+  const fileToUpload = await compressImageFile(file)
   const formData = new FormData()
-  formData.append('file', file)
+  formData.append('file', fileToUpload)
   const response = await api.post('/uploads', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
   return response.data
+}
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    const url = URL.createObjectURL(file)
+
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Nao foi possivel carregar a imagem.'))
+    }
+    image.src = url
+  })
+}
+
+async function canvasToBlob(canvas, type, quality) {
+  return new Promise(resolve => {
+    canvas.toBlob(resolve, type, quality)
+  })
+}
+
+async function compressImageFile(file) {
+  if (!file?.type?.startsWith('image/')) return file
+
+  const maxSize = 1600
+  const quality = 0.74
+  const image = await loadImage(file)
+  const scale = Math.min(1, maxSize / Math.max(image.width, image.height))
+  const width = Math.max(1, Math.round(image.width * scale))
+  const height = Math.max(1, Math.round(image.height * scale))
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+
+  canvas.width = width
+  canvas.height = height
+  context.drawImage(image, 0, 0, width, height)
+
+  const blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+  if (!blob || blob.size >= file.size) return file
+
+  const filename = file.name.replace(/\.[^.]+$/, '') || 'foto'
+  return new File([blob], `${filename}.jpg`, {
+    type: 'image/jpeg',
+    lastModified: Date.now()
+  })
 }
 
 async function photoPayload(photo) {
@@ -187,6 +242,7 @@ export async function getMyVehicle() {
 }
 
 export async function saveVehicleApi(vehicle) {
+  const uploadedPhoto = vehicle.photo?.file ? await photoPayload(vehicle.photo) : null
   const payload = {
     model: vehicle.model,
     year: vehicle.year ? Number(vehicle.year) : null,
@@ -195,6 +251,8 @@ export async function saveVehicleApi(vehicle) {
     nextMaintenanceAtKm: vehicle.nextMaintenanceAt ? Number(vehicle.nextMaintenanceAt) : null,
     renavam: vehicle.renavam || null,
     chassis: vehicle.chassis || null,
+    photoUrl: uploadedPhoto?.fileUrl || vehicle.photoUrl || null,
+    photoName: uploadedPhoto?.fileName || vehicle.photoName || null,
     licenseValidUntil: vehicle.licenseValidUntil || null,
     insuranceValidUntil: vehicle.insuranceValidUntil || null,
     status: vehicleStatusToApi[vehicle.status] || 'OK',
@@ -263,6 +321,7 @@ export async function createRouteApi(payload) {
     date: payload.date,
     initialKm: Number(payload.kmInicial),
     finalKm: payload.kmFinal ? Number(payload.kmFinal) : null,
+    freightAmount: payload.freightAmount ? Number(payload.freightAmount) : null,
     cidades: payload.cidades,
     notas: payload.notas,
     status: routeStatusToApi[payload.status]
@@ -284,6 +343,7 @@ export async function reviewRouteApi(id, payload) {
   const response = await api.patch(`/routes/${id}/review`, {
     initialKm: Number(payload.kmInicial),
     finalKm: Number(payload.kmFinal),
+    freightAmount: payload.freightAmount ? Number(payload.freightAmount) : null,
     cidades: payload.cidades,
     notas: payload.notas,
     status: routeStatusToApi[payload.status]
@@ -298,6 +358,14 @@ export async function reportRouteErrorApi(id, note) {
 
 export async function removeRouteApi(id) {
   await api.delete(`/routes/${id}`)
+}
+
+export async function downloadFreightPdf(params) {
+  const response = await api.get('/routes/freight-pdf', {
+    params,
+    responseType: 'blob'
+  })
+  return response.data
 }
 
 export async function listExpenses(query = {}) {
