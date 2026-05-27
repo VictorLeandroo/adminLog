@@ -59,8 +59,29 @@ export function money(value) {
   })
 }
 
+function normalizeFileUrl(fileUrl) {
+  if (!fileUrl) return fileUrl
+
+  try {
+    const url = new URL(fileUrl)
+    const publicObjectPath = '/storage/v1/object/public/'
+    const publicObjectIndex = url.pathname.indexOf(publicObjectPath)
+
+    if (url.hostname.endsWith('.supabase.co') && publicObjectIndex >= 0) {
+      const pathParts = url.pathname.slice(publicObjectIndex + publicObjectPath.length).split('/')
+      const objectPath = pathParts.slice(1).join('/')
+
+      return objectPath ? `/uploads/supabase/${objectPath}` : fileUrl
+    }
+  } catch (_error) {
+    return fileUrl
+  }
+
+  return fileUrl
+}
+
 function normalizePhoto(photo) {
-  const fileUrl = photo.fileUrl || photo.url || photo.preview
+  const fileUrl = normalizeFileUrl(photo.fileUrl || photo.url || photo.preview)
 
   return {
     ...photo,
@@ -212,13 +233,14 @@ async function photoPayload(photo) {
   }
 
   return {
-    fileUrl: photo.fileUrl || photo.url || photo.preview || '#',
+    fileUrl: normalizeFileUrl(photo.fileUrl || photo.url || photo.preview) || '#',
     fileName: photo.file?.name || photo.name || photo.fileName
   }
 }
 
 async function photosPayload(photos = []) {
-  return Promise.all(photos.map(photoPayload))
+  const payload = await Promise.all((photos || []).filter(Boolean).map(photoPayload))
+  return payload.filter(photo => photo.fileUrl && photo.fileUrl !== '#')
 }
 
 export async function listVehicles() {
@@ -346,7 +368,8 @@ export async function reviewRouteApi(id, payload) {
     freightAmount: payload.freightAmount ? Number(payload.freightAmount) : null,
     cidades: payload.cidades,
     notas: payload.notas,
-    status: routeStatusToApi[payload.status]
+    status: routeStatusToApi[payload.status],
+    photos: await photosPayload(payload.photos)
   })
   return normalizeRoute(response.data)
 }

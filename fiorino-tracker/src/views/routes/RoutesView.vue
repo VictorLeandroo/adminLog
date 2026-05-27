@@ -358,14 +358,19 @@
                         </div>
                     </div>
 
-                    <div class="photo-stage" :class="{ empty: !adminPhotos.length }">
+                    <div class="photo-stage" :class="{ empty: !adminPhotos.length, panning: isAdminPhotoDragging }"
+                        @wheel.prevent="handleAdminPhotoWheel">
                         <button v-if="adminPhotos.length > 1" type="button" class="photo-nav prev"
                             @click="selectAdjacentAdminPhoto(-1)">
                             <i class="fa-solid fa-chevron-left"></i>
                         </button>
 
                         <img v-if="adminCurrentPhoto" :src="adminCurrentPhoto" class="admin-review-photo"
-                            :style="adminPhotoStyle" />
+                            :class="{ zoomed: adminPhotoZoom > 1 }" :style="adminPhotoStyle"
+                            @mousedown.prevent="startAdminPhotoPan" @mousemove.prevent="moveAdminPhotoPan"
+                            @mouseup="stopAdminPhotoPan" @mouseleave="stopAdminPhotoPan"
+                            @touchstart.prevent="startAdminPhotoPan" @touchmove.prevent="moveAdminPhotoPan"
+                            @touchend="stopAdminPhotoPan" @touchcancel="stopAdminPhotoPan" />
 
                         <div v-else class="photo-empty-state">
                             <i class="fa-regular fa-image"></i>
@@ -420,6 +425,9 @@
 
                         <label class="form-label">Notas fiscais</label>
                         <textarea v-model="adminForm.notasStr" class="w-100 admin-textarea notes mb-2"></textarea>
+
+                        <label class="form-label">Fotos das notas</label>
+                        <PhotoUploadComp v-model="adminRoutePhotos" />
 
                         <div class="form-grid">
                             <div>
@@ -611,10 +619,20 @@ export default {
             },
             freightForm: this.defaultFreightForm(),
             photos: [],
+            adminRoutePhotos: [],
             lightboxPhoto: null,
             adminPhotoIndex: 0,
             adminPhotoZoom: 1,
-            adminPhotoRotation: 0
+            adminPhotoRotation: 0,
+            adminPhotoPanX: 0,
+            adminPhotoPanY: 0,
+            isAdminPhotoDragging: false,
+            adminPhotoDragStart: {
+                x: 0,
+                y: 0,
+                panX: 0,
+                panY: 0
+            }
         }
     },
 
@@ -752,7 +770,7 @@ export default {
         },
 
         adminPhotos() {
-            return this.routeSelected?.photos || []
+            return this.adminRoutePhotos || []
         },
 
         adminCurrentPhoto() {
@@ -762,7 +780,7 @@ export default {
 
         adminPhotoStyle() {
             return {
-                transform: `scale(${this.adminPhotoZoom}) rotate(${this.adminPhotoRotation}deg)`
+                transform: `translate(${this.adminPhotoPanX}px, ${this.adminPhotoPanY}px) scale(${this.adminPhotoZoom}) rotate(${this.adminPhotoRotation}deg)`
             }
         }
     },
@@ -854,6 +872,7 @@ export default {
         openAdminModal(route) {
             this.routeSelected = route
             this.adminPhotoIndex = 0
+            this.adminRoutePhotos = [...(route.photos || [])]
             this.resetAdminPhotoView()
             this.adminForm = {
                 kmInicial: route.kmInicial,
@@ -999,13 +1018,21 @@ export default {
             this.isModalLoading = true
 
             try {
+                const routePhotos = this.adminRoutePhotos.map((photo, index) => ({
+                    file: photo.file,
+                    name: photo.file?.name || photo.name || photo.fileName || `foto-${Date.now()}-${index}`,
+                    fileUrl: photo.fileUrl || photo.preview || photo.url,
+                    url: photo.preview || photo.url || photo.fileUrl
+                }))
+
                 await reviewRouteApi(this.routeSelected.id, {
                     kmInicial: this.adminForm.kmInicial,
                     kmFinal: this.adminForm.kmFinal,
                     cidades: this.toList(this.adminForm.cidadesStr),
                     notas: this.toList(this.adminForm.notasStr),
                     freightAmount: this.adminForm.freightAmount,
-                    status: this.adminForm.status
+                    status: this.adminForm.status,
+                    photos: routePhotos
                 })
                 await this.fetchRoutes()
                 this.cancelAdminEdit()
@@ -1058,6 +1085,7 @@ export default {
             this.showAdminModal = false
             this.routeSelected = null
             this.adminPhotoIndex = 0
+            this.adminRoutePhotos = []
             this.resetAdminPhotoView()
         },
 
@@ -1236,6 +1264,18 @@ export default {
         zoomAdminPhoto(step) {
             const nextZoom = this.adminPhotoZoom + step
             this.adminPhotoZoom = Math.min(Math.max(nextZoom, 0.6), 3)
+
+            if (this.adminPhotoZoom <= 1) {
+                this.adminPhotoPanX = 0
+                this.adminPhotoPanY = 0
+            }
+        },
+
+        handleAdminPhotoWheel(event) {
+            if (!this.adminCurrentPhoto) return
+
+            const step = event.deltaY < 0 ? 0.16 : -0.16
+            this.zoomAdminPhoto(step)
         },
 
         rotateAdminPhoto() {
@@ -1245,6 +1285,42 @@ export default {
         resetAdminPhotoView() {
             this.adminPhotoZoom = 1
             this.adminPhotoRotation = 0
+            this.adminPhotoPanX = 0
+            this.adminPhotoPanY = 0
+            this.isAdminPhotoDragging = false
+        },
+
+        getPointerPosition(event) {
+            const pointer = event.touches?.[0] || event.changedTouches?.[0] || event
+            return {
+                x: pointer.clientX,
+                y: pointer.clientY
+            }
+        },
+
+        startAdminPhotoPan(event) {
+            if (this.adminPhotoZoom <= 1) return
+
+            const pointer = this.getPointerPosition(event)
+            this.isAdminPhotoDragging = true
+            this.adminPhotoDragStart = {
+                x: pointer.x,
+                y: pointer.y,
+                panX: this.adminPhotoPanX,
+                panY: this.adminPhotoPanY
+            }
+        },
+
+        moveAdminPhotoPan(event) {
+            if (!this.isAdminPhotoDragging) return
+
+            const pointer = this.getPointerPosition(event)
+            this.adminPhotoPanX = this.adminPhotoDragStart.panX + pointer.x - this.adminPhotoDragStart.x
+            this.adminPhotoPanY = this.adminPhotoDragStart.panY + pointer.y - this.adminPhotoDragStart.y
+        },
+
+        stopAdminPhotoPan() {
+            this.isAdminPhotoDragging = false
         },
 
         openLightbox(url) {
@@ -1729,6 +1805,10 @@ export default {
     background: #101820;
 }
 
+.photo-stage.panning {
+    cursor: grabbing;
+}
+
 .photo-stage.empty {
     background: var(--surface-card);
 }
@@ -1737,8 +1817,19 @@ export default {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
     transition: transform 0.18s ease;
     transform-origin: center;
+}
+
+.admin-review-photo.zoomed {
+    cursor: grab;
+}
+
+.photo-stage.panning .admin-review-photo {
+    cursor: grabbing;
+    transition: none;
 }
 
 .photo-nav {

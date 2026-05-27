@@ -8,7 +8,7 @@
 
         <div class="preview-list" v-if="files.length">
             <div v-for="(file, index) in files" :key="index" class="preview-item">
-                <img :src="file.preview" />
+                <img :src="photoSource(file)" />
                 <button class="remove-btn" @click="removeFile(index)">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -32,8 +32,13 @@ export default {
             files: []
         }
     },
-    mounted() {
-        this.files = this.modelValue
+    watch: {
+        modelValue: {
+            immediate: true,
+            handler(value) {
+                this.files = [...(value || [])]
+            }
+        }
     },
     methods: {
         handleFiles(event) {
@@ -50,8 +55,11 @@ export default {
             this.files.splice(index, 1)
             this.emitFiles()
         },
+        photoSource(file) {
+            return file?.preview || file?.url || file?.fileUrl || ''
+        },
         emitFiles() {
-            this.$emit('update:modelValue', this.files)
+            this.$emit('update:modelValue', [...this.files])
         }
     }
 }

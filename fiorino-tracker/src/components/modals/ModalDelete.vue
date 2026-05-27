@@ -21,11 +21,13 @@
                         </div>
 
                         <div class="col-12 mt-3 d-flex">
-                            <button class="button-secundary-gray mr-1 w-100" @click="closeModal">
+                            <button class="button-secundary-gray mr-1 w-100" @click="closeModal" :disabled="isLoading">
                                 Cancelar
                             </button>
-                            <button class="button-red w-100" @click="confirmAction" :disabled="isDisabledConfirm">
-                                Confirmar
+                            <button class="button-red w-100 modal-action-button" @click="confirmAction"
+                                :disabled="isDisabledConfirm || isLoading">
+                                <span :class="{ invisible: isLoading }">Confirmar</span>
+                                <span class="button-loader" v-if="isLoading"></span>
                             </button>
                         </div>
                     </div>
@@ -68,6 +70,10 @@ export default {
             type: String,
             default: '290px'
         },
+        isLoading: {
+            type: Boolean,
+            default: false
+        },
     },
 
     data() {
@@ -83,8 +89,8 @@ export default {
         },
 
         confirmAction() {
+            if (this.isLoading || this.isDisabledConfirm) return
             this.$emit('confirm');
-            this.closeModal();
         }
     },
 
@@ -128,5 +134,33 @@ export default {
 
 .card-body {
     padding: 15px;
+}
+
+.modal-action-button {
+    position: relative;
+}
+
+.modal-action-button .invisible {
+    visibility: hidden;
+}
+
+.button-loader {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 15px;
+    height: 15px;
+    margin-left: -7.5px;
+    margin-top: -7.5px;
+    border: 2px solid #fff;
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    animation: rotation 0.8s linear infinite;
+}
+
+@keyframes rotation {
+    to {
+        transform: rotate(360deg);
+    }
 }
 </style>

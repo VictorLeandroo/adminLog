@@ -1,12 +1,22 @@
 <template>
-  <button class="button-comp" :class="[btnClass]" @click="handleClick" :disabled="isLoading || isDisabled || disabled">
-    <slot></slot> <span class="loader" v-if="isLoading"></span>
+  <button class="button-comp" :class="[btnClass, { 'button-loading': isButtonLoading }]" @click="handleClick"
+    :disabled="isButtonLoading || isDisabled || disabled">
+    <span class="button-content" :class="{ invisible: isButtonLoading }">
+      <slot></slot>
+    </span>
+    <span class="loader" v-if="isButtonLoading"></span>
   </button>
 </template>
 
 <script>
 export default {
   name: 'ButtonComp',
+
+  data() {
+    return {
+      internalLoading: false,
+    }
+  },
 
   props: {
     btnClass: {
@@ -21,13 +31,16 @@ export default {
 
     isLoading: {
       type: Boolean,
+      default: false,
     },
 
     isDisabled: {
-      type: Boolean
+      type: Boolean,
+      default: false,
     },
     disabled: {
-      type: Boolean
+      type: Boolean,
+      default: false,
     },
 
     to: {
@@ -36,12 +49,29 @@ export default {
     },
   },
 
+  computed: {
+    isButtonLoading() {
+      return this.isLoading || this.internalLoading
+    },
+  },
+
   methods: {
-    handleClick() {
+    async handleClick() {
+      if (this.isButtonLoading || this.isDisabled || this.disabled) return
+
       if (this.to) {
         this.$router.push(this.to);
       } else if (this.clickAction) {
-        this.clickAction();
+        const result = this.clickAction();
+
+        if (result && typeof result.finally === 'function') {
+          this.internalLoading = true
+          try {
+            await result
+          } finally {
+            this.internalLoading = false
+          }
+        }
       }
     },
   },
@@ -51,6 +81,7 @@ export default {
 <style scoped>
 .button-comp {
   appearance: none;
+  position: relative;
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -62,10 +93,31 @@ export default {
   vertical-align: middle;
 }
 
+.button-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+}
+
+.button-content.invisible {
+  visibility: hidden;
+}
+
+.button-loading {
+  cursor: wait !important;
+  pointer-events: auto;
+}
+
 .loader {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 15px;
   height: 15px;
-  border: 2px solid #FFF;
+  margin-left: -7.5px;
+  margin-top: -7.5px;
+  border: 2px solid currentColor;
   border-bottom-color: transparent;
   border-radius: 50%;
   display: inline-block;

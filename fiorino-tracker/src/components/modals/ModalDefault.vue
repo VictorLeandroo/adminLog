@@ -83,7 +83,8 @@ export default {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(8, 15, 24, 0.82);
+    backdrop-filter: blur(2px);
     z-index: 1050;
     display: flex;
     align-items: center;
@@ -92,5 +93,15 @@ export default {
 
 .modal-dialog {
     margin: 0;
+}
+
+.modal-content {
+    background: #ffffff !important;
+    border: 1px solid var(--border-soft) !important;
+    box-shadow: var(--shadow-elevated) !important;
+}
+
+:global(:root[data-theme="dark"]) .modal-content {
+    background: #121a24 !important;
 }
 </style>
