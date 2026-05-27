@@ -9,6 +9,8 @@ router.use(authenticate);
 
 router.get('/', controller.list);
 router.get('/active', controller.active);
+router.get('/freight-settings', requireRole('ADMIN'), controller.freightSettings);
+router.put('/freight-settings', requireRole('ADMIN'), controller.updateFreightSettings);
 router.get('/freight-pdf', requireRole('ADMIN'), controller.freightPdf);
 router.get('/freight-report', requireRole('ADMIN'), controller.freightReport);
 router.post('/', requireRole('ADMIN'), controller.create);

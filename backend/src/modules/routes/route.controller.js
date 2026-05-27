@@ -9,6 +9,14 @@ const active = asyncHandler(async (req, res) => {
   res.json(await service.getActiveRoute(req.user.id));
 });
 
+const freightSettings = asyncHandler(async (_req, res) => {
+  res.json(await service.getFreightSettings());
+});
+
+const updateFreightSettings = asyncHandler(async (req, res) => {
+  res.json(await service.updateFreightSettings(req.body));
+});
+
 const start = asyncHandler(async (req, res) => {
   res.status(201).json(await service.startRoute(req.user, req.body));
 });
@@ -49,4 +57,17 @@ const freightReport = asyncHandler(async (req, res) => {
   res.send(html);
 });
 
-module.exports = { list, active, start, create, finish, reportError, review, remove, freightPdf, freightReport };
+module.exports = {
+  list,
+  active,
+  freightSettings,
+  updateFreightSettings,
+  start,
+  create,
+  finish,
+  reportError,
+  review,
+  remove,
+  freightPdf,
+  freightReport,
+};

@@ -12,9 +12,12 @@ const AppError = require('../../utils/AppError');
 const FREIGHT_TEMPLATE_PATH = path.resolve(__dirname, '../../templates/frete-base.xlsx');
 const FREIGHT_BLOCK_ROWS = [2, 11, 20, 29, 38, 47, 56, 65, 74, 83, 92];
 const FREIGHT_TOTAL_ROW = 100;
-const BASE_FREIGHT_AMOUNT = 400;
-const INCLUDED_KM = 120;
-const EXCESS_KM_AMOUNT = 1.5;
+const DEFAULT_FREIGHT_SETTINGS = {
+  baseAmount: 400,
+  includedKm: 120,
+  excessKmAmount: 1.5,
+};
+const FREIGHT_SETTINGS_ID = 'default';
 
 const startSchema = z.object({
   vehicleId: z.string().min(1),
@@ -55,6 +58,12 @@ const reviewSchema = finishSchema.extend({
   status: z.enum(['IN_PROGRESS', 'PENDING_REVIEW', 'COMPLETED']).optional(),
 });
 
+const freightSettingsSchema = z.object({
+  baseAmount: z.number().min(0),
+  includedKm: z.number().int().min(0),
+  excessKmAmount: z.number().min(0),
+});
+
 const include = {
   vehicle: true,
   driver: { select: { id: true, name: true, email: true } },
@@ -67,6 +76,40 @@ function normalizeList(value) {
   return (value || [])
     .map((item) => String(item).trim())
     .filter(Boolean);
+}
+
+function normalizeFreightSettings(settings) {
+  return {
+    baseAmount: numberValue(settings?.baseAmount ?? DEFAULT_FREIGHT_SETTINGS.baseAmount),
+    includedKm: Number(settings?.includedKm ?? DEFAULT_FREIGHT_SETTINGS.includedKm),
+    excessKmAmount: numberValue(settings?.excessKmAmount ?? DEFAULT_FREIGHT_SETTINGS.excessKmAmount),
+  };
+}
+
+async function getFreightSettings() {
+  const settings = await prisma.freightSetting.findUnique({ where: { id: FREIGHT_SETTINGS_ID } });
+  return normalizeFreightSettings(settings);
+}
+
+async function updateFreightSettings(input) {
+  const data = freightSettingsSchema.parse(input);
+
+  const settings = await prisma.freightSetting.upsert({
+    where: { id: FREIGHT_SETTINGS_ID },
+    create: {
+      id: FREIGHT_SETTINGS_ID,
+      baseAmount: data.baseAmount,
+      includedKm: data.includedKm,
+      excessKmAmount: data.excessKmAmount,
+    },
+    update: {
+      baseAmount: data.baseAmount,
+      includedKm: data.includedKm,
+      excessKmAmount: data.excessKmAmount,
+    },
+  });
+
+  return normalizeFreightSettings(settings);
 }
 
 function getFinishPayload(data) {
@@ -360,8 +403,8 @@ function routeKm(route) {
   return Math.max(0, numberValue(route.finalKm) - numberValue(route.initialKm));
 }
 
-function routeExcessKm(route) {
-  return Math.max(0, routeKm(route) - INCLUDED_KM);
+function routeExcessKm(route, settings) {
+  return Math.max(0, routeKm(route) - settings.includedKm);
 }
 
 function getDriverName(routes) {
@@ -385,15 +428,31 @@ function routeExtraAmount(route, expenses, keywords) {
     .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
 }
 
-function routeFreightValues(route, expenses) {
-  const excessKm = routeExcessKm(route);
+function routeFreightValues(route, expenses, settings) {
+  const excessKm = routeExcessKm(route, settings);
   const toll = routeExtraAmount(route, expenses, ['pedagio', 'pedágio']);
   const blueZone = routeExtraAmount(route, expenses, ['zona azul']);
   const unloading = routeExtraAmount(route, expenses, ['descarga']);
-  const excessAmount = excessKm * EXCESS_KM_AMOUNT;
-  const total = BASE_FREIGHT_AMOUNT + excessAmount + toll + blueZone + unloading;
+  const excessAmount = excessKm * settings.excessKmAmount;
+  const calculatedTotal = settings.baseAmount + excessAmount + toll + blueZone + unloading;
+  const manualAmount = route.freightAmount !== null && route.freightAmount !== undefined
+    ? numberValue(route.freightAmount)
+    : null;
+  const total = manualAmount ?? calculatedTotal;
 
-  return { km: routeKm(route), excessKm, excessAmount, toll, blueZone, unloading, total };
+  return {
+    km: routeKm(route),
+    excessKm,
+    excessAmount,
+    toll,
+    blueZone,
+    unloading,
+    total,
+    manualAmount,
+    baseAmount: settings.baseAmount,
+    includedKm: settings.includedKm,
+    excessKmAmount: settings.excessKmAmount,
+  };
 }
 
 function setCellValue(worksheet, address, value) {
@@ -424,22 +483,26 @@ async function getFreightData(query) {
     orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
   });
 
-  const expenses = await prisma.expense.findMany({
-    where: { date: { gte: start, lte: end } },
-    select: {
-      vehicleId: true,
-      date: true,
-      category: true,
-      description: true,
-      amount: true,
-    },
-  });
+  const [expenses, settings] = await Promise.all([
+    prisma.expense.findMany({
+      where: { date: { gte: start, lte: end } },
+      select: {
+        vehicleId: true,
+        date: true,
+        category: true,
+        description: true,
+        amount: true,
+      },
+    }),
+    getFreightSettings(),
+  ]);
 
   return {
     start,
     end,
     routes,
     expenses,
+    settings,
     title: getFreightTitle(query, routes, start, end),
   };
 }
@@ -459,15 +522,15 @@ function showBlockRows(worksheet, startRow) {
   }
 }
 
-function fillRouteBlock(worksheet, route, expenses, startRow) {
-  const values = routeFreightValues(route, expenses);
+function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
+  const values = routeFreightValues(route, expenses, settings);
   const cities = route.cities.map((city) => city.name).join(', ') || 'ENTREGA';
   const invoices = route.invoices.map((invoice) => invoice.number).join(', ');
 
   showBlockRows(worksheet, startRow);
   setCellValue(worksheet, `A${startRow + 1}`, formatDate(route.date));
   setCellValue(worksheet, `C${startRow + 1}`, cities);
-  setCellValue(worksheet, `D${startRow + 2}`, BASE_FREIGHT_AMOUNT);
+  setCellValue(worksheet, `D${startRow + 2}`, values.baseAmount);
   setCellValue(worksheet, `A${startRow + 3}`, invoices);
   setCellValue(worksheet, `D${startRow + 3}`, values.excessAmount);
   setCellValue(worksheet, `A${startRow + 5}`, numberValue(route.initialKm));
@@ -500,7 +563,7 @@ function applyFreightFormatting(worksheet) {
   };
 }
 
-async function buildFreightWorkbook(routes, expenses, { start, end, title }) {
+async function buildFreightWorkbook(routes, expenses, settings, { start, end, title }) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(FREIGHT_TEMPLATE_PATH);
 
@@ -521,7 +584,7 @@ async function buildFreightWorkbook(routes, expenses, { start, end, title }) {
       return;
     }
 
-    total += fillRouteBlock(worksheet, route, expenses, startRow);
+    total += fillRouteBlock(worksheet, route, expenses, settings, startRow);
   });
 
   setCellValue(worksheet, `A${FREIGHT_TOTAL_ROW}`, 'TOTAL GERAL');
@@ -581,9 +644,9 @@ async function convertXlsxToPdf(xlsxBuffer, filename) {
 }
 
 async function generateFreightPdf(query) {
-  const { start, end, routes, expenses, title } = await getFreightData(query);
+  const { start, end, routes, expenses, settings, title } = await getFreightData(query);
   const xlsxFilename = `frete-${dateOnly(start)}-${dateOnly(end)}.xlsx`;
-  const xlsxBuffer = Buffer.from(await buildFreightWorkbook(routes, expenses, { start, end, title }));
+  const xlsxBuffer = Buffer.from(await buildFreightWorkbook(routes, expenses, settings, { start, end, title }));
   const pdfBuffer = await convertXlsxToPdf(xlsxBuffer, xlsxFilename);
 
   if (!pdfBuffer) {
@@ -599,10 +662,11 @@ async function generateFreightPdf(query) {
   return { buffer: pdfBuffer, filename, contentType: 'application/pdf' };
 }
 
-function renderFreightRouteBlock(route, expenses) {
-  const values = routeFreightValues(route, expenses);
+function renderFreightRouteBlock(route, expenses, settings) {
+  const values = routeFreightValues(route, expenses, settings);
   const cities = route.cities.map((city) => city.name).join(', ') || 'ENTREGA';
   const invoices = route.invoices.map((invoice) => invoice.number).join(', ');
+  const manualNote = values.manualAmount !== null ? ' (manual)' : '';
 
   return `
     <section class="route-block">
@@ -618,12 +682,12 @@ function renderFreightRouteBlock(route, expenses) {
       </div>
       <div class="grid">
         <div class="left notes">${escapeHtml(invoices)}</div>
-        <div class="label">Saida (ate 120km)</div>
-        <div class="amount">${formatMoney(BASE_FREIGHT_AMOUNT)}</div>
+        <div class="label">Saida (ate ${values.includedKm}km)</div>
+        <div class="amount">${formatMoney(values.baseAmount)}</div>
       </div>
       <div class="grid">
         <div class="left strong">Quilometragem</div>
-        <div class="label">Kms excedentes (${formatMoney(EXCESS_KM_AMOUNT)})</div>
+        <div class="label">Kms excedentes (${formatMoney(values.excessKmAmount)})</div>
         <div class="amount">${formatMoney(values.excessAmount)}</div>
       </div>
       <div class="grid">
@@ -655,7 +719,7 @@ function renderFreightRouteBlock(route, expenses) {
           <span>Km excedente</span>
           <strong>${values.excessKm}</strong>
         </div>
-        <div class="label">TOTAL</div>
+        <div class="label">TOTAL${manualNote}</div>
         <div class="amount">${formatMoney(values.total)}</div>
       </div>
     </section>
@@ -663,10 +727,10 @@ function renderFreightRouteBlock(route, expenses) {
 }
 
 async function generateFreightHtml(query) {
-  const { routes, expenses, title } = await getFreightData(query);
-  const total = routes.reduce((sum, route) => sum + routeFreightValues(route, expenses).total, 0);
+  const { routes, expenses, settings, title } = await getFreightData(query);
+  const total = routes.reduce((sum, route) => sum + routeFreightValues(route, expenses, settings).total, 0);
   const blocks = routes.length
-    ? routes.map((route) => renderFreightRouteBlock(route, expenses)).join('')
+    ? routes.map((route) => renderFreightRouteBlock(route, expenses, settings)).join('')
     : '<p class="empty">Nenhuma rota concluida encontrada nesse periodo.</p>';
 
   return `<!doctype html>
@@ -845,6 +909,8 @@ async function generateFreightHtml(query) {
 module.exports = {
   listRoutes,
   getActiveRoute,
+  getFreightSettings,
+  updateFreightSettings,
   startRoute,
   createRoute,
   finishRoute,

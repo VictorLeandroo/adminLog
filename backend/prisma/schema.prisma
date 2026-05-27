@@ -158,6 +158,14 @@ model RoutePhoto {
   route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
 }
 
+model FreightSetting {
+  id                String   @id @default("default")
+  baseAmount        Decimal  @default(400) @db.Decimal(12, 2)
+  includedKm        Int      @default(120)
+  excessKmAmount    Decimal  @default(1.5) @db.Decimal(12, 2)
+  updatedAt         DateTime @updatedAt
+}
+
 model Expense {
   id          String   @id @default(uuid())
   vehicleId   String?
