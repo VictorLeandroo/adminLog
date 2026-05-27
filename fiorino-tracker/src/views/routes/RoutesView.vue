@@ -92,7 +92,13 @@
                 </select>
             </section>
 
-            <section class="route-list">
+            <div v-if="isLoading" class="page-loading-state">
+                <span class="loader"></span>
+                <strong>Carregando rotas</strong>
+                <p>Buscando rotas, veiculo ativo e dados de apoio.</p>
+            </div>
+
+            <section v-else class="route-list">
                 <article v-for="route in filteredRoutes" :key="route.id" class="route-card" :class="route.statusClass">
                     <div class="route-card-head">
                         <div class="route-title-block">
@@ -402,6 +408,7 @@ export default {
             routes: [],
             myVehicle: null,
             myVehicleLoaded: false,
+            isLoading: false,
             isVehicleLoading: false,
             searchTerm: '',
             statusFilter: 'all',
@@ -585,11 +592,14 @@ export default {
 
     methods: {
         async fetchRoutes() {
+            this.isLoading = true
             try {
                 this.routes = await listRoutes()
             } catch (error) {
                 console.error(error)
                 notifyError(error, 'Não foi possível carregar as rotas.')
+            } finally {
+                this.isLoading = false
             }
         },
 

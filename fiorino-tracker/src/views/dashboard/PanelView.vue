@@ -14,7 +14,13 @@
                 </div>
             </section>
 
-            <section class="quick-grid">
+            <div v-if="isLoading" class="page-loading-state">
+                <span class="loader"></span>
+                <strong>Carregando dashboard</strong>
+                <p>Buscando os dados mais recentes da operacao.</p>
+            </div>
+
+            <section v-if="!isLoading" class="quick-grid">
                 <article class="quick-card income">
                     <small>Ganhos</small>
                     <strong>{{ formatMoney(totalRevenue) }}</strong>
@@ -40,7 +46,7 @@
                 </article>
             </section>
 
-            <section class="insight-strip">
+            <section v-if="!isLoading" class="insight-strip">
                 <div>
                     <small>1 quinzena</small>
                     <strong>{{ formatMoney(firstHalfBalance) }}</strong>
@@ -55,7 +61,7 @@
                 </div>
             </section>
 
-            <section class="chart-card city-frequency">
+            <section v-if="!isLoading" class="chart-card city-frequency">
                 <div class="section-head">
                     <div>
                             <span class="eyebrow">Operação</span>
@@ -73,7 +79,7 @@
                 </div>
             </section>
 
-            <section class="dashboard-stack">
+            <section v-if="!isLoading" class="dashboard-stack">
                 <article class="chart-card">
                     <div class="section-head">
                         <div>
@@ -154,6 +160,7 @@ export default {
                 topCity: { name: 'Sem dados', count: 0 },
                 topExpenses: []
             },
+            isLoading: false,
             selectedMonth: new Date().getMonth() + 1,
             selectedYear: new Date().getFullYear(),
             months: [
@@ -291,6 +298,7 @@ export default {
 
     methods: {
         async fetchDashboardData() {
+            this.isLoading = true
             try {
                 this.dashboard = await getDashboardData({
                     month: this.selectedMonth,
@@ -298,6 +306,8 @@ export default {
                 })
             } catch (error) {
                 console.error(error)
+            } finally {
+                this.isLoading = false
             }
         },
 

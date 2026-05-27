@@ -20,7 +20,13 @@
                 </div>
             </section>
 
-            <section class="summary-grid">
+            <div v-if="isLoading" class="page-loading-state">
+                <span class="loader"></span>
+                <strong>Carregando financeiro</strong>
+                <p>Buscando receitas, despesas e solicitacoes de extrato.</p>
+            </div>
+
+            <section v-if="!isLoading" class="summary-grid">
                 <article v-for="card in summaryCards" :key="card.label" class="summary-card" :class="card.tone">
                     <small>{{ card.label }}</small>
                     <strong>{{ formatMoney(card.value) }}</strong>
@@ -28,7 +34,7 @@
                 </article>
             </section>
 
-            <section class="filter-card">
+            <section v-if="!isLoading" class="filter-card">
                 <div class="search-box">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input v-model="searchTerm" type="text" placeholder="Buscar por categoria, descrição ou data" />
@@ -41,7 +47,7 @@
                 </select>
             </section>
 
-            <section class="finance-layout">
+            <section v-if="!isLoading" class="finance-layout">
                 <div class="finance-column">
                     <div class="section-title">
                         <div>
@@ -161,7 +167,7 @@
             </section>
         </div>
 
-        <ModalDefault :isLoading="false" :is-visible="showExpenseModal" max-width="460px" min-width="320px"
+        <ModalDefault :isLoading="isLoading" :is-visible="showExpenseModal" max-width="460px" min-width="320px"
             @update:isVisible="cancelExpense">
             <div class="modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-receipt"></i></span>
@@ -198,7 +204,7 @@
             </ButtonComp>
         </ModalDefault>
 
-        <ModalDefault :isLoading="false" :is-visible="showRevenueModal" max-width="460px" min-width="320px"
+        <ModalDefault :isLoading="isLoading" :is-visible="showRevenueModal" max-width="460px" min-width="320px"
             @update:isVisible="cancelRevenue">
             <div class="modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-circle-dollar-to-slot"></i></span>
@@ -278,6 +284,7 @@ export default {
                 statementRequests: []
             },
             profileType: localStorage.getItem('profileType') || 'driver',
+            isLoading: false,
             selectedMonth: new Date().getMonth() + 1,
             selectedYear: new Date().getFullYear(),
             searchTerm: '',
@@ -376,12 +383,15 @@ export default {
 
     methods: {
         async fetchFinance() {
+            this.isLoading = true
             try {
                 this.finance.revenues = await listRevenues()
                 this.finance.expenses = await listExpenses()
                 if (!this.isDriver) this.finance.statementRequests = await listStatementRequests()
             } catch (error) {
                 console.error(error)
+            } finally {
+                this.isLoading = false
             }
         },
 
@@ -431,22 +441,28 @@ export default {
         async saveRevenue() {
             if (!this.canSaveRevenue) return
 
+            this.isLoading = true
             try {
                 await saveRevenueApi(this.revenueForm)
                 await this.fetchFinance()
                 this.cancelRevenue()
             } catch (error) {
                 console.error(error)
+            } finally {
+                this.isLoading = false
             }
         },
 
         async deleteRevenue(id) {
+            this.isLoading = true
             try {
                 await removeRevenueApi(id)
                 await this.fetchFinance()
                 this.cancelRevenue()
             } catch (error) {
                 console.error(error)
+            } finally {
+                this.isLoading = false
             }
         },
 
@@ -465,21 +481,27 @@ export default {
                 }))
             }
 
+            this.isLoading = true
             try {
                 await saveExpenseApi(payload)
                 await this.fetchFinance()
                 this.cancelExpense()
             } catch (error) {
                 console.error(error)
+            } finally {
+                this.isLoading = false
             }
         },
 
         async deleteExpense(id) {
+            this.isLoading = true
             try {
                 await removeExpenseApi(id)
                 this.finance.expenses = this.finance.expenses.filter(expense => expense.id !== id)
             } catch (error) {
                 console.error(error)
+            } finally {
+                this.isLoading = false
             }
         },
 
@@ -497,6 +519,7 @@ export default {
         async requestStatement() {
             if (!this.canRequestStatement) return
 
+            this.isLoading = true
             try {
                 const request = await createStatementRequestApi(this.statementForm)
                 this.finance.statementRequests.unshift(request)
@@ -509,6 +532,8 @@ export default {
                 }
             } catch (error) {
                 console.error(error)
+            } finally {
+                this.isLoading = false
             }
         },
 

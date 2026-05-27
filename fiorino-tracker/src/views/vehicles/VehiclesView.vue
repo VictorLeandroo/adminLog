@@ -14,13 +14,19 @@
                 </ButtonComp>
             </section>
 
-            <section v-if="isDriver && !hasVehicle" class="driver-empty-state">
+            <div v-if="isLoading" class="page-loading-state">
+                <span class="loader"></span>
+                <strong>Carregando veiculos</strong>
+                <p>Consultando frota, motorista vinculado e historico.</p>
+            </div>
+
+            <section v-else-if="isDriver && !hasVehicle" class="driver-empty-state">
                 <i class="fa-solid fa-van-shuttle"></i>
                 <strong>Nenhum veículo vinculado</strong>
                 <p>Peça para a administração vincular um veículo ao seu usuário motorista.</p>
             </section>
 
-            <template v-if="isDriver && hasVehicle">
+            <template v-else-if="isDriver && hasVehicle">
                 <section class="vehicle-status-card">
                     <div>
                         <span class="status-pill" :class="currentVehicle.status === 'Em dia' ? 'done' : 'pending'">
@@ -189,7 +195,7 @@
             </template>
         </div>
 
-        <ModalDefault :is-visible="showVehicleModal" :isLoading="false" max-width="520px" min-width="320px"
+        <ModalDefault :is-visible="showVehicleModal" :isLoading="isLoading" max-width="520px" min-width="320px"
             @update:isVisible="cancelVehicleModal">
             <div class="modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-van-shuttle"></i></span>
@@ -267,7 +273,7 @@
             </ButtonComp>
         </ModalDefault>
 
-        <ModalDefault :is-visible="showMaintenanceModal" :isLoading="false" max-width="480px" min-width="320px"
+        <ModalDefault :is-visible="showMaintenanceModal" :isLoading="isLoading" max-width="480px" min-width="320px"
             @update:isVisible="cancelMaintenanceModal">
             <div class="modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span>
@@ -509,12 +515,15 @@ export default {
         },
 
         async removeVehicle(id) {
+            this.isLoading = true
             try {
                 await removeVehicleApi(id)
                 this.vehicles = this.vehicles.filter(vehicle => vehicle.id !== id)
             } catch (error) {
                 console.error(error)
                 this.errorMessage = error.response?.data?.message || 'Não foi possível remover o veículo.'
+            } finally {
+                this.isLoading = false
             }
         },
 
@@ -537,6 +546,7 @@ export default {
         async saveMaintenance() {
             if (!this.canSaveMaintenance) return
 
+            this.isLoading = true
             try {
                 await createMaintenanceApi(this.selectedVehicle.id, this.maintenanceForm)
                 await this.fetchVehicles()
@@ -544,6 +554,8 @@ export default {
             } catch (error) {
                 console.error(error)
                 this.errorMessage = error.response?.data?.message || 'Não foi possível salvar a revisão.'
+            } finally {
+                this.isLoading = false
             }
         },
 

@@ -14,7 +14,13 @@
                 </ButtonComp>
             </section>
 
-            <section class="users-grid">
+            <div v-if="isLoading && !showUserModal && !showPasswordModal" class="page-loading-state">
+                <span class="loader"></span>
+                <strong>Carregando usuarios</strong>
+                <p>Buscando motoristas, administradores e status de acesso.</p>
+            </div>
+
+            <section v-else class="users-grid">
                 <article v-for="user in users" :key="user.id" class="user-card" :class="{ inactive: !user.active }">
                     <div class="user-head">
                         <div>
@@ -228,11 +234,14 @@ export default {
         },
 
         async toggleActive(user) {
+            this.isLoading = true
             try {
                 await setUserActiveApi(user, !user.active)
                 await this.fetchUsers()
             } catch (error) {
                 console.error(error)
+            } finally {
+                this.isLoading = false
             }
         },
 
