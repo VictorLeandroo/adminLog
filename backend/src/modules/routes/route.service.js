@@ -342,73 +342,123 @@ function drawText(commands, text, x, y, size = 8) {
   commands.push(`BT /F1 ${size} Tf ${x} ${y} Td (${escapePdfText(text)}) Tj ET`);
 }
 
+function drawTextRight(commands, text, x, y, size = 8) {
+  const safeText = escapePdfText(text);
+  commands.push(`BT /F1 ${size} Tf ${x} ${y} Td (${safeText}) Tj ET`);
+}
+
 function drawLine(commands, x1, y1, x2, y2) {
   commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
 }
 
+function drawRect(commands, x, y, width, height) {
+  commands.push(`${x} ${y} ${width} ${height} re S`);
+}
+
+function fillRect(commands, x, y, width, height, color = '1 1 0') {
+  commands.push('q');
+  commands.push(`${color} rg`);
+  commands.push(`${x} ${y} ${width} ${height} re f`);
+  commands.push('Q');
+}
+
+function textWidth(text, size) {
+  return String(text ?? '').length * size * 0.48;
+}
+
+function drawMoneyRight(commands, value, rightX, y, size = 6) {
+  const text = formatMoney(value);
+  drawTextRight(commands, text, rightX - textWidth(text, size), y, size);
+}
+
 function buildPdf(routes, { start, end, title = 'Relatorio de frete' }) {
-  const width = 842;
-  const height = 595;
-  const margin = 32;
-  const rowHeight = 22;
-  const rowsPerPage = 18;
-  const columns = [
-    { title: 'DATA', x: 36, w: 55 },
-    { title: 'MOTORISTA', x: 96, w: 98 },
-    { title: 'VEICULO', x: 200, w: 92 },
-    { title: 'CIDADES', x: 298, w: 140 },
-    { title: 'NOTAS', x: 444, w: 108 },
-    { title: 'KM', x: 558, w: 70 },
-    { title: 'VALOR', x: 634, w: 84 },
-  ];
+  const width = 595;
+  const height = 842;
+  const margin = 14;
+  const tableWidth = width - (margin * 2);
+  const blockHeight = 70;
+  const rowsPerPage = 10;
+  const leftW = 92;
+  const labelW = 78;
+  const valueW = tableWidth - leftW - labelW - 88;
+  const amountW = 88;
+  const x0 = margin;
+  const x1 = x0 + leftW;
+  const x2 = x1 + labelW;
+  const x3 = x2 + valueW;
+  const x4 = x3 + amountW;
   const pages = [];
   const totalPages = Math.max(1, Math.ceil(routes.length / rowsPerPage));
   const totalKm = routes.reduce((sum, route) => sum + Math.max(0, Number(route.finalKm || 0) - Number(route.initialKm || 0)), 0);
   const totalFreight = routes.reduce((sum, route) => sum + Number(route.freightAmount || 0), 0);
 
   for (let pageIndex = 0; pageIndex < totalPages; pageIndex += 1) {
-    const commands = ['0.8 w'];
+    const commands = ['0.45 w'];
     const pageRows = routes.slice(pageIndex * rowsPerPage, (pageIndex + 1) * rowsPerPage);
-    const tableTop = 485;
+    let y = height - 28;
 
-    drawText(commands, title.toUpperCase(), margin, 550, 16);
-    drawText(commands, `Periodo: ${formatDate(start)} a ${formatDate(end)}`, margin, 528, 10);
-    drawText(commands, `Gerado em: ${formatDate(new Date())}`, 650, 528, 9);
+    fillRect(commands, x0, y, tableWidth - amountW, 12);
+    fillRect(commands, x3, y, amountW, 12);
+    drawRect(commands, x0, y, tableWidth - amountW, 12);
+    drawRect(commands, x3, y, amountW, 12);
+    drawText(commands, title.toUpperCase(), x0 + 4, y + 3, 7);
+    drawText(commands, 'PLACA', x3 + 4, y + 3, 7);
+    drawText(commands, routes[0]?.vehicle?.plate || '', x3 + 34, y + 3, 7);
+    y -= 12;
 
-    drawLine(commands, margin, 516, width - margin, 516);
-
-    columns.forEach((column) => drawText(commands, column.title, column.x, tableTop + 8, 8));
-    drawLine(commands, margin, tableTop, 722, tableTop);
-    drawLine(commands, margin, tableTop + rowHeight, 722, tableTop + rowHeight);
-
-    pageRows.forEach((route, index) => {
-      const y = tableTop - ((index + 1) * rowHeight) + 8;
+    pageRows.forEach((route) => {
       const km = Math.max(0, Number(route.finalKm || 0) - Number(route.initialKm || 0));
       const cityText = route.cities.map((city) => city.name).join(', ');
       const invoiceText = route.invoices.map((invoice) => invoice.number).join(', ');
       const vehicleText = `${route.vehicle.plate || ''} ${route.vehicle.model || ''}`.trim();
+      const rowY = y - blockHeight;
+      const rowLines = [12, 24, 36, 48, 58, 70];
 
-      drawText(commands, formatDate(route.date), columns[0].x, y, 7);
-      drawText(commands, truncate(route.driver.name, 17), columns[1].x, y, 7);
-      drawText(commands, truncate(vehicleText, 16), columns[2].x, y, 7);
-      drawText(commands, truncate(cityText, 26), columns[3].x, y, 7);
-      drawText(commands, truncate(invoiceText, 20), columns[4].x, y, 7);
-      drawText(commands, `${km} km`, columns[5].x, y, 7);
-      drawText(commands, formatMoney(route.freightAmount), columns[6].x, y, 7);
-      drawLine(commands, margin, tableTop - ((index + 1) * rowHeight), 722, tableTop - ((index + 1) * rowHeight));
-    });
+      drawRect(commands, x0, rowY, tableWidth, blockHeight);
+      drawLine(commands, x1, rowY, x1, y);
+      drawLine(commands, x2, rowY, x2, y);
+      drawLine(commands, x3, rowY, x3, y);
+      rowLines.forEach((offset) => drawLine(commands, x0, y - offset, x4, y - offset));
 
-    columns.forEach((column) => {
-      drawLine(commands, column.x - 4, tableTop + rowHeight, column.x - 4, tableTop - (rowsPerPage * rowHeight));
+      drawText(commands, formatDate(route.date), x0 + 5, y - 9, 6);
+      drawText(commands, truncate(cityText || 'ENTREGA', 39), x1 + 4, y - 9, 6);
+      drawText(commands, 'R$', x3 + 5, y - 9, 6);
+      drawMoneyRight(commands, route.freightAmount, x4 - 5, y - 9, 6);
+
+      drawText(commands, 'MOTORISTA', x1 + 4, y - 21, 5);
+      drawText(commands, truncate(route.driver.name, 33), x2 + 4, y - 21, 6);
+      drawText(commands, 'KM', x3 + 5, y - 21, 5);
+      drawText(commands, `${km}`, x4 - 28, y - 21, 6);
+
+      drawText(commands, 'NOTAS', x1 + 4, y - 33, 5);
+      drawText(commands, truncate(invoiceText || '-', 35), x2 + 4, y - 33, 6);
+      drawText(commands, 'VEICULO', x3 + 5, y - 33, 5);
+      drawText(commands, truncate(vehicleText, 14), x3 + 34, y - 33, 6);
+
+      drawText(commands, 'KM INICIAL', x1 + 4, y - 45, 5);
+      drawText(commands, String(route.initialKm || 0), x2 + 4, y - 45, 6);
+      drawText(commands, 'KM FINAL', x3 + 5, y - 45, 5);
+      drawText(commands, String(route.finalKm || 0), x4 - 38, y - 45, 6);
+
+      drawText(commands, 'OBS', x1 + 4, y - 56, 5);
+      drawText(commands, 'FRETE', x2 + 4, y - 56, 6);
+      drawText(commands, 'TOTAL', x3 + 5, y - 56, 5);
+      drawMoneyRight(commands, route.freightAmount, x4 - 5, y - 56, 6);
+
+      drawText(commands, 'CIDADES', x1 + 4, y - 67, 5);
+      drawText(commands, truncate(cityText || '-', 47), x2 + 4, y - 67, 6);
+
+      y = rowY - 4;
     });
-    drawLine(commands, 722, tableTop + rowHeight, 722, tableTop - (rowsPerPage * rowHeight));
 
     if (pageIndex === totalPages - 1) {
-      drawText(commands, `TOTAL KM: ${totalKm} km`, 500, 58, 10);
-      drawText(commands, `TOTAL FRETE: ${formatMoney(totalFreight)}`, 620, 58, 10);
+      fillRect(commands, x0, y - 15, tableWidth, 14);
+      drawRect(commands, x0, y - 15, tableWidth, 14);
+      drawText(commands, `TOTAL GERAL`, x3 - 70, y - 10, 7);
+      drawText(commands, `${totalKm} KM`, x3 + 6, y - 10, 7);
+      drawMoneyRight(commands, totalFreight, x4 - 5, y - 10, 7);
     }
 
-    drawText(commands, `Pagina ${pageIndex + 1}`, 760, 28, 8);
     pages.push(commands.join('\n'));
   }
 
