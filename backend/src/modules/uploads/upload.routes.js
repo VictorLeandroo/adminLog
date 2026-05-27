@@ -53,10 +53,16 @@ function localUploadResponse(file) {
   };
 }
 
+function supabaseConfig() {
+  return {
+    url: process.env.SUPABASE_URL?.replace(/\/$/, ''),
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    bucket: process.env.SUPABASE_STORAGE_BUCKET || 'photos',
+  };
+}
+
 async function supabaseUploadResponse(file) {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'photos';
+  const { url: supabaseUrl, key: supabaseKey, bucket } = supabaseConfig();
 
   if (!supabaseUrl || !supabaseKey || !file.mimetype?.startsWith('image/')) {
     return localUploadResponse(file);
@@ -64,8 +70,7 @@ async function supabaseUploadResponse(file) {
 
   const filename = `${Date.now()}-${crypto.randomUUID()}${safeExtension(file)}`;
   const objectPath = `uploads/${filename}`;
-  const normalizedUrl = supabaseUrl.replace(/\/$/, '');
-  const uploadUrl = `${normalizedUrl}/storage/v1/object/${bucket}/${objectPath}`;
+  const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${objectPath}`;
 
   const response = await fetch(uploadUrl, {
     method: 'POST',
@@ -84,11 +89,45 @@ async function supabaseUploadResponse(file) {
   }
 
   return {
-    fileUrl: `${normalizedUrl}/storage/v1/object/public/${bucket}/${objectPath}`,
+    fileUrl: `/uploads/supabase/${objectPath}`,
     fileName: file.originalname,
     mimeType: file.mimetype,
     size: file.size,
   };
+}
+
+async function streamSupabaseObject(req, res, next) {
+  const objectPath = req.params[0];
+  const { url: supabaseUrl, key: supabaseKey, bucket } = supabaseConfig();
+
+  if (!objectPath || !supabaseUrl || !supabaseKey) {
+    return next(new AppError('Arquivo nao encontrado', 404));
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${objectPath}`, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      return next(new AppError('Arquivo nao encontrado', 404));
+    }
+
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    const contentLength = response.headers.get('content-length');
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return res.send(buffer);
+  } catch (error) {
+    return next(error);
+  }
 }
 
 router.post('/', upload.single('file'), async (req, res, next) => {
@@ -103,5 +142,7 @@ router.post('/', upload.single('file'), async (req, res, next) => {
     return next(error);
   }
 });
+
+router.streamSupabaseObject = streamSupabaseObject;
 
 module.exports = router;
