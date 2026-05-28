@@ -66,7 +66,6 @@ const reviewSchema = finishSchema.extend({
 });
 
 const deliveryProgressSchema = z.object({
-  plannedDeliveries: z.number().int().min(0).optional().nullable(),
   note: z.string().optional().nullable(),
   photos: z.array(z.object({
     fileUrl: z.string(),
@@ -443,7 +442,6 @@ async function addDeliveryProgress(user, id, input) {
   return prisma.route.update({
     where: { id },
     data: {
-      plannedDeliveries: data.plannedDeliveries === undefined ? undefined : data.plannedDeliveries,
       photos: {
         create: data.photos.map((photo, index) => ({
           fileUrl: photo.fileUrl,

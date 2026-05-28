@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Fiorino Driver",
+    "slug": "fiorino-driver-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0c1118"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.fiorino.driver.mobile",
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.fiorino.driver.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "O app usa a câmera para registrar fotos das entregas.",
+        "NSPhotoLibraryUsageDescription": "O app usa a galeria para anexar fotos das entregas."
+      }
+    }
+  }
+}

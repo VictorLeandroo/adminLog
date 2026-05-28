@@ -406,7 +406,6 @@ export async function finishRouteApi(id, payload) {
 
 export async function addRouteDeliveryApi(id, payload) {
   const response = await api.post(`/routes/${id}/deliveries`, {
-    plannedDeliveries: payload.plannedDeliveries ? Number(payload.plannedDeliveries) : null,
     note: payload.note || null,
     photos: await photosPayload(payload.photos)
   })

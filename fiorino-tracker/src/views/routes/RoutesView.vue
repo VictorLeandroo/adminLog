@@ -404,10 +404,6 @@
             <input type="text" v-model="deliveryForm.note" class="w-100 mb-2"
                 placeholder="Ex: NF 5674 ou cliente Maria" />
 
-            <label class="form-label">Total previsto <span class="optional-label">opcional</span></label>
-            <input type="number" min="0" v-model.number="deliveryForm.plannedDeliveries" class="w-100 mb-3"
-                placeholder="Ex: 4" />
-
             <ButtonComp :click-action="saveDeliveryProgress" :is-disabled="!canSaveDeliveryProgress"
                 btn-class="button-primary button-big w-100">
                 Salvar entrega
@@ -872,8 +868,7 @@ export default {
                 tollAmount: null
             },
             deliveryForm: {
-                note: '',
-                plannedDeliveries: ''
+                note: ''
             },
             adminForm: {
                 kmInicial: '',
@@ -1243,8 +1238,7 @@ export default {
         openDeliveryModal(route) {
             this.routeSelected = route
             this.deliveryForm = {
-                note: '',
-                plannedDeliveries: route.plannedDeliveries || ''
+                note: ''
             }
             this.deliveryPhotos = []
             this.showDeliveryModal = true
@@ -1420,7 +1414,6 @@ export default {
             try {
                 await addRouteDeliveryApi(this.routeSelected.id, {
                     note: this.deliveryForm.note,
-                    plannedDeliveries: this.deliveryForm.plannedDeliveries,
                     photos: newPhotos
                 })
                 await this.fetchRoutes()
@@ -1530,7 +1523,7 @@ export default {
         cancelDelivery() {
             this.showDeliveryModal = false
             this.routeSelected = null
-            this.deliveryForm = { note: '', plannedDeliveries: '' }
+            this.deliveryForm = { note: '' }
             this.deliveryPhotos = []
         },
 
