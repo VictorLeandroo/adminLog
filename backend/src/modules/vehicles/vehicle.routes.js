@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', requireRole('ADMIN'), controller.list);
+router.get('/', requireRole('ADMIN', 'FINANCE'), controller.list);
 router.get('/my-vehicle', requireRole('DRIVER', 'ADMIN'), controller.mine);
 router.get('/mine', requireRole('DRIVER', 'ADMIN'), controller.mine);
 router.get('/:id', requireRole('ADMIN'), controller.getById);

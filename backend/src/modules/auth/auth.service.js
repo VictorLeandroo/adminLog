@@ -15,14 +15,14 @@ const registerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['ADMIN', 'DRIVER']).default('DRIVER'),
+  role: z.enum(['ADMIN', 'DRIVER', 'FINANCE']).default('DRIVER'),
 });
 
 const userSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6).optional(),
-  role: z.enum(['ADMIN', 'DRIVER']).default('DRIVER'),
+  role: z.enum(['ADMIN', 'DRIVER', 'FINANCE']).default('DRIVER'),
   active: z.boolean().default(true),
   photoUrl: z.string().optional().nullable(),
   photoName: z.string().optional().nullable(),

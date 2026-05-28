@@ -2,7 +2,7 @@ const service = require('./finance.service');
 const asyncHandler = require('../../utils/asyncHandler');
 
 const listExpenses = asyncHandler(async (req, res) => {
-  res.json(await service.listExpenses(req.query));
+  res.json(await service.listExpenses(req.user, req.query));
 });
 
 const listRevenues = asyncHandler(async (req, res) => {

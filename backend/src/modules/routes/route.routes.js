@@ -15,6 +15,7 @@ router.get('/freight-pdf', requireRole('ADMIN'), controller.freightPdf);
 router.get('/freight-report', requireRole('ADMIN'), controller.freightReport);
 router.post('/', requireRole('ADMIN'), controller.create);
 router.post('/start', requireRole('DRIVER'), controller.start);
+router.post('/:id/deliveries', requireRole('DRIVER', 'ADMIN'), controller.addDelivery);
 router.patch('/:id/finish', requireRole('DRIVER', 'ADMIN'), controller.finish);
 router.post('/:id/finish', requireRole('DRIVER', 'ADMIN'), controller.finish);
 router.patch('/:id/request-correction', requireRole('DRIVER'), controller.reportError);

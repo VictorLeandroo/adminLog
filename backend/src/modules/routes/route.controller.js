@@ -29,6 +29,10 @@ const finish = asyncHandler(async (req, res) => {
   res.json(await service.finishRoute(req.user, req.params.id, req.body));
 });
 
+const addDelivery = asyncHandler(async (req, res) => {
+  res.json(await service.addDeliveryProgress(req.user, req.params.id, req.body));
+});
+
 const reportError = asyncHandler(async (req, res) => {
   res.json(await service.reportError(req.user, req.params.id, req.body));
 });
@@ -65,6 +69,7 @@ module.exports = {
   start,
   create,
   finish,
+  addDelivery,
   reportError,
   review,
   remove,

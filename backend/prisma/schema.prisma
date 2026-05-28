@@ -11,6 +11,7 @@ datasource db {
 enum UserRole {
   ADMIN
   DRIVER
+  FINANCE
 }
 
 enum VehicleStatus {
@@ -54,6 +55,7 @@ model User {
   assignedVehicles Vehicle[] @relation("VehicleDriver")
   routes           Route[]   @relation("RouteDriver")
   expenses         Expense[] @relation("ExpenseCreator")
+  salaryExpenses   Expense[] @relation("ExpenseDriver")
   revenues         Revenue[] @relation("RevenueCreator")
 }
 
@@ -118,6 +120,7 @@ model Route {
   date                DateTime
   initialKm           Int
   finalKm             Int?
+  plannedDeliveries   Int?
   freightAmount       Decimal?    @db.Decimal(12, 2)
   status              RouteStatus @default(IN_PROGRESS)
   correctionRequested Boolean     @default(false)
@@ -151,11 +154,14 @@ model RouteInvoice {
 }
 
 model RoutePhoto {
-  id        String   @id @default(uuid())
-  routeId   String
-  fileUrl   String
-  fileName  String?
-  createdAt DateTime @default(now())
+  id            String    @id @default(uuid())
+  routeId       String
+  fileUrl       String
+  fileName      String?
+  deliveryIndex Int?
+  deliveryNote  String?
+  deliveredAt   DateTime?
+  createdAt     DateTime  @default(now())
 
   route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
 }
@@ -172,6 +178,7 @@ model Expense {
   id          String   @id @default(uuid())
   vehicleId   String?
   createdById String
+  driverId    String?
   date        DateTime
   category    String
   description String?
@@ -182,6 +189,7 @@ model Expense {
 
   vehicle   Vehicle?       @relation(fields: [vehicleId], references: [id])
   createdBy User           @relation("ExpenseCreator", fields: [createdById], references: [id])
+  driver    User?          @relation("ExpenseDriver", fields: [driverId], references: [id])
   photos    ExpensePhoto[]
 }
 

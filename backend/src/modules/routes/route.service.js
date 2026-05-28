@@ -22,6 +22,7 @@ const FREIGHT_SETTINGS_ID = 'default';
 const startSchema = z.object({
   vehicleId: z.string().min(1),
   initialKm: z.number().int(),
+  plannedDeliveries: z.number().int().min(0).optional().nullable(),
   date: z.string().optional(),
 });
 
@@ -30,6 +31,7 @@ const createSchema = z.object({
   date: z.string().optional(),
   initialKm: z.number().int(),
   finalKm: z.number().int().optional().nullable(),
+  plannedDeliveries: z.number().int().min(0).optional().nullable(),
   freightAmount: z.number().optional().nullable(),
   status: z.enum(['IN_PROGRESS', 'PENDING_REVIEW', 'COMPLETED']).optional(),
   cities: z.array(z.string()).optional(),
@@ -41,6 +43,8 @@ const createSchema = z.object({
 
 const finishSchema = z.object({
   finalKm: z.number().int(),
+  plannedDeliveries: z.number().int().min(0).optional().nullable(),
+  tollAmount: z.number().min(0).optional().nullable(),
   cities: z.array(z.string()).optional(),
   cidades: z.array(z.string()).optional(),
   invoices: z.array(z.string()).optional(),
@@ -49,6 +53,9 @@ const finishSchema = z.object({
   photos: z.array(z.object({
     fileUrl: z.string(),
     fileName: z.string().optional(),
+    deliveryIndex: z.number().int().optional().nullable(),
+    deliveryNote: z.string().optional().nullable(),
+    deliveredAt: z.string().optional().nullable(),
   })).default([]),
 });
 
@@ -56,6 +63,15 @@ const reviewSchema = finishSchema.extend({
   initialKm: z.number().int().optional(),
   freightAmount: z.number().optional().nullable(),
   status: z.enum(['IN_PROGRESS', 'PENDING_REVIEW', 'COMPLETED']).optional(),
+});
+
+const deliveryProgressSchema = z.object({
+  plannedDeliveries: z.number().int().min(0).optional().nullable(),
+  note: z.string().optional().nullable(),
+  photos: z.array(z.object({
+    fileUrl: z.string(),
+    fileName: z.string().optional(),
+  })).min(1),
 });
 
 const freightSettingsSchema = z.object({
@@ -120,6 +136,10 @@ function getFinishPayload(data) {
   };
 }
 
+function tollRouteDescription(routeId) {
+  return `[ROUTE_TOLL:${routeId}] Pedagio da rota`;
+}
+
 async function listRoutes(user) {
   return prisma.route.findMany({
     where: user.role === 'DRIVER' ? { driverId: user.id } : undefined,
@@ -161,6 +181,7 @@ async function startRoute(user, input) {
       driverId: user.id,
       date: data.date ? new Date(data.date) : new Date(),
       initialKm: data.initialKm,
+      plannedDeliveries: data.plannedDeliveries || null,
       status: RouteStatus.IN_PROGRESS,
     },
     include,
@@ -208,6 +229,7 @@ async function createRoute(input) {
         date: data.date ? new Date(data.date) : new Date(),
         initialKm: data.initialKm,
         finalKm: hasFinishedData ? data.finalKm : null,
+        plannedDeliveries: data.plannedDeliveries || null,
         freightAmount: data.freightAmount,
         status,
         finishedAt: hasFinishedData ? new Date() : null,
@@ -246,10 +268,11 @@ async function finishRoute(user, id, input) {
       data: { currentKm: data.finalKm },
     });
 
-    return tx.route.update({
+    const updatedRoute = await tx.route.update({
       where: { id },
       data: {
         finalKm: data.finalKm,
+        plannedDeliveries: data.plannedDeliveries,
         status,
         finishedAt: new Date(),
         correctionRequested: false,
@@ -266,11 +289,37 @@ async function finishRoute(user, id, input) {
           create: payload.photos.map((photo) => ({
             fileUrl: photo.fileUrl,
             fileName: photo.fileName,
+            deliveryIndex: photo.deliveryIndex || null,
+            deliveryNote: photo.deliveryNote || null,
+            deliveredAt: photo.deliveredAt ? new Date(photo.deliveredAt) : null,
           })),
         },
       },
       include,
     });
+
+    await tx.expense.deleteMany({
+      where: {
+        vehicleId: route.vehicleId,
+        description: tollRouteDescription(id),
+      },
+    });
+
+    if (Number(data.tollAmount || 0) > 0) {
+      await tx.expense.create({
+        data: {
+          vehicleId: route.vehicleId,
+          createdById: user.id,
+          date: new Date(updatedRoute.date),
+          category: 'Pedagio',
+          description: tollRouteDescription(id),
+          amount: Number(data.tollAmount),
+          paid: true,
+        },
+      });
+    }
+
+    return updatedRoute;
   });
 }
 
@@ -315,11 +364,12 @@ async function reviewRoute(id, input) {
       });
     }
 
-    await tx.route.update({
+    const updatedRoute = await tx.route.update({
       where: { id },
       data: {
         initialKm: data.initialKm,
         finalKm: data.finalKm,
+        plannedDeliveries: data.plannedDeliveries,
         freightAmount: data.freightAmount,
         status: data.status ? RouteStatus[data.status] : undefined,
         finishedAt: data.finalKm !== undefined && data.finalKm !== null && data.status !== 'IN_PROGRESS' ? new Date() : undefined,
@@ -344,11 +394,67 @@ async function reviewRoute(id, input) {
           routeId: id,
           fileUrl: photo.fileUrl,
           fileName: photo.fileName || null,
+          deliveryIndex: photo.deliveryIndex || null,
+          deliveryNote: photo.deliveryNote || null,
+          deliveredAt: photo.deliveredAt ? new Date(photo.deliveredAt) : null,
         })),
       });
     }
 
+    await tx.expense.deleteMany({
+      where: {
+        vehicleId: route.vehicleId,
+        description: tollRouteDescription(id),
+      },
+    });
+
+    if (Number(data.tollAmount || 0) > 0) {
+      await tx.expense.create({
+        data: {
+          vehicleId: route.vehicleId,
+          createdById: route.driverId,
+          date: new Date(updatedRoute.date),
+          category: 'Pedagio',
+          description: tollRouteDescription(id),
+          amount: Number(data.tollAmount),
+          paid: true,
+        },
+      });
+    }
+
     return tx.route.findUnique({ where: { id }, include });
+  });
+}
+
+async function addDeliveryProgress(user, id, input) {
+  const data = deliveryProgressSchema.parse(input);
+  const route = await getRoute(id);
+
+  if (route.driverId !== user.id && user.role !== 'ADMIN') {
+    throw new AppError('Acesso negado', 403);
+  }
+
+  if (route.status !== RouteStatus.IN_PROGRESS) {
+    throw new AppError('So e possivel registrar entrega em rota em andamento', 400);
+  }
+
+  const nextIndex = route.photos.filter((photo) => photo.deliveredAt || photo.deliveryIndex).length + 1;
+
+  return prisma.route.update({
+    where: { id },
+    data: {
+      plannedDeliveries: data.plannedDeliveries === undefined ? undefined : data.plannedDeliveries,
+      photos: {
+        create: data.photos.map((photo, index) => ({
+          fileUrl: photo.fileUrl,
+          fileName: photo.fileName || null,
+          deliveryIndex: nextIndex + index,
+          deliveryNote: data.note || null,
+          deliveredAt: new Date(),
+        })),
+      },
+    },
+    include,
   });
 }
 
@@ -421,16 +527,19 @@ function expenseText(expense) {
   return `${expense.category || ''} ${expense.description || ''}`.toLowerCase();
 }
 
-function routeExtraAmount(route, expenses, keywords) {
+function routeExtraAmount(route, expenses, keywords, categories = []) {
   return expenses
     .filter((expense) => expense.vehicleId === route.vehicleId && dateOnly(expense.date) === dateOnly(route.date))
-    .filter((expense) => keywords.some((keyword) => expenseText(expense).includes(keyword)))
+    .filter((expense) => {
+      const categoryText = String(expense.category || '').toLowerCase();
+      return categories.includes(categoryText) || keywords.some((keyword) => expenseText(expense).includes(keyword));
+    })
     .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
 }
 
 function routeFreightValues(route, expenses, settings) {
   const excessKm = routeExcessKm(route, settings);
-  const toll = routeExtraAmount(route, expenses, ['pedagio', 'pedágio']);
+  const toll = routeExtraAmount(route, expenses, ['pedagio', 'pedágio'], ['pedagio']);
   const blueZone = routeExtraAmount(route, expenses, ['zona azul']);
   const unloading = routeExtraAmount(route, expenses, ['descarga']);
   const excessAmount = excessKm * settings.excessKmAmount;
@@ -911,6 +1020,7 @@ module.exports = {
   startRoute,
   createRoute,
   finishRoute,
+  addDeliveryProgress,
   reportError,
   reviewRoute,
   removeRoute,
