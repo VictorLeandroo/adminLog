@@ -2360,6 +2360,11 @@ export default {
 }
 
 @media (max-width: 520px) {
+    .routes-page .container {
+        padding-right: 10px;
+        padding-left: 10px;
+    }
+
     .route-toolbar {
         flex-direction: column;
         align-items: stretch;
@@ -2392,11 +2397,141 @@ export default {
         width: 100%;
     }
 
-    .route-actions,
-    .route-details,
     .form-grid {
         flex-direction: column;
         grid-template-columns: 1fr;
+    }
+
+    .route-list {
+        gap: 10px;
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: clip;
+    }
+
+    .route-card {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        border-radius: 12px;
+        padding: 10px;
+    }
+
+    .route-card-head {
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .route-title-block strong {
+        font-size: 14px;
+    }
+
+    .route-meta {
+        gap: 3px 8px;
+        margin-top: 3px;
+        font-size: 10px;
+    }
+
+    .route-meta span,
+    .route-title-block {
+        min-width: 0;
+    }
+
+    .route-meta span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .route-card .status-pill {
+        max-width: 96px;
+        padding: 4px 6px;
+        font-size: 9px;
+    }
+
+    .route-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        margin: 8px 0;
+    }
+
+    .route-metrics div,
+    .route-details div {
+        border-radius: 10px;
+        padding: 7px;
+    }
+
+    .route-metrics small,
+    .route-details small {
+        font-size: 10px;
+    }
+
+    .route-metrics strong {
+        font-size: 13px;
+    }
+
+    .route-details {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        margin-top: 6px;
+    }
+
+    .route-details p {
+        min-height: 28px;
+        font-size: 11px;
+        line-height: 1.25;
+        -webkit-line-clamp: 2;
+    }
+
+    .photo-strip {
+        gap: 6px;
+        margin-top: 8px;
+        padding: 6px;
+    }
+
+    .photo-strip img {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+    }
+
+    .correction-card {
+        margin-top: 8px;
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .route-actions {
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+        padding-top: 8px;
+    }
+
+    .route-actions>* {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .route-actions :deep(button) {
+        width: 100%;
+        max-width: 100%;
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: anywhere;
+        min-height: 34px;
+        padding: 7px 8px;
+        font-size: 11px;
+        line-height: 1.1;
+    }
+
+    .route-actions :deep(.button-content) {
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+        flex-wrap: wrap;
     }
 
     .admin-route-summary {
