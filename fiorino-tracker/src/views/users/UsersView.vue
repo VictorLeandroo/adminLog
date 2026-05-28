@@ -29,7 +29,7 @@
                             <small>{{ user.email }}</small>
                         </div>
                         <span class="role-pill" :class="user.role.toLowerCase()">
-                            {{ user.role === 'ADMIN' ? 'Admin' : 'Motorista' }}
+                            {{ roleLabel(user.role) }}
                         </span>
                     </div>
 
@@ -86,6 +86,7 @@
             <label class="form-label">Perfil</label>
             <select v-model="userForm.role" class="form-select w-100 mb-2">
                 <option value="DRIVER">Motorista</option>
+                <option value="FINANCE">Financeiro</option>
                 <option value="ADMIN">Admin</option>
             </select>
 
@@ -166,6 +167,12 @@ export default {
     },
 
     methods: {
+        roleLabel(role) {
+            if (role === 'ADMIN') return 'Admin'
+            if (role === 'FINANCE') return 'Financeiro'
+            return 'Motorista'
+        },
+
         emptyUserForm() {
             return {
                 id: null,
@@ -393,6 +400,11 @@ export default {
 .role-pill.admin {
     background: rgba(22, 163, 74, 0.14);
     color: #16a34a;
+}
+
+.role-pill.finance {
+    background: rgba(37, 99, 235, 0.14);
+    color: #2563eb;
 }
 
 .user-meta {

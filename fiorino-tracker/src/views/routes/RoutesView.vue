@@ -27,10 +27,15 @@
                         Configurar frete
                     </ButtonComp>
 
-                    <button class="role-chip" @click="toggleProfile">
+                    <button v-if="canToggleProfile" class="role-chip" @click="toggleProfile">
                         <i class="fa-solid" :class="isDriver ? 'fa-truck-fast' : 'fa-user-shield'"></i>
                         {{ isDriver ? 'Motorista' : 'Admin' }}
                     </button>
+
+                    <span v-else class="role-chip locked">
+                        <i class="fa-solid fa-truck-fast"></i>
+                        Motorista
+                    </span>
                 </div>
             </section>
 
@@ -60,6 +65,34 @@
                     </div>
                 </div>
 
+                <div v-if="activeRoute" class="delivery-progress-card">
+                    <div class="delivery-progress-head">
+                        <div>
+                            <small>Entregas</small>
+                            <strong>{{ deliveryProgressLabel(activeRoute) }}</strong>
+                            <span>{{ deliveryProgressHint(activeRoute) }}</span>
+                        </div>
+                        <ButtonComp btn-class="button-secundary" :click-action="() => openDeliveryModal(activeRoute)">
+                            <i class="fa-solid fa-camera"></i>
+                            Registrar entrega
+                        </ButtonComp>
+                    </div>
+
+                    <div class="delivery-timeline-shell"
+                        :style="{ '--delivery-progress': `${deliveryProgressPercent(activeRoute)}%` }">
+                        <div class="delivery-timeline-line"></div>
+                        <button v-for="step in deliveryTimelineSteps(activeRoute)" :key="step.index" type="button"
+                            class="delivery-step" :class="{ done: step.done, next: step.next }"
+                            :title="step.done ? `Entrega ${step.index} registrada` : `Entrega ${step.index} pendente`"
+                            @click="step.photo ? openLightbox(step.photo.url || step.photo.preview) : null">
+                            <span class="delivery-step-dot">
+                                <i class="fa-solid" :class="step.done ? 'fa-check' : 'fa-box'"></i>
+                            </span>
+                            <span>{{ step.done ? 'Entregue' : step.next ? 'Próxima' : 'Pendente' }}</span>
+                        </button>
+                    </div>
+                </div>
+
                 <p v-else class="empty-copy">
                     {{ routePanelMessage }}
                 </p>
@@ -77,11 +110,19 @@
                         Iniciar rota
                     </ButtonComp>
 
-                    <ButtonComp v-else btn-class="button-primary button-big w-100"
-                        :click-action="() => openFinishModal(activeRoute)">
-                        <i class="fa-solid fa-flag-checkered"></i>
-                        Finalizar rota
-                    </ButtonComp>
+                    <template v-else>
+                        <ButtonComp btn-class="button-secundary button-big w-100"
+                            :click-action="() => openDriverRouteDetails(activeRoute)">
+                            <i class="fa-solid fa-list-check"></i>
+                            Detalhes
+                        </ButtonComp>
+
+                        <ButtonComp btn-class="button-primary button-big w-100"
+                            :click-action="() => openFinishModal(activeRoute)">
+                            <i class="fa-solid fa-flag-checkered"></i>
+                            Finalizar rota
+                        </ButtonComp>
+                    </template>
                 </div>
             </section>
 
@@ -123,6 +164,9 @@
             <section v-else class="route-list">
                 <article v-for="route in filteredRoutes" :key="route.id" class="route-card" :class="route.statusClass">
                     <div class="route-card-head">
+                        <span class="route-card-icon" :class="route.statusClass">
+                            <i class="fa-solid fa-truck-fast"></i>
+                        </span>
                         <div class="route-title-block">
                             <strong>{{ formatDate(route.data) }}</strong>
                             <div class="route-meta">
@@ -138,37 +182,60 @@
 
                     <div class="route-metrics">
                         <div>
-                            <small>Inicial</small>
-                            <strong>{{ formatKm(route.kmInicial) }}</strong>
+                            <span class="metric-icon"><i class="fa-solid fa-truck-ramp-box"></i></span>
+                            <span>
+                                <small>Inicial</small>
+                                <strong>{{ formatKm(route.kmInicial) }}</strong>
+                            </span>
                         </div>
                         <div>
-                            <small>Final</small>
-                            <strong>{{ route.kmFinal ? formatKm(route.kmFinal) : '-' }}</strong>
+                            <span class="metric-icon final"><i class="fa-solid fa-flag-checkered"></i></span>
+                            <span>
+                                <small>Final</small>
+                                <strong>{{ route.kmFinal ? formatKm(route.kmFinal) : '-' }}</strong>
+                            </span>
                         </div>
                         <div>
-                            <small>Total</small>
-                            <strong>{{ calcPercorrido(route.kmInicial, route.kmFinal) }} km</strong>
+                            <span class="metric-icon total"><i class="fa-solid fa-route"></i></span>
+                            <span>
+                                <small>Total</small>
+                                <strong>{{ calcPercorrido(route.kmInicial, route.kmFinal) }} km</strong>
+                            </span>
                         </div>
                         <div v-if="!isDriver">
-                            <small>Frete</small>
-                            <strong>{{ formatMoney(routeFreightAmount(route)) }}</strong>
+                            <span class="metric-icon freight"><i class="fa-solid fa-file-invoice-dollar"></i></span>
+                            <span>
+                                <small>Frete</small>
+                                <strong>{{ formatMoney(routeFreightAmount(route)) }}</strong>
+                            </span>
                         </div>
                     </div>
 
                     <div class="route-details">
                         <div>
-                            <small>Cidades</small>
-                            <p>{{ route.cidades.length ? route.cidades.join(', ') : 'Aguardando cadastro' }}</p>
+                            <span class="detail-icon city"><i class="fa-solid fa-location-dot"></i></span>
+                            <span>
+                                <small>Cidades</small>
+                                <p>{{ route.cidades.length ? route.cidades.join(', ') : 'Aguardando cadastro' }}</p>
+                            </span>
                         </div>
                         <div>
-                            <small>Notas</small>
-                            <p>{{ route.notas.length ? route.notas.join(', ') : 'Aguardando cadastro' }}</p>
+                            <span class="detail-icon invoice"><i class="fa-regular fa-clipboard"></i></span>
+                            <span>
+                                <small>Notas</small>
+                                <p>{{ route.notas.length ? route.notas.join(', ') : 'Aguardando cadastro' }}</p>
+                            </span>
                         </div>
                     </div>
 
                     <div class="photo-strip" v-if="route.photos.length">
-                        <img v-for="(photo, index) in route.photos" :key="index" :src="photo.url || photo.preview"
+                        <img v-for="(photo, index) in visibleRoutePhotos(route)" :key="photo.id || photo.fileUrl || index"
+                            :src="photo.url || photo.preview"
                             @click="openPhotoPreview(route, index)" />
+                        <button v-if="hiddenRoutePhotoCount(route)" type="button" class="photo-more"
+                            @click="openPhotoPreview(route, visibleRoutePhotos(route).length)">
+                            +{{ hiddenRoutePhotoCount(route) }}
+                        </button>
                     </div>
 
                     <div class="correction-card" v-if="route.correctionRequested">
@@ -180,6 +247,18 @@
                     </div>
 
                     <div class="route-actions">
+                        <ButtonComp v-if="isDriver" btn-class="button-secundary w-100"
+                            :click-action="() => openDriverRouteDetails(route)">
+                            <i class="fa-solid fa-list-check"></i>
+                            Detalhes
+                        </ButtonComp>
+
+                        <ButtonComp v-if="isDriver && route.status === 'Em andamento'"
+                            btn-class="button-secundary w-100" :click-action="() => openDeliveryModal(route)">
+                            <i class="fa-solid fa-camera"></i>
+                            Entrega
+                        </ButtonComp>
+
                         <ButtonComp v-if="isDriver && route.status === 'Em andamento'" btn-class="button-primary w-100"
                             :click-action="() => openFinishModal(route)">
                             Finalizar
@@ -224,6 +303,10 @@
             <label class="form-label">KM inicial</label>
             <input type="number" v-model.number="startForm.kmInicial" class="w-100 mb-2" placeholder="Ex: 42380"
                 :disabled="!myVehicle" />
+
+            <label class="form-label">Quantidade de entregas <span class="optional-label">opcional</span></label>
+            <input type="number" min="0" v-model.number="startForm.plannedDeliveries" class="w-100 mb-2"
+                placeholder="Ex: 4" :disabled="!myVehicle" />
 
             <ButtonComp :click-action="startRoute" :is-disabled="!canStartRoute"
                 btn-class="button-primary button-big w-100">
@@ -273,6 +356,10 @@
                 <input type="text" v-model="createRouteForm.notasStr" class="w-100 mb-2"
                     placeholder="Ex: 5674, 5675, 5676" />
 
+                <label class="form-label">Quantidade de entregas <span class="optional-label">opcional</span></label>
+                <input type="number" min="0" v-model.number="createRouteForm.plannedDeliveries"
+                    class="w-100 mb-2" placeholder="Ex: 4" />
+
                 <div class="freight-summary mb-2">
                     <div>
                         <small>Frete calculado</small>
@@ -293,6 +380,110 @@
                 btn-class="button-primary button-big w-100">
                 Criar rota
             </ButtonComp>
+        </ModalDefault>
+
+        <ModalDefault :isLoading="isModalLoading" :is-visible="showDeliveryModal" max-width="460px" min-width="320px"
+            @update:isVisible="cancelDelivery">
+            <div class="route-modal-head">
+                <span class="modal-icon"><i class="fa-solid fa-camera"></i></span>
+                <div>
+                    <h6>Registrar entrega</h6>
+                    <p>Envie a foto da nota ou comprovante. Número da nota é opcional.</p>
+                </div>
+            </div>
+
+            <div class="delivery-modal-summary" v-if="routeSelected">
+                <span>{{ deliveryProgressLabel(routeSelected) }}</span>
+                <strong>Próxima: {{ deliveredCount(routeSelected) + 1 }}</strong>
+            </div>
+
+            <label class="form-label">Fotos da entrega</label>
+            <PhotoUploadComp v-model="deliveryPhotos" />
+
+            <label class="form-label mt-2">Observação <span class="optional-label">opcional</span></label>
+            <input type="text" v-model="deliveryForm.note" class="w-100 mb-2"
+                placeholder="Ex: NF 5674 ou cliente Maria" />
+
+            <label class="form-label">Total previsto <span class="optional-label">opcional</span></label>
+            <input type="number" min="0" v-model.number="deliveryForm.plannedDeliveries" class="w-100 mb-3"
+                placeholder="Ex: 4" />
+
+            <ButtonComp :click-action="saveDeliveryProgress" :is-disabled="!canSaveDeliveryProgress"
+                btn-class="button-primary button-big w-100">
+                Salvar entrega
+            </ButtonComp>
+        </ModalDefault>
+
+        <ModalDefault :isLoading="isModalLoading" :is-visible="showDriverDetailsModal" max-width="760px" min-width="320px"
+            @update:isVisible="cancelDriverRouteDetails">
+            <div class="route-modal-head">
+                <span class="modal-icon"><i class="fa-solid fa-list-check"></i></span>
+                <div>
+                    <h6>Detalhes da rota</h6>
+                    <p>Confira todas as fotos, cidades e notas registradas.</p>
+                </div>
+            </div>
+
+            <div v-if="routeSelected" class="modal-scroll-content driver-details-content">
+                <div class="driver-detail-summary">
+                    <div>
+                        <small>Data</small>
+                        <strong>{{ formatDate(routeSelected.data) }}</strong>
+                    </div>
+                    <div>
+                        <small>Status</small>
+                        <strong>{{ routeSelected.status }}</strong>
+                    </div>
+                    <div>
+                        <small>Entregas</small>
+                        <strong>{{ deliveryProgressLabel(routeSelected) }}</strong>
+                    </div>
+                    <div>
+                        <small>KM</small>
+                        <strong>{{ formatKm(routeSelected.kmInicial) }} / {{ routeSelected.kmFinal ? formatKm(routeSelected.kmFinal) : '-' }}</strong>
+                    </div>
+                </div>
+
+                <section class="driver-detail-section">
+                    <div class="driver-detail-title">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <strong>Cidades</strong>
+                        <span>{{ routeSelected.cidades.length }}</span>
+                    </div>
+                    <div v-if="routeSelected.cidades.length" class="detail-chip-list">
+                        <span v-for="city in routeSelected.cidades" :key="city">{{ city }}</span>
+                    </div>
+                    <p v-else class="detail-empty-copy">Nenhuma cidade cadastrada ainda.</p>
+                </section>
+
+                <section class="driver-detail-section">
+                    <div class="driver-detail-title">
+                        <i class="fa-regular fa-clipboard"></i>
+                        <strong>Notas</strong>
+                        <span>{{ routeSelected.notas.length }}</span>
+                    </div>
+                    <div v-if="routeSelected.notas.length" class="detail-chip-list">
+                        <span v-for="note in routeSelected.notas" :key="note">{{ note }}</span>
+                    </div>
+                    <p v-else class="detail-empty-copy">Nenhuma nota cadastrada ainda.</p>
+                </section>
+
+                <section class="driver-detail-section">
+                    <div class="driver-detail-title">
+                        <i class="fa-regular fa-images"></i>
+                        <strong>Fotos</strong>
+                        <span>{{ routeSelected.photos.length }}</span>
+                    </div>
+                    <div v-if="routeSelected.photos.length" class="driver-photo-grid">
+                        <button v-for="(photo, index) in routeSelected.photos" :key="photo.id || photo.fileUrl || index"
+                            type="button" @click="openLightbox(photo.url || photo.preview)">
+                            <img :src="photo.url || photo.preview" />
+                            <span v-if="photo.deliveryIndex">Entrega {{ photo.deliveryIndex }}</span>
+                        </button>
+                    </div>
+                    <p v-else class="detail-empty-copy">Nenhuma foto enviada ainda.</p>
+                </section>
+            </div>
         </ModalDefault>
 
         <ModalDefault :isLoading="isModalLoading" :is-visible="showFinishModal" max-width="460px" min-width="320px"
@@ -322,6 +513,10 @@
                 <label class="form-label mt-2">Números das notas</label>
                 <input type="text" v-model="finishForm.notasStr" class="w-100 mb-2"
                     placeholder="Ex: 5674, 5675, 5676" />
+
+                <label class="form-label">Pedágio <span class="optional-label">opcional</span></label>
+                <input type="number" min="0" step="0.01" v-model.number="finishForm.tollAmount" class="w-100 mb-2"
+                    placeholder="Ex: 25,90" />
             </div>
 
             <div class="analysis-note" v-if="willNeedAnalysis">
@@ -436,6 +631,21 @@
                         <label class="form-label">Notas fiscais</label>
                         <textarea v-model="adminForm.notasStr" class="w-100 admin-textarea notes mb-2"></textarea>
 
+                        <label class="form-label">Quantidade de entregas <span class="optional-label">opcional</span></label>
+                        <input type="number" min="0" v-model.number="adminForm.plannedDeliveries"
+                            class="w-100 mb-2" placeholder="Ex: 4" />
+
+                        <div class="admin-delivery-overview" v-if="routeSelected">
+                            <div>
+                                <small>Progresso</small>
+                                <strong>{{ deliveryProgressLabel(adminPreviewRoute) }}</strong>
+                            </div>
+                            <div class="mini-delivery-timeline">
+                                <span v-for="step in deliveryTimelineSteps(adminPreviewRoute)" :key="step.index"
+                                    :class="{ done: step.done }"></span>
+                            </div>
+                        </div>
+
                         <label class="form-label">Fotos das notas</label>
                         <PhotoUploadComp v-model="adminRoutePhotos" />
 
@@ -452,6 +662,10 @@
                             <input v-if="adminForm.useManualFreightAmount" type="number"
                                 v-model.number="adminForm.freightAmount" class="w-100" placeholder="0,00" />
                         </div>
+
+                        <label class="form-label">Pedágio <span class="optional-label">opcional</span></label>
+                        <input type="number" min="0" step="0.01" v-model.number="adminForm.tollAmount" class="w-100 mb-2"
+                            placeholder="Ex: 25,90" />
 
                         <label class="form-label">Status</label>
                         <select v-model="adminForm.status" class="form-select w-100 mb-2">
@@ -582,6 +796,7 @@ import ModalDelete from '@/components/modals/ModalDelete.vue';
 import PhotoUploadComp from '@/components/PhotoUploadComp.vue';
 import { notifyError, notifySuccess } from '@/services/notificationService';
 import {
+    addRouteDeliveryApi,
     createRouteApi,
     downloadFreightPdf,
     finishRouteApi,
@@ -611,7 +826,7 @@ export default {
 
     data() {
         return {
-            profileType: localStorage.getItem('profileType') || 'driver',
+            profileType: this.initialProfileType(),
             routes: [],
             myVehicle: null,
             myVehicleLoaded: false,
@@ -624,6 +839,8 @@ export default {
             adminVehicles: [],
             showStartModal: false,
             showCreateRouteModal: false,
+            showDeliveryModal: false,
+            showDriverDetailsModal: false,
             showFinishModal: false,
             showAdminModal: false,
             showCorrectionModal: false,
@@ -633,7 +850,8 @@ export default {
             isModalLoading: false,
             routeSelected: null,
             startForm: {
-                kmInicial: ''
+                kmInicial: '',
+                plannedDeliveries: ''
             },
             createRouteForm: {
                 vehicleId: '',
@@ -642,6 +860,7 @@ export default {
                 kmFinal: '',
                 cidadesStr: '',
                 notasStr: '',
+                plannedDeliveries: '',
                 freightAmount: null,
                 useManualFreightAmount: false,
                 status: 'Concluida'
@@ -649,14 +868,21 @@ export default {
             finishForm: {
                 kmFinal: '',
                 cidadesStr: '',
-                notasStr: ''
+                notasStr: '',
+                tollAmount: null
+            },
+            deliveryForm: {
+                note: '',
+                plannedDeliveries: ''
             },
             adminForm: {
                 kmInicial: '',
                 kmFinal: '',
                 cidadesStr: '',
                 notasStr: '',
+                plannedDeliveries: '',
                 freightAmount: null,
+                tollAmount: null,
                 useManualFreightAmount: false,
                 status: 'Pendente de analise',
                 correctionRequested: false,
@@ -669,6 +895,7 @@ export default {
             freightSettings: this.defaultFreightSettings(),
             freightSettingsForm: this.defaultFreightSettings(),
             photos: [],
+            deliveryPhotos: [],
             adminRoutePhotos: [],
             lightboxPhoto: null,
             adminPhotoIndex: 0,
@@ -687,8 +914,20 @@ export default {
     },
 
     computed: {
+        currentUser() {
+            return this.getStoredUser()
+        },
+
+        isAdminUser() {
+            return this.currentUser?.role === 'ADMIN'
+        },
+
+        canToggleProfile() {
+            return this.isAdminUser
+        },
+
         isDriver() {
-            return this.profileType === 'driver'
+            return !this.isAdminUser || this.profileType === 'driver'
         },
 
         activeRoute() {
@@ -750,11 +989,11 @@ export default {
         heroSubtitle() {
             if (this.isDriver) {
                 return this.activeRoute
-                    ? 'Finalize quando terminar o percurso. Se faltar nota ou cidade, a administracao completa depois.'
-                    : 'Comece pelo KM atual do carro. O app bloqueia uma segunda rota ate essa ser finalizada.'
+                    ? 'Finalize quando terminar o percurso. Se faltar nota ou cidade, relate o erro.'
+                    : 'Comece pelo KM atual do carro. O app bloqueia uma segunda rota até essa ser finalizada.'
             }
 
-            return 'Acompanhe rotas em aberto, complete dados pendentes e mantenha o historico confiavel.'
+            return 'Acompanhe rotas em aberto, complete dados pendentes e mantenha o histórico confiável.'
         },
 
         filteredRoutes() {
@@ -810,6 +1049,10 @@ export default {
             return Boolean(this.finishForm.kmFinal) && !this.kmFinalInvalid
         },
 
+        canSaveDeliveryProgress() {
+            return Boolean(this.routeSelected && this.deliveryPhotos.length)
+        },
+
         willNeedAnalysis() {
             return !this.finishForm.cidadesStr.trim() || !this.finishForm.notasStr.trim()
         },
@@ -841,6 +1084,14 @@ export default {
 
         adminCalculatedFreightAmount() {
             return this.calculateFreightAmount(this.adminForm.kmInicial, this.adminForm.kmFinal)
+        },
+
+        adminPreviewRoute() {
+            return {
+                ...(this.routeSelected || {}),
+                plannedDeliveries: this.adminForm.plannedDeliveries,
+                photos: this.adminRoutePhotos
+            }
         },
 
         adminReviewHasRequiredData() {
@@ -892,6 +1143,25 @@ export default {
     },
 
     methods: {
+        getStoredUser() {
+            try {
+                return JSON.parse(localStorage.getItem('user') || 'null')
+            } catch (_error) {
+                return null
+            }
+        },
+
+        initialProfileType() {
+            const user = this.getStoredUser()
+
+            if (user?.role !== 'ADMIN') {
+                localStorage.setItem('profileType', 'driver')
+                return 'driver'
+            }
+
+            return localStorage.getItem('profileType') || 'admin'
+        },
+
         async fetchRoutes() {
             this.isLoading = true
             try {
@@ -929,7 +1199,9 @@ export default {
         },
 
         syncProfile(event) {
-            this.profileType = event.detail || localStorage.getItem('profileType') || 'driver'
+            this.profileType = this.isAdminUser
+                ? event.detail || localStorage.getItem('profileType') || 'admin'
+                : 'driver'
             this.fetchRoutes()
             this.fetchMyVehicle()
             this.fetchAdminVehicles()
@@ -937,6 +1209,8 @@ export default {
         },
 
         toggleProfile() {
+            if (!this.canToggleProfile) return
+
             const profile = this.isDriver ? 'admin' : 'driver'
             this.profileType = profile
             localStorage.setItem('profileType', profile)
@@ -959,10 +1233,26 @@ export default {
             this.finishForm = {
                 kmFinal: route.kmFinal || '',
                 cidadesStr: route.cidades.join(', '),
-                notasStr: route.notas.join(', ')
+                notasStr: route.notas.join(', '),
+                tollAmount: null
             }
             this.photos = []
             this.showFinishModal = true
+        },
+
+        openDeliveryModal(route) {
+            this.routeSelected = route
+            this.deliveryForm = {
+                note: '',
+                plannedDeliveries: route.plannedDeliveries || ''
+            }
+            this.deliveryPhotos = []
+            this.showDeliveryModal = true
+        },
+
+        openDriverRouteDetails(route) {
+            this.routeSelected = route
+            this.showDriverDetailsModal = true
         },
 
         openAdminModal(route) {
@@ -975,7 +1265,9 @@ export default {
                 kmFinal: route.kmFinal || '',
                 cidadesStr: route.cidades.join(', '),
                 notasStr: route.notas.join(', '),
+                plannedDeliveries: route.plannedDeliveries || '',
                 freightAmount: route.freightAmount ?? null,
+                tollAmount: null,
                 useManualFreightAmount: Boolean(route.hasManualFreightAmount),
                 status: route.status,
                 correctionRequested: Boolean(route.correctionRequested),
@@ -1011,7 +1303,8 @@ export default {
             try {
                 await startRouteApi({
                     vehicleId: this.myVehicle.id,
-                    kmInicial: this.startForm.kmInicial
+                    kmInicial: this.startForm.kmInicial,
+                    plannedDeliveries: this.startForm.plannedDeliveries
                 })
                 await this.fetchRoutes()
                 this.cancelStart()
@@ -1065,6 +1358,7 @@ export default {
                     kmFinal: this.createRouteForm.status === 'Em andamento' ? null : this.createRouteForm.kmFinal,
                     cidades: this.toList(this.createRouteForm.cidadesStr),
                     notas: this.toList(this.createRouteForm.notasStr),
+                    plannedDeliveries: this.createRouteForm.plannedDeliveries,
                     freightAmount: this.createRouteForm.freightAmount,
                     useManualFreightAmount: this.createRouteForm.useManualFreightAmount,
                     status: this.createRouteForm.status
@@ -1098,6 +1392,7 @@ export default {
                     kmFinal: this.finishForm.kmFinal,
                     cidades,
                     notas,
+                    tollAmount: this.finishForm.tollAmount,
                     photos: newPhotos
                 })
                 await this.fetchRoutes()
@@ -1106,6 +1401,34 @@ export default {
             } catch (error) {
                 console.error(error)
                 notifyError(error, 'Não foi possível finalizar a rota.')
+            } finally {
+                this.isModalLoading = false
+            }
+        },
+
+        async saveDeliveryProgress() {
+            if (!this.canSaveDeliveryProgress) return
+
+            const newPhotos = this.deliveryPhotos.map((photo, index) => ({
+                file: photo.file,
+                name: photo.file?.name || `entrega-${Date.now()}-${index}`,
+                url: photo.preview || photo.url
+            }))
+
+            this.isModalLoading = true
+
+            try {
+                await addRouteDeliveryApi(this.routeSelected.id, {
+                    note: this.deliveryForm.note,
+                    plannedDeliveries: this.deliveryForm.plannedDeliveries,
+                    photos: newPhotos
+                })
+                await this.fetchRoutes()
+                this.cancelDelivery()
+                notifySuccess('Entrega registrada com sucesso.')
+            } catch (error) {
+                console.error(error)
+                notifyError(error, 'Não foi possível registrar a entrega.')
             } finally {
                 this.isModalLoading = false
             }
@@ -1139,7 +1462,10 @@ export default {
                     file: photo.file,
                     name: photo.file?.name || photo.name || photo.fileName || `foto-${Date.now()}-${index}`,
                     fileUrl: photo.fileUrl || photo.preview || photo.url,
-                    url: photo.preview || photo.url || photo.fileUrl
+                    url: photo.preview || photo.url || photo.fileUrl,
+                    deliveryIndex: photo.deliveryIndex,
+                    deliveryNote: photo.deliveryNote,
+                    deliveredAt: photo.deliveredAt
                 }))
 
                 await reviewRouteApi(this.routeSelected.id, {
@@ -1147,7 +1473,9 @@ export default {
                     kmFinal: this.adminForm.kmFinal,
                     cidades: this.toList(this.adminForm.cidadesStr),
                     notas: this.toList(this.adminForm.notasStr),
+                    plannedDeliveries: this.adminForm.plannedDeliveries,
                     freightAmount: this.adminForm.freightAmount,
+                    tollAmount: this.adminForm.tollAmount,
                     useManualFreightAmount: this.adminForm.useManualFreightAmount,
                     status: this.adminForm.status,
                     photos: routePhotos
@@ -1184,7 +1512,7 @@ export default {
 
         cancelStart() {
             this.showStartModal = false
-            this.startForm = { kmInicial: '' }
+            this.startForm = { kmInicial: '', plannedDeliveries: '' }
         },
 
         cancelCreateRoute() {
@@ -1195,8 +1523,20 @@ export default {
         cancelFinish() {
             this.showFinishModal = false
             this.routeSelected = null
-            this.finishForm = { kmFinal: '', cidadesStr: '', notasStr: '' }
+            this.finishForm = { kmFinal: '', cidadesStr: '', notasStr: '', tollAmount: null }
             this.photos = []
+        },
+
+        cancelDelivery() {
+            this.showDeliveryModal = false
+            this.routeSelected = null
+            this.deliveryForm = { note: '', plannedDeliveries: '' }
+            this.deliveryPhotos = []
+        },
+
+        cancelDriverRouteDetails() {
+            this.showDriverDetailsModal = false
+            this.routeSelected = null
         },
 
         cancelAdminEdit() {
@@ -1361,6 +1701,7 @@ export default {
                 kmFinal: '',
                 cidadesStr: '',
                 notasStr: '',
+                plannedDeliveries: '',
                 freightAmount: null,
                 useManualFreightAmount: false,
                 status: 'Concluida'
@@ -1426,6 +1767,66 @@ export default {
 
             this.dateFilterStart = this.toInputDate(start)
             this.dateFilterEnd = this.toInputDate(end)
+        },
+
+        deliveryPhotosForRoute(route) {
+            const photos = route?.photos || []
+            const deliveryPhotos = photos.filter(photo => photo.deliveredAt || photo.deliveryIndex)
+
+            return deliveryPhotos.length ? deliveryPhotos : photos
+        },
+
+        deliveredCount(route) {
+            return this.deliveryPhotosForRoute(route).length
+        },
+
+        plannedDeliveryCount(route) {
+            const planned = Number(route?.plannedDeliveries || 0)
+            return Math.max(planned, this.deliveredCount(route), 1)
+        },
+
+        deliveryProgressLabel(route) {
+            const delivered = this.deliveredCount(route)
+            const planned = Number(route?.plannedDeliveries || 0)
+
+            return planned ? `${delivered}/${planned}` : `${delivered} registradas`
+        },
+
+        deliveryProgressHint(route) {
+            const planned = Number(route?.plannedDeliveries || 0)
+            const delivered = this.deliveredCount(route)
+
+            if (!planned) return 'Sem total previsto'
+            if (delivered >= planned) return 'Todas as entregas previstas foram registradas'
+
+            return `${planned - delivered} pendente${planned - delivered === 1 ? '' : 's'}`
+        },
+
+        deliveryProgressPercent(route) {
+            const total = this.plannedDeliveryCount(route)
+            if (!total) return 0
+
+            return Math.min(100, Math.round((this.deliveredCount(route) / total) * 100))
+        },
+
+        deliveryTimelineSteps(route) {
+            const photos = this.deliveryPhotosForRoute(route)
+            const total = this.plannedDeliveryCount(route)
+
+            return Array.from({ length: total }, (_, index) => ({
+                index: index + 1,
+                done: index < photos.length,
+                next: index === photos.length,
+                photo: photos[index]
+            }))
+        },
+
+        visibleRoutePhotos(route, limit = 6) {
+            return (route?.photos || []).slice(0, limit)
+        },
+
+        hiddenRoutePhotoCount(route, limit = 6) {
+            return Math.max(0, (route?.photos || []).length - limit)
         },
 
         openPhotoPreview(route, index = 0) {
@@ -1667,6 +2068,12 @@ export default {
     margin-top: 12px;
 }
 
+.panel-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+}
+
 .active-route-panel.blocked {
     border-color: rgba(217, 119, 6, 0.35);
 }
@@ -1707,6 +2114,155 @@ export default {
     background: var(--surface-muted);
     border-radius: 14px;
     padding: 10px;
+}
+
+.delivery-progress-card,
+.route-delivery-summary,
+.admin-delivery-overview,
+.delivery-modal-summary {
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    background: var(--surface-muted);
+}
+
+.delivery-progress-card {
+    margin-top: 12px;
+    padding: 12px;
+}
+
+.delivery-progress-head,
+.route-delivery-summary,
+.delivery-modal-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.delivery-progress-head small,
+.route-delivery-summary small,
+.admin-delivery-overview small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.delivery-progress-head strong,
+.route-delivery-summary strong,
+.admin-delivery-overview strong,
+.delivery-modal-summary strong {
+    color: var(--text-strong);
+}
+
+.route-delivery-summary,
+.admin-delivery-overview,
+.delivery-modal-summary {
+    margin-top: 10px;
+    padding: 10px;
+}
+
+.delivery-progress-head span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.delivery-timeline-shell {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 12px;
+}
+
+.delivery-timeline-line {
+    position: absolute;
+    top: 25px;
+    right: 32px;
+    left: 32px;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--border-soft);
+}
+
+.delivery-timeline-line::before {
+    content: '';
+    display: block;
+    width: var(--delivery-progress);
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #2563eb, #16a34a);
+}
+
+.delivery-step {
+    position: relative;
+    display: grid;
+    place-items: center;
+    gap: 6px;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
+    z-index: 1;
+}
+
+.delivery-step-dot {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--border-soft);
+    border-radius: 999px;
+    background: var(--surface-card);
+    color: var(--text-muted);
+    box-shadow: 0 0 0 5px var(--surface-muted);
+}
+
+.delivery-step.done {
+    color: #16a34a;
+}
+
+.delivery-step.done .delivery-step-dot {
+    border-color: rgba(22, 163, 74, 0.48);
+    background: #16a34a;
+    color: #fff;
+}
+
+.delivery-step.next .delivery-step-dot {
+    border-color: rgba(37, 99, 235, 0.6);
+    color: #2563eb;
+}
+
+.mini-delivery-timeline {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-top: 0;
+}
+
+.mini-delivery-timeline span {
+    width: 20px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--border-soft);
+}
+
+.mini-delivery-timeline span.done {
+    background: #16a34a;
+}
+
+.optional-label {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .active-grid small,
@@ -1768,7 +2324,32 @@ export default {
     align-items: flex-start;
 }
 
+.route-card-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(37, 99, 235, 0.22);
+    border-radius: 14px;
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+}
+
+.route-card-icon.pending {
+    border-color: rgba(217, 119, 6, 0.28);
+    background: rgba(217, 119, 6, 0.14);
+    color: #d97706;
+}
+
+.route-card-icon.done {
+    border-color: rgba(22, 163, 74, 0.28);
+    background: rgba(22, 163, 74, 0.14);
+    color: #16a34a;
+}
+
 .route-title-block {
+    flex: 1;
     min-width: 0;
 }
 
@@ -1804,6 +2385,51 @@ export default {
     line-height: 1.1;
     text-align: center;
     white-space: normal;
+}
+
+.route-metrics div {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+}
+
+.route-metrics div>span:last-child,
+.route-details div>span:last-child {
+    min-width: 0;
+}
+
+.metric-icon,
+.detail-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+}
+
+.metric-icon.final {
+    background: rgba(71, 85, 105, 0.13);
+    color: #64748b;
+}
+
+.metric-icon.total {
+    background: rgba(147, 51, 234, 0.12);
+    color: #9333ea;
+}
+
+.metric-icon.freight,
+.detail-icon.invoice {
+    background: rgba(22, 163, 74, 0.12);
+    color: #16a34a;
+}
+
+.detail-icon.city {
+    background: rgba(217, 119, 6, 0.12);
+    color: #d97706;
 }
 
 .route-toolbar {
@@ -1912,6 +2538,9 @@ export default {
 }
 
 .route-details div {
+    display: flex;
+    align-items: center;
+    gap: 9px;
     min-width: 0;
     padding: 10px;
     border-radius: 12px;
@@ -1921,7 +2550,6 @@ export default {
 .route-details p {
     margin: 0;
     display: -webkit-box;
-    min-height: 38px;
     overflow: hidden;
     line-height: 1.35;
     -webkit-box-orient: vertical;
@@ -1933,17 +2561,21 @@ export default {
     gap: 8px;
     margin-top: 12px;
     padding: 8px;
-    overflow-x: auto;
+    overflow: hidden;
     border-radius: 12px;
     background: var(--surface-muted);
 }
 
-.photo-strip img {
-    flex: 0 0 auto;
-    width: 68px;
-    height: 68px;
-    border: 2px solid transparent;
+.photo-strip img,
+.photo-more {
+    flex: 0 0 66px;
+    width: 64px;
+    height: 64px;
     border-radius: 10px;
+}
+
+.photo-strip img {
+    border: 2px solid transparent;
     object-fit: cover;
     cursor: pointer;
     transition: border-color 0.18s ease, transform 0.18s ease;
@@ -1952,6 +2584,14 @@ export default {
 .photo-strip img:hover {
     border-color: var(--primary-color);
     transform: scale(1.03);
+}
+
+.photo-more {
+    border: 1px solid var(--border-soft);
+    background: rgba(var(--primary-color-rgb), 0.12);
+    color: var(--primary-color);
+    font-size: 15px;
+    font-weight: 900;
 }
 
 .admin-review-shell {
@@ -2139,6 +2779,135 @@ export default {
 
 .admin-review-form {
     max-height: 58vh;
+}
+
+.driver-details-content {
+    display: grid;
+    gap: 12px;
+}
+
+.driver-detail-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.driver-detail-summary div,
+.driver-detail-section {
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    background: var(--surface-muted);
+}
+
+.driver-detail-summary div {
+    padding: 10px;
+}
+
+.driver-detail-summary small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.driver-detail-summary strong {
+    display: block;
+    overflow: hidden;
+    color: var(--text-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.driver-detail-section {
+    padding: 12px;
+}
+
+.driver-detail-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.driver-detail-title i {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    background: rgba(var(--primary-color-rgb), 0.12);
+    color: var(--primary-color);
+}
+
+.driver-detail-title strong {
+    color: var(--text-strong);
+}
+
+.driver-detail-title span {
+    margin-left: auto;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--surface-card);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.detail-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.detail-chip-list span {
+    max-width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    background: var(--surface-card);
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+    font-weight: 700;
+}
+
+.detail-empty-copy {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.driver-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    gap: 10px;
+}
+
+.driver-photo-grid button {
+    position: relative;
+    min-width: 0;
+    aspect-ratio: 1;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background: var(--surface-card);
+}
+
+.driver-photo-grid img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.driver-photo-grid span {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    left: 6px;
+    padding: 4px 6px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.78);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
 }
 
 .admin-textarea {
@@ -2402,6 +3171,12 @@ export default {
         grid-template-columns: 1fr;
     }
 
+    .panel-actions,
+    .driver-detail-summary {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+
     .route-list {
         gap: 10px;
         max-width: 100%;
@@ -2479,7 +3254,6 @@ export default {
     }
 
     .route-details p {
-        min-height: 28px;
         font-size: 11px;
         line-height: 1.25;
         -webkit-line-clamp: 2;
@@ -2491,10 +3265,16 @@ export default {
         padding: 6px;
     }
 
-    .photo-strip img {
+    .photo-strip img,
+    .photo-more {
+        flex-basis: 48px;
         width: 48px;
         height: 48px;
         border-radius: 8px;
+    }
+
+    .driver-photo-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .correction-card {

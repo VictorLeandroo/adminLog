@@ -179,9 +179,14 @@ export default {
         const { token, user } = await loginUser(this.form.email, this.form.password)
         localStorage.setItem('token', token)
         localStorage.setItem('user', JSON.stringify(user))
-        localStorage.setItem('profileType', user.role === 'ADMIN' ? 'admin' : 'driver')
+        const profileType = user.role === 'ADMIN'
+          ? 'admin'
+          : user.role === 'FINANCE'
+            ? 'finance'
+            : 'driver'
+        localStorage.setItem('profileType', profileType)
         window.dispatchEvent(new CustomEvent('profile-updated', {
-          detail: user.role === 'ADMIN' ? 'admin' : 'driver'
+          detail: profileType
         }))
         this.$router.push('/dashboard')
       } catch (err) {

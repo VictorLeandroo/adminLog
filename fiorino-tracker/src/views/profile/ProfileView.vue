@@ -108,11 +108,15 @@ export default {
         },
 
         roleLabel() {
-            return this.profileForm.role === 'ADMIN' ? 'Administrador' : 'Motorista'
+            if (this.profileForm.role === 'ADMIN') return 'Administrador'
+            if (this.profileForm.role === 'FINANCE') return 'Financeiro'
+            return 'Motorista'
         },
 
         modeLabel() {
-            return this.profileType === 'admin' ? 'Painel administrativo' : 'Operação em campo'
+            if (this.profileType === 'admin') return 'Painel administrativo'
+            if (this.profileType === 'finance') return 'Painel financeiro'
+            return 'Operação em campo'
         }
     },
 

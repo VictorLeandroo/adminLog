@@ -3,9 +3,9 @@
         <div class="container py-1">
             <section class="finance-hero">
                 <div>
-                    <span class="eyebrow">{{ isDriver ? 'Lançamentos do motorista' : 'Despesas gerais' }}</span>
+                    <span class="eyebrow">{{ isDriverUser ? 'Lançamentos do motorista' : 'Despesas gerais' }}</span>
                     <h4>Despesas</h4>
-                    <p>{{ isDriver ? 'Registre gastos de campo com comprovante opcional.' : 'Acompanhe os gastos gerais da operação por período e categoria.' }}</p>
+                    <p>{{ isDriverUser ? 'Registre gastos do veículo com comprovante opcional.' : 'Acompanhe os gastos gerais da operação por período e categoria.' }}</p>
                 </div>
 
                 <div class="hero-actions">
@@ -68,7 +68,7 @@
                             <img v-for="(photo, index) in expense.photos" :key="index" :src="photo.url || photo.preview" @click="openLightbox(photo.url || photo.preview)" />
                         </div>
 
-                        <div class="expense-actions" v-if="!isDriver">
+                        <div class="expense-actions" v-if="canManageExpenses && expense.editable">
                             <ButtonComp btn-class="button-secundary w-100" :click-action="() => openExpenseModal(expense)">
                                 Editar
                             </ButtonComp>
@@ -133,13 +133,28 @@
 
             <label class="form-label">Categoria</label>
             <select v-model="expenseForm.category" class="form-select w-100 mb-2">
-                <option value="Gasolina e pedagio">Gasolina e pedagio</option>
-                <option value="Manutencao do carro">Manutencao do carro</option>
-                <option value="Pneus">Pneus</option>
-                <option value="Seguro">Seguro</option>
-                <option value="Multa">Multa</option>
-                <option value="Outros">Outros</option>
+                <option v-for="option in availableExpenseCategories" :key="option" :value="option">{{ option }}</option>
             </select>
+
+            <template v-if="showVehicleField">
+                <label class="form-label">Veículo</label>
+                <select v-model="expenseForm.vehicleId" class="form-select w-100 mb-2">
+                    <option value="">Selecione um veículo</option>
+                    <option v-for="vehicle in expenseVehicles" :key="vehicle.id" :value="vehicle.id">
+                        {{ vehicle.plate }} - {{ vehicle.model }}
+                    </option>
+                </select>
+            </template>
+
+            <template v-if="expenseForm.category === expenseCategories.SALARY">
+                <label class="form-label">Motorista</label>
+                <select v-model="expenseForm.driverId" class="form-select w-100 mb-2">
+                    <option value="">Selecione um motorista</option>
+                    <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
+                        {{ driver.name }} - {{ driver.email }}
+                    </option>
+                </select>
+            </template>
 
             <label class="form-label">Descricao</label>
             <input type="text" v-model="expenseForm.description" class="w-100 mb-2" placeholder="Ex: troca de pneu dianteiro" />
@@ -169,9 +184,12 @@ import ButtonComp from '@/components/ButtonComp.vue'
 import ModalDefault from '@/components/modals/ModalDefault.vue'
 import PhotoUploadComp from '@/components/PhotoUploadComp.vue'
 import {
+    listDrivers,
     formatLocalDate,
+    getMyVehicle,
     getQuinzenna,
     listExpenses,
+    listVehicles,
     money,
     parseLocalDate,
     removeExpenseApi,
@@ -189,6 +207,16 @@ export default {
 
     data() {
         return {
+            expenseCategories: {
+                FUEL: 'Combustivel',
+                TOLL: 'Pedagio',
+                MAINTENANCE: 'Manutencao do carro',
+                TIRE: 'Pneus',
+                INSURANCE: 'Seguro',
+                FINE: 'Multa',
+                SALARY: 'Salario',
+                OTHER: 'Outros'
+            },
             finance: {
                 expenses: []
             },
@@ -198,8 +226,19 @@ export default {
             selectedYear: new Date().getFullYear(),
             searchTerm: '',
             showExpenseModal: false,
-            expenseForm: this.emptyExpenseForm(),
+            expenseForm: {
+                id: null,
+                date: new Date().toISOString().slice(0, 10),
+                vehicleId: '',
+                driverId: '',
+                category: 'Combustivel',
+                description: '',
+                amount: null
+            },
             photos: [],
+            vehicles: [],
+            drivers: [],
+            myVehicleId: '',
             lightboxPhoto: null,
             months: [
                 { value: 1, label: 'Jan' },
@@ -220,8 +259,44 @@ export default {
     },
 
     computed: {
-        isDriver() {
-            return this.profileType === 'driver'
+        currentUser() {
+            try {
+                return JSON.parse(localStorage.getItem('user') || 'null')
+            } catch (_error) {
+                return null
+            }
+        },
+
+        isDriverUser() {
+            return this.currentUser?.role === 'DRIVER'
+        },
+
+        canManageExpenses() {
+            return ['ADMIN', 'FINANCE'].includes(this.currentUser?.role)
+        },
+
+        availableExpenseCategories() {
+            if (this.isDriverUser) {
+                return [
+                    this.expenseCategories.FUEL,
+                    this.expenseCategories.TOLL,
+                    this.expenseCategories.MAINTENANCE,
+                    this.expenseCategories.TIRE,
+                    this.expenseCategories.INSURANCE,
+                    this.expenseCategories.FINE,
+                    this.expenseCategories.OTHER
+                ]
+            }
+
+            return Object.values(this.expenseCategories)
+        },
+
+        showVehicleField() {
+            return this.expenseForm.category !== this.expenseCategories.SALARY
+        },
+
+        expenseVehicles() {
+            return this.vehicles || []
         },
 
         filteredExpenses() {
@@ -273,12 +348,20 @@ export default {
         },
 
         canSaveExpense() {
-            return Boolean(this.expenseForm.date && this.expenseForm.category && this.expenseForm.amount)
+            const hasBase = Boolean(this.expenseForm.date && this.expenseForm.category && this.expenseForm.amount)
+            if (!hasBase) return false
+
+            if (this.expenseForm.category === this.expenseCategories.SALARY) {
+                return Boolean(this.expenseForm.driverId)
+            }
+
+            return Boolean(this.expenseForm.vehicleId)
         }
     },
 
     mounted() {
         window.addEventListener('profile-updated', this.syncProfile)
+        this.fetchReferences()
         this.fetchFinance()
     },
 
@@ -287,6 +370,28 @@ export default {
     },
 
     methods: {
+        async fetchReferences() {
+            try {
+                if (this.isDriverUser) {
+                    const [vehicle] = await getMyVehicle()
+                    this.vehicles = vehicle ? [vehicle] : []
+                    this.myVehicleId = vehicle?.id || ''
+                    this.drivers = []
+                    return
+                }
+
+                const [vehicles, drivers] = await Promise.all([
+                    listVehicles(),
+                    listDrivers()
+                ])
+                this.vehicles = vehicles
+                this.drivers = drivers
+                this.myVehicleId = ''
+            } catch (error) {
+                console.error(error)
+            }
+        },
+
         async fetchFinance() {
             this.isLoading = true
             try {
@@ -302,7 +407,9 @@ export default {
             return {
                 id: null,
                 date: new Date().toISOString().slice(0, 10),
-                category: 'Gasolina e pedagio',
+                vehicleId: this.myVehicleId || '',
+                driverId: '',
+                category: this.expenseCategories?.FUEL || 'Combustivel',
                 description: '',
                 amount: null
             }
@@ -310,6 +417,7 @@ export default {
 
         syncProfile(event) {
             this.profileType = event.detail || localStorage.getItem('profileType') || 'driver'
+            this.fetchReferences()
             this.fetchFinance()
         },
 

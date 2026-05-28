@@ -92,7 +92,10 @@ function normalizePhoto(photo) {
     ...photo,
     name: photo.fileName || photo.name,
     url: publicFileUrl(fileUrl),
-    fileUrl
+    fileUrl,
+    deliveryIndex: photo.deliveryIndex,
+    deliveryNote: photo.deliveryNote,
+    deliveredAt: photo.deliveredAt
   }
 }
 
@@ -139,6 +142,7 @@ export function normalizeRoute(route) {
     data: dateOnly(route.date),
     kmInicial: route.initialKm,
     kmFinal: route.finalKm,
+    plannedDeliveries: route.plannedDeliveries,
     freightAmount: route.freightAmount === null || route.freightAmount === undefined ? null : Number(route.freightAmount),
     hasManualFreightAmount: route.freightAmount !== null && route.freightAmount !== undefined,
     cidades: (route.cities || []).map(city => city.name),
@@ -155,7 +159,10 @@ export function normalizeExpense(expense) {
     amount: Number(expense.amount || 0),
     date: dateOnly(expense.date),
     quinzenna: getQuinzenna(expense.date),
-    photos: (expense.photos || []).map(normalizePhoto)
+    photos: (expense.photos || []).map(normalizePhoto),
+    editable: expense.editable !== false,
+    sourceType: expense.sourceType || 'EXPENSE',
+    driver: expense.driver ? normalizeUser(expense.driver) : null
   }
 }
 
@@ -241,13 +248,19 @@ async function photoPayload(photo) {
     const uploaded = await uploadFile(photo.file)
     return {
       fileUrl: uploaded.fileUrl,
-      fileName: uploaded.fileName
+      fileName: uploaded.fileName,
+      deliveryIndex: photo.deliveryIndex,
+      deliveryNote: photo.deliveryNote,
+      deliveredAt: photo.deliveredAt
     }
   }
 
   return {
     fileUrl: normalizeFileUrl(photo.fileUrl || photo.url || photo.preview) || '#',
-    fileName: photo.file?.name || photo.name || photo.fileName
+    fileName: photo.file?.name || photo.name || photo.fileName,
+    deliveryIndex: photo.deliveryIndex,
+    deliveryNote: photo.deliveryNote,
+    deliveredAt: photo.deliveredAt
   }
 }
 
@@ -359,6 +372,7 @@ export async function startRouteApi(payload) {
   const response = await api.post('/routes/start', {
     vehicleId: payload.vehicleId,
     initialKm: Number(payload.kmInicial),
+    plannedDeliveries: payload.plannedDeliveries ? Number(payload.plannedDeliveries) : null,
     date: payload.date
   })
   return normalizeRoute(response.data)
@@ -370,6 +384,7 @@ export async function createRouteApi(payload) {
     date: payload.date,
     initialKm: Number(payload.kmInicial),
     finalKm: payload.kmFinal ? Number(payload.kmFinal) : null,
+    plannedDeliveries: payload.plannedDeliveries ? Number(payload.plannedDeliveries) : null,
     freightAmount: payload.useManualFreightAmount ? Number(payload.freightAmount || 0) : null,
     cidades: payload.cidades,
     notas: payload.notas,
@@ -381,8 +396,18 @@ export async function createRouteApi(payload) {
 export async function finishRouteApi(id, payload) {
   const response = await api.patch(`/routes/${id}/finish`, {
     finalKm: Number(payload.kmFinal),
+    tollAmount: payload.tollAmount === null || payload.tollAmount === undefined || payload.tollAmount === '' ? null : Number(payload.tollAmount),
     cidades: payload.cidades,
     notas: payload.notas,
+    photos: await photosPayload(payload.photos)
+  })
+  return normalizeRoute(response.data)
+}
+
+export async function addRouteDeliveryApi(id, payload) {
+  const response = await api.post(`/routes/${id}/deliveries`, {
+    plannedDeliveries: payload.plannedDeliveries ? Number(payload.plannedDeliveries) : null,
+    note: payload.note || null,
     photos: await photosPayload(payload.photos)
   })
   return normalizeRoute(response.data)
@@ -392,7 +417,9 @@ export async function reviewRouteApi(id, payload) {
   const response = await api.patch(`/routes/${id}/review`, {
     initialKm: Number(payload.kmInicial),
     finalKm: Number(payload.kmFinal),
+    plannedDeliveries: payload.plannedDeliveries ? Number(payload.plannedDeliveries) : null,
     freightAmount: payload.useManualFreightAmount ? Number(payload.freightAmount || 0) : null,
+    tollAmount: payload.tollAmount === null || payload.tollAmount === undefined || payload.tollAmount === '' ? null : Number(payload.tollAmount),
     cidades: payload.cidades,
     notas: payload.notas,
     status: routeStatusToApi[payload.status],
@@ -464,6 +491,7 @@ export async function removeRevenueApi(id) {
 export async function saveExpenseApi(expense) {
   const payload = {
     vehicleId: expense.vehicleId || null,
+    driverId: expense.driverId || null,
     date: expense.date,
     category: expense.category,
     description: expense.description || null,

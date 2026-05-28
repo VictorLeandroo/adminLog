@@ -11,9 +11,9 @@ const routes = [
     { path: '/', redirect: '/dashboard' },
     { path: '/login', name: 'Login', component: LoginView },
     { path: '/dashboard', name: 'Dashboard', component: DashboardView },
-    { path: '/rotas', name: 'Rotas', component: RoutesView },
-    { path: '/financial', name: 'Financial', component: FinancialView },
-    { path: '/vehicles', name: 'Vehicles', component: VehiclesView },
+    { path: '/rotas', name: 'Rotas', component: RoutesView, meta: { roles: ['ADMIN', 'DRIVER'] } },
+    { path: '/financial', name: 'Financial', component: FinancialView, meta: { roles: ['ADMIN', 'DRIVER', 'FINANCE'] } },
+    { path: '/vehicles', name: 'Vehicles', component: VehiclesView, meta: { roles: ['ADMIN', 'FINANCE'] } },
     { path: '/profile', name: 'Profile', component: ProfileView },
     { path: '/users', name: 'Users', component: UsersView, meta: { adminOnly: true } },
 ]
@@ -40,6 +40,11 @@ router.beforeEach((to, _from, next) => {
     const profileType = localStorage.getItem('profileType') || 'driver'
 
     if (to.meta.adminOnly && (user?.role !== 'ADMIN' || profileType !== 'admin')) {
+        next('/dashboard')
+        return
+    }
+
+    if (to.meta.roles && !to.meta.roles.includes(user?.role)) {
         next('/dashboard')
         return
     }

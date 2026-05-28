@@ -96,12 +96,9 @@ export default {
 }
 
 .modal-content {
-    background: #ffffff !important;
+    background: var(--surface-card) !important;
     border: 1px solid var(--border-soft) !important;
     box-shadow: var(--shadow-elevated) !important;
-}
-
-:global(:root[data-theme="dark"]) .modal-content {
-    background: #121a24 !important;
+    color: var(--text-strong);
 }
 </style>
