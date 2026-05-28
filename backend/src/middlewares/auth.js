@@ -22,7 +22,7 @@ const authenticate = asyncHandler(async (req, _res, next) => {
 
   const user = await prisma.user.findUnique({
     where: { id: payload.sub },
-    select: { id: true, name: true, email: true, role: true, active: true },
+    select: { id: true, name: true, email: true, role: true, active: true, photoUrl: true, photoName: true },
   });
 
   if (!user || !user.active) {

@@ -8,6 +8,7 @@ const router = Router();
 router.post('/login', controller.login);
 router.post('/register', controller.register);
 router.get('/me', authenticate, controller.me);
+router.put('/me', authenticate, controller.updateMe);
 router.get('/drivers', authenticate, requireRole('ADMIN'), controller.listDrivers);
 router.get('/users', authenticate, requireRole('ADMIN'), controller.listUsers);
 router.post('/users', authenticate, requireRole('ADMIN'), controller.createUser);

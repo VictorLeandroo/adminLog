@@ -16,7 +16,7 @@
                     </div>
                 </div>
 
-                <ButtonComp btn-class="button-primary button-big" :click-action="saveProfile">
+                <ButtonComp btn-class="button-primary button-big" :is-disabled="isSaving" :click-action="saveProfile">
                     <i class="fa-solid fa-floppy-disk"></i>
                     Salvar perfil
                 </ButtonComp>
@@ -65,7 +65,7 @@
 
                     <div class="profile-note">
                         <i class="fa-solid fa-circle-info"></i>
-                        <p>A foto e o nome ficam salvos neste navegador. Dados sensíveis continuam vindo do login.</p>
+                        <p>A foto e o nome ficam salvos na conta e aparecem no painel inteiro.</p>
                     </div>
                 </aside>
             </section>
@@ -76,6 +76,7 @@
 <script>
 import ButtonComp from '@/components/ButtonComp.vue'
 import defaultAvatar from '@/assets/img/avatar.jpg'
+import { updateProfileApi } from '@/services/backendService'
 
 export default {
     name: 'ProfileView',
@@ -84,20 +85,28 @@ export default {
 
     data() {
         const user = JSON.parse(localStorage.getItem('user') || 'null') || {}
+        const legacyPhoto = localStorage.getItem('profilePhoto') || ''
 
         return {
             profileForm: {
-                name: localStorage.getItem('profileName') || user.name || '',
+                name: user.name || localStorage.getItem('profileName') || '',
                 email: user.email || '',
-                role: user.role || 'DRIVER'
+                role: user.role || 'DRIVER',
+                photoUrl: user.photoUrl || (legacyPhoto.startsWith('data:') ? '' : legacyPhoto),
+                photoName: user.photoName || '',
+                photo: null
             },
-            photoPreview: localStorage.getItem('profilePhoto') || defaultAvatar,
+            isSaving: false,
             isDark: localStorage.getItem('theme') === 'dark',
             profileType: localStorage.getItem('profileType') || 'driver'
         }
     },
 
     computed: {
+        photoPreview() {
+            return this.profileForm.photo?.preview || this.profileForm.photoUrl || defaultAvatar
+        },
+
         roleLabel() {
             return this.profileForm.role === 'ADMIN' ? 'Administrador' : 'Motorista'
         },
@@ -112,23 +121,39 @@ export default {
             const file = event.target.files?.[0]
             if (!file) return
 
-            const reader = new FileReader()
-            reader.onload = () => {
-                this.photoPreview = reader.result
-                localStorage.setItem('profilePhoto', reader.result)
-                window.dispatchEvent(new CustomEvent('profile-saved'))
+            this.profileForm.photo = {
+                file,
+                preview: URL.createObjectURL(file),
+                name: file.name
             }
-            reader.readAsDataURL(file)
             event.target.value = ''
         },
 
-        saveProfile() {
+        async saveProfile() {
+            if (this.isSaving) return
+            this.isSaving = true
             const user = JSON.parse(localStorage.getItem('user') || 'null') || {}
-            const nextUser = { ...user, name: this.profileForm.name }
 
-            localStorage.setItem('user', JSON.stringify(nextUser))
-            localStorage.setItem('profileName', this.profileForm.name)
-            window.dispatchEvent(new CustomEvent('profile-saved'))
+            try {
+                const updatedUser = await updateProfileApi({
+                    name: this.profileForm.name,
+                    photoUrl: this.profileForm.photoUrl,
+                    photoName: this.profileForm.photoName,
+                    photo: this.profileForm.photo
+                })
+                const nextUser = { ...user, ...updatedUser }
+
+                this.profileForm.photo = null
+                this.profileForm.photoUrl = nextUser.photoUrl || ''
+                this.profileForm.photoName = nextUser.photoName || ''
+                this.profileForm.name = nextUser.name || this.profileForm.name
+                localStorage.setItem('user', JSON.stringify(nextUser))
+                localStorage.removeItem('profileName')
+                localStorage.removeItem('profilePhoto')
+                window.dispatchEvent(new CustomEvent('profile-saved'))
+            } finally {
+                this.isSaving = false
+            }
         },
 
         toggleTheme() {

@@ -15,6 +15,10 @@ const me = asyncHandler(async (req, res) => {
   res.json({ user: req.user });
 });
 
+const updateMe = asyncHandler(async (req, res) => {
+  res.json({ user: await service.updateProfile(req.user.id, req.body) });
+});
+
 const listDrivers = asyncHandler(async (_req, res) => {
   res.json(await service.listDrivers());
 });
@@ -39,6 +43,7 @@ module.exports = {
   login,
   register,
   me,
+  updateMe,
   listDrivers,
   listUsers,
   createUser,

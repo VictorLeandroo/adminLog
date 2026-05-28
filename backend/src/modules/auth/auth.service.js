@@ -24,6 +24,14 @@ const userSchema = z.object({
   password: z.string().min(6).optional(),
   role: z.enum(['ADMIN', 'DRIVER']).default('DRIVER'),
   active: z.boolean().default(true),
+  photoUrl: z.string().optional().nullable(),
+  photoName: z.string().optional().nullable(),
+});
+
+const profileSchema = z.object({
+  name: z.string().min(2).optional(),
+  photoUrl: z.string().optional().nullable(),
+  photoName: z.string().optional().nullable(),
 });
 
 function signToken(user) {
@@ -45,6 +53,8 @@ function publicUser(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    photoUrl: user.photoUrl,
+    photoName: user.photoName,
   };
 }
 
@@ -108,6 +118,8 @@ async function listDrivers() {
       id: true,
       name: true,
       email: true,
+      photoUrl: true,
+      photoName: true,
     },
     orderBy: { name: 'asc' },
   });
@@ -121,6 +133,8 @@ async function listUsers() {
       email: true,
       role: true,
       active: true,
+      photoUrl: true,
+      photoName: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -145,6 +159,8 @@ async function createUser(input) {
       passwordHash,
       role: UserRole[data.role],
       active: data.active,
+      photoUrl: data.photoUrl,
+      photoName: data.photoName,
     },
     select: {
       id: true,
@@ -152,6 +168,8 @@ async function createUser(input) {
       email: true,
       role: true,
       active: true,
+      photoUrl: true,
+      photoName: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -179,6 +197,8 @@ async function updateUser(id, input) {
       passwordHash,
       role: data.role ? UserRole[data.role] : undefined,
       active: data.active,
+      photoUrl: data.photoUrl,
+      photoName: data.photoName,
     },
     select: {
       id: true,
@@ -186,10 +206,27 @@ async function updateUser(id, input) {
       email: true,
       role: true,
       active: true,
+      photoUrl: true,
+      photoName: true,
       createdAt: true,
       updatedAt: true,
     },
   });
+}
+
+async function updateProfile(userId, input) {
+  const data = profileSchema.parse(input);
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: data.name,
+      photoUrl: data.photoUrl,
+      photoName: data.photoName,
+    },
+  });
+
+  return publicUser(user);
 }
 
 async function resetPassword(id, input) {
@@ -210,6 +247,8 @@ async function resetPassword(id, input) {
       email: true,
       role: true,
       active: true,
+      photoUrl: true,
+      photoName: true,
       updatedAt: true,
     },
   });
@@ -222,5 +261,6 @@ module.exports = {
   listUsers,
   createUser,
   updateUser,
+  updateProfile,
   resetPassword,
 };

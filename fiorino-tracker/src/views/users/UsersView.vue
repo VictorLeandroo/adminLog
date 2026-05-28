@@ -23,7 +23,8 @@
             <section v-else class="users-grid">
                 <article v-for="user in users" :key="user.id" class="user-card" :class="{ inactive: !user.active }">
                     <div class="user-head">
-                        <div>
+                        <img :src="userPhotoSrc(user)" :alt="`Foto de ${user.name}`" class="user-avatar" />
+                        <div class="user-copy">
                             <strong>{{ user.name }}</strong>
                             <small>{{ user.email }}</small>
                         </div>
@@ -65,7 +66,11 @@
         <ModalDefault :is-visible="showUserModal" :isLoading="isLoading" max-width="460px" min-width="320px"
             @update:isVisible="cancelUserModal">
             <div class="modal-head">
-                <span class="modal-icon"><i class="fa-solid fa-user"></i></span>
+                <label class="modal-avatar-picker">
+                    <img :src="userFormPhotoPreview" alt="Foto do usuário" />
+                    <input type="file" accept="image/*" @change="handleUserPhoto" />
+                    <span><i class="fa-solid fa-camera"></i></span>
+                </label>
                 <div>
                     <h6>{{ userForm.id ? 'Editar usuário' : 'Novo usuário' }}</h6>
                     <p>Motoristas aparecem no select de veículos.</p>
@@ -122,6 +127,7 @@
 <script>
 import ButtonComp from '@/components/ButtonComp.vue'
 import ModalDefault from '@/components/modals/ModalDefault.vue'
+import defaultAvatar from '@/assets/img/avatar.jpg'
 import { formatLocalDate, listUsers, resetUserPasswordApi, saveUserApi, setUserActiveApi } from '@/services/backendService'
 
 export default {
@@ -148,6 +154,10 @@ export default {
     computed: {
         canSaveUser() {
             return Boolean(this.userForm.name && this.userForm.email && (this.userForm.id || this.userForm.password?.length >= 6))
+        },
+
+        userFormPhotoPreview() {
+            return this.userForm.photo?.preview || this.userForm.photoUrl || defaultAvatar
         }
     },
 
@@ -163,7 +173,10 @@ export default {
                 email: '',
                 password: '',
                 role: 'DRIVER',
-                active: true
+                active: true,
+                photo: null,
+                photoUrl: '',
+                photoName: ''
             }
         },
 
@@ -181,7 +194,7 @@ export default {
 
         openUserModal(user = null) {
             this.errorMessage = ''
-            this.userForm = user ? { ...user, password: '' } : this.emptyUserForm()
+            this.userForm = user ? { ...user, password: '', photo: null } : this.emptyUserForm()
             this.showUserModal = true
         },
 
@@ -205,6 +218,22 @@ export default {
             } finally {
                 this.isLoading = false
             }
+        },
+
+        handleUserPhoto(event) {
+            const file = event.target.files?.[0]
+            if (!file) return
+
+            this.userForm.photo = {
+                file,
+                preview: URL.createObjectURL(file),
+                name: file.name
+            }
+            event.target.value = ''
+        },
+
+        userPhotoSrc(user) {
+            return user.photoUrl || defaultAvatar
         },
 
         openPasswordModal(user) {
@@ -319,6 +348,34 @@ export default {
     align-items: flex-start;
 }
 
+.user-head {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.user-avatar,
+.modal-avatar-picker {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    border: 1px solid var(--border-soft);
+    object-fit: cover;
+    background: var(--surface-muted);
+    flex: 0 0 auto;
+}
+
+.user-copy {
+    min-width: 0;
+}
+
+.user-copy small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .user-head strong {
     display: block;
     color: var(--text-strong);
@@ -371,6 +428,37 @@ export default {
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
+}
+
+.modal-avatar-picker {
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.modal-avatar-picker img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.modal-avatar-picker input {
+    display: none;
+}
+
+.modal-avatar-picker span {
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 8px;
+    background: var(--primary-color);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
 }
 
 .check-row {

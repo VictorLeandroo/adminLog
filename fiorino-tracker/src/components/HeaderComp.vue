@@ -77,6 +77,7 @@ export default {
     data() {
         return {
             userName: '',
+            userAvatar: JSON.parse(localStorage.getItem('user') || 'null')?.photoUrl || '',
             userRole: JSON.parse(localStorage.getItem('user') || 'null')?.role || 'DRIVER',
             dropdownOpen: false,
             profileType: localStorage.getItem('profileType') || 'driver',
@@ -95,13 +96,14 @@ export default {
             return this.userRole === 'ADMIN' && this.profileType === 'admin'
         },
         avatarSrc() {
-            return localStorage.getItem('profilePhoto') || require('@/assets/img/avatar.jpg')
+            return this.userAvatar || require('@/assets/img/avatar.jpg')
         }
     },
 
     mounted() {
         const user = JSON.parse(localStorage.getItem('user') || 'null')
         this.userName = user?.name || 'Usuário'
+        this.userAvatar = user?.photoUrl || ''
         this.userRole = user?.role || this.userRole
         this.applyTheme()
         window.addEventListener('profile-updated', this.syncProfile)
@@ -130,6 +132,7 @@ export default {
             this.profileType = event.detail || localStorage.getItem('profileType') || 'driver'
             const user = JSON.parse(localStorage.getItem('user') || 'null')
             this.userName = user?.name || 'Usuário'
+            this.userAvatar = user?.photoUrl || ''
             this.userRole = user?.role || this.userRole
         },
 
@@ -146,6 +149,8 @@ export default {
         logout() {
             localStorage.removeItem('token')
             localStorage.removeItem('user')
+            localStorage.removeItem('profilePhoto')
+            localStorage.removeItem('profileName')
             this.$router.push('/login')
         }
     }

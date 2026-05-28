@@ -80,13 +80,18 @@ function normalizeFileUrl(fileUrl) {
   return fileUrl
 }
 
+function publicFileUrl(fileUrl) {
+  const normalized = normalizeFileUrl(fileUrl)
+  return normalized?.startsWith('/uploads') ? `${apiOrigin}${normalized}` : normalized
+}
+
 function normalizePhoto(photo) {
   const fileUrl = normalizeFileUrl(photo.fileUrl || photo.url || photo.preview)
 
   return {
     ...photo,
     name: photo.fileName || photo.name,
-    url: fileUrl?.startsWith('/uploads') ? `${apiOrigin}${fileUrl}` : fileUrl,
+    url: publicFileUrl(fileUrl),
     fileUrl
   }
 }
@@ -97,7 +102,7 @@ export function getQuinzenna(date) {
 }
 
 export function normalizeVehicle(vehicle) {
-  const photoUrl = vehicle.photoUrl?.startsWith('/uploads') ? `${apiOrigin}${vehicle.photoUrl}` : vehicle.photoUrl
+  const photoUrl = publicFileUrl(vehicle.photoUrl)
 
   return {
     ...vehicle,
@@ -110,7 +115,7 @@ export function normalizeVehicle(vehicle) {
     insuranceValidUntil: dateOnly(vehicle.insuranceValidUntil),
     documents: (vehicle.documents || []).map(document => ({
       ...document,
-      url: document.fileUrl?.startsWith('/uploads') ? `${apiOrigin}${document.fileUrl}` : document.fileUrl,
+      url: publicFileUrl(document.fileUrl),
       updatedAt: document.updatedAt || document.createdAt
     })),
     maintenances: (vehicle.maintenances || []).map(item => ({
@@ -118,6 +123,13 @@ export function normalizeVehicle(vehicle) {
       amount: Number(item.amount || 0),
       date: dateOnly(item.date)
     }))
+  }
+}
+
+export function normalizeUser(user) {
+  return {
+    ...user,
+    photoUrl: publicFileUrl(user?.photoUrl)
   }
 }
 
@@ -256,7 +268,7 @@ export async function getDashboardData(query = {}) {
 
 export async function listDrivers() {
   const response = await api.get('/auth/drivers')
-  return response.data
+  return response.data.map(normalizeUser)
 }
 
 export async function getMyVehicle() {
@@ -274,7 +286,7 @@ export async function saveVehicleApi(vehicle) {
     nextMaintenanceAtKm: vehicle.nextMaintenanceAt ? Number(vehicle.nextMaintenanceAt) : null,
     renavam: vehicle.renavam || null,
     chassis: vehicle.chassis || null,
-    photoUrl: uploadedPhoto?.fileUrl || vehicle.photoUrl || null,
+    photoUrl: uploadedPhoto?.fileUrl || normalizeFileUrl(vehicle.photoUrl) || null,
     photoName: uploadedPhoto?.fileName || vehicle.photoName || null,
     licenseValidUntil: vehicle.licenseValidUntil || null,
     insuranceValidUntil: vehicle.insuranceValidUntil || null,
@@ -312,7 +324,7 @@ export async function createDocumentApi(vehicleId, document) {
   const payload = {
     name: document.name,
     type: document.type === 'PDF' ? 'OTHER' : document.type || 'OTHER',
-    fileUrl: uploaded?.fileUrl || document.fileUrl || document.url || '#',
+    fileUrl: uploaded?.fileUrl || normalizeFileUrl(document.fileUrl || document.url) || '#',
     expiresAt: document.expiresAt || null
   }
 
@@ -483,15 +495,18 @@ export async function createStatementRequestApi(payload) {
 
 export async function listUsers() {
   const response = await api.get('/auth/users')
-  return response.data
+  return response.data.map(normalizeUser)
 }
 
 export async function saveUserApi(user) {
+  const uploadedPhoto = user.photo?.file ? await photoPayload(user.photo) : null
   const payload = {
     name: user.name,
     email: user.email,
     role: user.role || 'DRIVER',
-    active: user.active !== false
+    active: user.active !== false,
+    photoUrl: uploadedPhoto?.fileUrl || normalizeFileUrl(user.photoUrl) || null,
+    photoName: uploadedPhoto?.fileName || user.photoName || null
   }
 
   if (!user.id || user.password) payload.password = user.password
@@ -500,7 +515,18 @@ export async function saveUserApi(user) {
     ? await api.put(`/auth/users/${user.id}`, payload)
     : await api.post('/auth/users', payload)
 
-  return response.data
+  return normalizeUser(response.data)
+}
+
+export async function updateProfileApi(profile) {
+  const uploadedPhoto = profile.photo?.file ? await photoPayload(profile.photo) : null
+  const response = await api.put('/auth/me', {
+    name: profile.name,
+    photoUrl: uploadedPhoto?.fileUrl || normalizeFileUrl(profile.photoUrl) || null,
+    photoName: uploadedPhoto?.fileName || profile.photoName || null
+  })
+
+  return normalizeUser(response.data.user)
 }
 
 export async function resetUserPasswordApi(id, password) {
