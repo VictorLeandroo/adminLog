@@ -531,7 +531,7 @@ function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
   setCellValue(worksheet, `A${startRow + 1}`, formatDate(route.date));
   setCellValue(worksheet, `C${startRow + 1}`, cities);
   setCellValue(worksheet, `D${startRow + 2}`, values.baseAmount);
-  setCellValue(worksheet, `A${startRow + 3}`, invoices);
+  setCellValue(worksheet, `A${startRow + 2}`, invoices);
   setCellValue(worksheet, `D${startRow + 3}`, values.excessAmount);
   setCellValue(worksheet, `A${startRow + 5}`, numberValue(route.initialKm));
   setCellValue(worksheet, `B${startRow + 5}`, numberValue(route.finalKm));
@@ -590,6 +590,7 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   setCellValue(worksheet, `A${FREIGHT_TOTAL_ROW}`, 'TOTAL GERAL');
   setCellValue(worksheet, `D${FREIGHT_TOTAL_ROW}`, total);
   worksheet.getRow(FREIGHT_TOTAL_ROW).hidden = false;
+  worksheet.getRow(FREIGHT_TOTAL_ROW).height = 24;
   applyFreightFormatting(worksheet);
 
   return workbook.xlsx.writeBuffer();
