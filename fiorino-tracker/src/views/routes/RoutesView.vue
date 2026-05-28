@@ -942,7 +942,7 @@ export default {
             localStorage.setItem('profileType', profile)
             window.dispatchEvent(new CustomEvent('profile-updated', { detail: profile }))
         },
-
+ 
         openStartModal() {
             if (this.activeRoute || !this.myVehicle) return
             this.showStartModal = true
