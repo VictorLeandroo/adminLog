@@ -583,10 +583,10 @@ import PhotoUploadComp from '@/components/PhotoUploadComp.vue';
 import { notifyError, notifySuccess } from '@/services/notificationService';
 import {
     createRouteApi,
+    downloadFreightPdf,
     finishRouteApi,
     formatLocalDate,
     getFreightSettingsApi,
-    getFreightReportHtml,
     getMyVehicle,
     parseLocalDate,
     listVehicles,
@@ -786,7 +786,15 @@ export default {
 
         decoratedRoutes() {
             return [...this.routes]
-                .sort((a, b) => parseLocalDate(b.createdAt || b.data) - parseLocalDate(a.createdAt || a.data))
+                .sort((a, b) => {
+                    const dateDiff = this.routeSortTimestamp(b) - this.routeSortTimestamp(a)
+                    if (dateDiff) return dateDiff
+
+                    const statusDiff = this.routeStatusSortOrder(a.status) - this.routeStatusSortOrder(b.status)
+                    if (statusDiff) return statusDiff
+
+                    return this.routeSortTimestamp(b, 'createdAt') - this.routeSortTimestamp(a, 'createdAt')
+                })
                 .map(route => ({
                     ...route,
                     statusClass: this.statusClass(route.status)
@@ -835,6 +843,19 @@ export default {
             return this.calculateFreightAmount(this.adminForm.kmInicial, this.adminForm.kmFinal)
         },
 
+        adminReviewHasRequiredData() {
+            const initialKm = Number(this.adminForm.kmInicial)
+            const finalKm = Number(this.adminForm.kmFinal)
+
+            return Boolean(
+                this.hasNumberValue(this.adminForm.kmInicial) &&
+                this.hasNumberValue(this.adminForm.kmFinal) &&
+                finalKm >= initialKm &&
+                this.toList(this.adminForm.cidadesStr).length &&
+                this.toList(this.adminForm.notasStr).length
+            )
+        },
+
         adminPhotos() {
             return this.adminRoutePhotos || []
         },
@@ -849,6 +870,13 @@ export default {
                 transform: `translate(${this.adminPhotoPanX}px, ${this.adminPhotoPanY}px) scale(${this.adminPhotoZoom}) rotate(${this.adminPhotoRotation}deg)`
             }
         }
+    },
+
+    watch: {
+        'adminForm.kmInicial': 'syncAdminReviewStatus',
+        'adminForm.kmFinal': 'syncAdminReviewStatus',
+        'adminForm.cidadesStr': 'syncAdminReviewStatus',
+        'adminForm.notasStr': 'syncAdminReviewStatus'
     },
 
     mounted() {
@@ -954,6 +982,7 @@ export default {
                 correctionNote: route.correctionNote || ''
             }
             this.showAdminModal = true
+            this.syncAdminReviewStatus()
         },
 
         openCorrectionModal(route) {
@@ -1273,29 +1302,28 @@ export default {
         async generateFreightPdf() {
             if (!this.canGenerateFreightPdf) return
 
-            const reportWindow = window.open('', '_blank')
-            if (!reportWindow) {
-                notifyError(new Error('Pop-up bloqueado'), 'Permita pop-ups para abrir o relatório de frete.')
-                return
-            }
-
-            reportWindow.document.write('<p style="font-family: Arial, sans-serif; padding: 24px;">Gerando relatório...</p>')
             this.isModalLoading = true
             try {
-                const html = await getFreightReportHtml({
+                const { blob, filename } = await downloadFreightPdf({
                     startDate: this.freightForm.startDate,
                     endDate: this.freightForm.endDate,
                     title: this.freightForm.title
                 })
-                reportWindow.document.open()
-                reportWindow.document.write(html)
-                reportWindow.document.close()
+
+                const url = URL.createObjectURL(blob)
+                const link = document.createElement('a')
+                link.href = url
+                link.download = filename || 'frete.pdf'
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                URL.revokeObjectURL(url)
+
                 this.cancelFreightModal()
-                notifySuccess('Relatorio de frete aberto para salvar como PDF.')
+                notifySuccess('PDF de frete gerado com sucesso.')
             } catch (error) {
-                reportWindow.close()
                 console.error(error)
-                notifyError(error, 'Nao foi possivel gerar o relatorio de frete.')
+                notifyError(error, 'Nao foi possivel gerar o PDF de frete.')
             } finally {
                 this.isModalLoading = false
             }
@@ -1306,6 +1334,23 @@ export default {
                 .split(',')
                 .map(item => item.trim())
                 .filter(Boolean)
+        },
+
+        hasNumberValue(value) {
+            return value !== '' && value !== null && value !== undefined && Number.isFinite(Number(value))
+        },
+
+        syncAdminReviewStatus() {
+            if (!this.showAdminModal) return
+
+            if (this.adminReviewHasRequiredData && this.adminForm.status !== 'Concluida') {
+                this.adminForm.status = 'Concluida'
+                return
+            }
+
+            if (!this.adminReviewHasRequiredData && this.adminForm.status === 'Concluida') {
+                this.adminForm.status = 'Pendente de analise'
+            }
         },
 
         emptyCreateRouteForm() {
@@ -1340,6 +1385,23 @@ export default {
                 default:
                     return 'idle'
             }
+        },
+
+        routeStatusSortOrder(status) {
+            const statusOrder = {
+                'Pendente de analise': 1,
+                'Em andamento': 2,
+                Concluida: 3
+            }
+
+            return statusOrder[status] || 99
+        },
+
+        routeSortTimestamp(route, field = 'data') {
+            const value = route?.[field] || route?.data || route?.createdAt
+            const parsed = parseLocalDate(value)
+
+            return parsed && !Number.isNaN(parsed.getTime()) ? parsed.getTime() : 0
         },
 
         setDateShortcut(type) {

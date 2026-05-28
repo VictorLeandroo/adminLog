@@ -650,11 +650,7 @@ async function generateFreightPdf(query) {
   const pdfBuffer = await convertXlsxToPdf(xlsxBuffer, xlsxFilename);
 
   if (!pdfBuffer) {
-    return {
-      buffer: xlsxBuffer,
-      filename: xlsxFilename,
-      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    };
+    throw new AppError('Nao foi possivel converter a planilha de frete para PDF. Instale o LibreOffice no servidor ou configure LIBREOFFICE_PATH.', 500);
   }
 
   const filename = xlsxFilename.replace(/\.xlsx$/i, '.pdf');

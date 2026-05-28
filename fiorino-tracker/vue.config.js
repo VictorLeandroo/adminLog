@@ -1,5 +1,5 @@
 const productionOrigin = 'https://jfv-transportes.vercel.app'
-const apiTarget = process.env.VUE_APP_PROXY_TARGET || 'https://adminlog-pljf.onrender.com'
+const apiTarget = process.env.VUE_APP_PROXY_TARGET || 'https://adminlog-1.onrender.com'
 
 module.exports = {
   devServer: {

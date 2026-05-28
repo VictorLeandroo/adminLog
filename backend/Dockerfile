@@ -1,7 +1,7 @@
 FROM node:20-bookworm-slim
 
 ENV NODE_ENV=production
-ENV LIBREOFFICE_PATH=/usr/bin/libreoffice
+ENV LIBREOFFICE_PATH=/usr/bin/soffice
 
 WORKDIR /app
 
@@ -10,6 +10,7 @@ RUN apt-get update \
     ca-certificates \
     fontconfig \
     fonts-dejavu \
+    fonts-liberation \
     libreoffice-calc \
     libreoffice-writer \
   && rm -rf /var/lib/apt/lists/*

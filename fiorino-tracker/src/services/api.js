@@ -3,7 +3,7 @@ import axios from 'axios'
 const isProduction = process.env.NODE_ENV === 'production'
 
 const defaultApiUrl = isProduction
-    ? 'https://adminlog-pljf.onrender.com/api'
+    ? 'https://adminlog-1.onrender.com/api'
     : '/api'
 
 const api = axios.create({
