@@ -631,8 +631,8 @@ function showBlockRows(worksheet, startRow) {
 
 function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
   const values = routeFreightValues(route, expenses, settings);
-  const cities = route.cities.map((city) => city.name).join(', ') || 'ENTREGA';
-  const invoices = route.invoices.map((invoice) => invoice.number).join(', ');
+  const cities = route.cities.map((city) => city.name).join(', ')
+  const invoices = route.invoices.map((invoice) => invoice.number).join(', ')
 
   showBlockRows(worksheet, startRow);
   setCellValue(worksheet, `A${startRow + 1}`, formatDate(route.date));
@@ -653,21 +653,30 @@ function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
 }
 
 function applyFreightFormatting(worksheet) {
+  const currencyFormat =
+    '_-[$R$-pt-BR]* #,##0.00_-;-[$R$-pt-BR]* #,##0.00_-;_-[$R$-pt-BR]* "-"??_-;_-@_-'
+
   FREIGHT_BLOCK_ROWS.forEach((startRow) => {
-    [startRow + 2, startRow + 3, startRow + 4, startRow + 5, startRow + 6, startRow + 7].forEach((rowNumber) => {
-      worksheet.getCell(`D${rowNumber}`).numFmt = '"R$" #,##0.00';
-    });
-  });
-  worksheet.getCell(`D${FREIGHT_TOTAL_ROW}`).numFmt = '"R$" #,##0.00';
+    [
+      startRow + 2,
+      startRow + 3,
+      startRow + 4,
+      startRow + 5,
+      startRow + 6,
+      startRow + 7
+    ].forEach((rowNumber) => {
+      worksheet.getCell(`D${rowNumber}`).numFmt = currencyFormat
+    })
+  })
+
+  worksheet.getCell(`D${FREIGHT_TOTAL_ROW}`).numFmt = currencyFormat
+
   worksheet.pageSetup = {
     ...worksheet.pageSetup,
     orientation: 'portrait',
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0,
     paperSize: 9,
-    printArea: `A1:D${FREIGHT_TOTAL_ROW}`,
-  };
+    scale: 70
+  }
 }
 
 async function buildFreightWorkbook(routes, expenses, settings, { start, end, title }) {
@@ -697,7 +706,7 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   setCellValue(worksheet, `A${FREIGHT_TOTAL_ROW}`, 'TOTAL GERAL');
   setCellValue(worksheet, `D${FREIGHT_TOTAL_ROW}`, total);
   worksheet.getRow(FREIGHT_TOTAL_ROW).hidden = false;
-  worksheet.getRow(FREIGHT_TOTAL_ROW).height = 24;
+  worksheet.getRow(FREIGHT_TOTAL_ROW).height = 38.25
   applyFreightFormatting(worksheet);
 
   return workbook.xlsx.writeBuffer();
