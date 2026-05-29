@@ -681,22 +681,6 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   await workbook.xlsx.readFile(FREIGHT_TEMPLATE_PATH);
 
   const worksheet = workbook.worksheets[0];
-  worksheet.properties.defaultRowHeight = 22
-  worksheet.eachRow((row) => {
-    row.eachCell((cell) => {
-
-      cell.font = {
-        ...(cell.font || {}),
-        name: 'Arial',
-        size: 12
-      }
-
-    })
-  })
-  worksheet.getColumn('A').width = 18
-  worksheet.getColumn('B').width = 14
-  worksheet.getColumn('C').width = 38
-  worksheet.getColumn('D').width = 14
   if (!worksheet) throw new AppError('Template de frete invalido', 500);
 
   if (routes.length > FREIGHT_BLOCK_ROWS.length) {
@@ -719,7 +703,6 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   setCellValue(worksheet, `A${FREIGHT_TOTAL_ROW}`, 'TOTAL GERAL');
   setCellValue(worksheet, `D${FREIGHT_TOTAL_ROW}`, total);
   worksheet.getRow(FREIGHT_TOTAL_ROW).hidden = false;
-  worksheet.getRow(FREIGHT_TOTAL_ROW).height = 38.25
   applyFreightFormatting(worksheet);
 
   return workbook.xlsx.writeBuffer();
