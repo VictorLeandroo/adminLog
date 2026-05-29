@@ -653,18 +653,10 @@ function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
 }
 
 function applyFreightFormatting(worksheet) {
-  const currencyFormat =
-    '_-[$R$-pt-BR]* #,##0.00_-;-[$R$-pt-BR]* #,##0.00_-;_-[$R$-pt-BR]* "-"??_-;_-@_-'
+  const currencyFormat = '"R$" #,##0.00'
 
   FREIGHT_BLOCK_ROWS.forEach((startRow) => {
-    [
-      startRow + 2,
-      startRow + 3,
-      startRow + 4,
-      startRow + 5,
-      startRow + 6,
-      startRow + 7
-    ].forEach((rowNumber) => {
+    [startRow + 2, startRow + 3, startRow + 4, startRow + 5, startRow + 6, startRow + 7].forEach((rowNumber) => {
       worksheet.getCell(`D${rowNumber}`).numFmt = currencyFormat
     })
   })
@@ -675,7 +667,10 @@ function applyFreightFormatting(worksheet) {
     ...worksheet.pageSetup,
     orientation: 'portrait',
     paperSize: 9,
-    scale: 70
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    printArea: `A1:D${FREIGHT_TOTAL_ROW}`
   }
 }
 
