@@ -653,7 +653,8 @@ function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
 }
 
 function applyFreightFormatting(worksheet) {
-  const currencyFormat = '"R$" #,##0.00'
+  const currencyFormat =
+    '"R$"* #.##0,00;[Red]-"R$"* #.##0,00'
 
   FREIGHT_BLOCK_ROWS.forEach((startRow) => {
     [startRow + 2, startRow + 3, startRow + 4, startRow + 5, startRow + 6, startRow + 7].forEach((rowNumber) => {
@@ -664,12 +665,13 @@ function applyFreightFormatting(worksheet) {
   worksheet.getCell(`D${FREIGHT_TOTAL_ROW}`).numFmt = currencyFormat
 
   worksheet.pageSetup = {
-    ...worksheet.pageSetup,
     orientation: 'portrait',
     paperSize: 9,
     fitToPage: true,
     fitToWidth: 1,
-    fitToHeight: 0,
+    fitToHeight: 1,
+    horizontalCentered: true,
+    verticalCentered: false,
     printArea: `A1:D${FREIGHT_TOTAL_ROW}`
   }
 }
@@ -679,6 +681,22 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   await workbook.xlsx.readFile(FREIGHT_TEMPLATE_PATH);
 
   const worksheet = workbook.worksheets[0];
+  worksheet.properties.defaultRowHeight = 22
+  worksheet.eachRow((row) => {
+    row.eachCell((cell) => {
+
+      cell.font = {
+        ...(cell.font || {}),
+        name: 'Arial',
+        size: 12
+      }
+
+    })
+  })
+  worksheet.getColumn('A').width = 18
+  worksheet.getColumn('B').width = 14
+  worksheet.getColumn('C').width = 38
+  worksheet.getColumn('D').width = 14
   if (!worksheet) throw new AppError('Template de frete invalido', 500);
 
   if (routes.length > FREIGHT_BLOCK_ROWS.length) {
