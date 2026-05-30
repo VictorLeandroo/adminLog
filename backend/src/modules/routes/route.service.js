@@ -629,32 +629,52 @@ function showBlockRows(worksheet, startRow) {
   }
 }
 
+function toExcelNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+
+  if (typeof value === 'number') return value;
+
+  return Number(
+    String(value)
+      .replace(/[R$\s]/g, '')
+      .replace(/\./g, '')
+      .replace(',', '.')
+  ) || 0;
+}
+
 function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
   const values = routeFreightValues(route, expenses, settings);
-  const cities = route.cities.map((city) => city.name).join(', ')
-  const invoices = route.invoices.map((invoice) => invoice.number).join(', ')
+  const cities = route.cities.map((city) => city.name).join(', ');
+  const invoices = route.invoices.map((invoice) => invoice.number).join(', ');
 
   showBlockRows(worksheet, startRow);
+
   setCellValue(worksheet, `A${startRow + 1}`, formatDate(route.date));
   setCellValue(worksheet, `C${startRow + 1}`, cities);
-  setCellValue(worksheet, `D${startRow + 2}`, values.baseAmount);
+
+  setCellValue(worksheet, `D${startRow + 2}`, toExcelNumber(values.baseAmount));
   setCellValue(worksheet, `A${startRow + 2}`, invoices);
-  setCellValue(worksheet, `D${startRow + 3}`, values.excessAmount);
+
+  setCellValue(worksheet, `D${startRow + 3}`, toExcelNumber(values.excessAmount));
+
   setCellValue(worksheet, `A${startRow + 5}`, numberValue(route.initialKm));
   setCellValue(worksheet, `B${startRow + 5}`, numberValue(route.finalKm));
-  setCellValue(worksheet, `D${startRow + 4}`, moneyOrBlank(values.toll));
-  setCellValue(worksheet, `D${startRow + 5}`, moneyOrBlank(values.blueZone));
-  setCellValue(worksheet, `B${startRow + 6}`, values.km);
-  setCellValue(worksheet, `D${startRow + 6}`, moneyOrBlank(values.unloading));
-  setCellValue(worksheet, `B${startRow + 7}`, values.excessKm);
-  setCellValue(worksheet, `D${startRow + 7}`, values.total);
 
-  return values.total;
+  setCellValue(worksheet, `D${startRow + 4}`, toExcelNumber(moneyOrBlank(values.toll)));
+  setCellValue(worksheet, `D${startRow + 5}`, toExcelNumber(moneyOrBlank(values.blueZone)));
+
+  setCellValue(worksheet, `B${startRow + 6}`, numberValue(values.km));
+  setCellValue(worksheet, `D${startRow + 6}`, toExcelNumber(moneyOrBlank(values.unloading)));
+
+  setCellValue(worksheet, `B${startRow + 7}`, numberValue(values.excessKm));
+  setCellValue(worksheet, `D${startRow + 7}`, toExcelNumber(values.total));
+
+  return toExcelNumber(values.total);
 }
 
 function applyFreightFormatting(worksheet) {
   const currencyFormat =
-    '"R$"* #.##0,00;[Red]-"R$"* #.##0,00'
+    '_-"R$"\\ * #,##0.00_-;\\-"R$"\\ * #,##0.00_-;_-"R$"\\ * "-"??_-;_-@_-'
 
   FREIGHT_BLOCK_ROWS.forEach((startRow) => {
     [startRow + 2, startRow + 3, startRow + 4, startRow + 5, startRow + 6, startRow + 7].forEach((rowNumber) => {
@@ -667,11 +687,14 @@ function applyFreightFormatting(worksheet) {
   worksheet.pageSetup = {
     orientation: 'portrait',
     paperSize: 9,
+
     fitToPage: true,
     fitToWidth: 1,
-    fitToHeight: 1,
+    fitToHeight: 0,
+
     horizontalCentered: true,
     verticalCentered: false,
+
     printArea: `A1:D${FREIGHT_TOTAL_ROW}`
   }
 }
@@ -701,7 +724,11 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   });
 
   setCellValue(worksheet, `A${FREIGHT_TOTAL_ROW}`, 'TOTAL GERAL');
-  setCellValue(worksheet, `D${FREIGHT_TOTAL_ROW}`, total);
+  setCellValue(
+    worksheet,
+    `D${FREIGHT_TOTAL_ROW}`,
+    toExcelNumber(total)
+  );
   worksheet.getRow(FREIGHT_TOTAL_ROW).hidden = false;
   applyFreightFormatting(worksheet);
 
