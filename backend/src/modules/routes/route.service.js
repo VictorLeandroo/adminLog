@@ -139,25 +139,68 @@ function tollRouteDescription(routeId) {
   return `[ROUTE_TOLL:${routeId}] Pedagio da rota`;
 }
 
+function routeIdFromTollDescription(description) {
+  const match = String(description || '').match(/^\[ROUTE_TOLL:([^\]]+)\]/);
+  return match ? match[1] : null;
+}
+
+async function routeTollAmounts(routeIds, client = prisma) {
+  const ids = [...new Set((routeIds || []).filter(Boolean))];
+  if (!ids.length) return new Map();
+
+  const expenses = await client.expense.findMany({
+    where: {
+      description: { in: ids.map(tollRouteDescription) },
+    },
+    select: {
+      description: true,
+      amount: true,
+    },
+  });
+
+  return expenses.reduce((amounts, expense) => {
+    const routeId = routeIdFromTollDescription(expense.description);
+    if (!routeId) return amounts;
+
+    amounts.set(routeId, (amounts.get(routeId) || 0) + numberValue(expense.amount));
+    return amounts;
+  }, new Map());
+}
+
+async function withTollAmount(route, client = prisma) {
+  if (!route) return route;
+  const amounts = await routeTollAmounts([route.id], client);
+  return { ...route, tollAmount: amounts.get(route.id) || 0 };
+}
+
+async function withTollAmounts(routes, client = prisma) {
+  const amounts = await routeTollAmounts(routes.map((route) => route.id), client);
+  return routes.map((route) => ({ ...route, tollAmount: amounts.get(route.id) || 0 }));
+}
+
 async function listRoutes(user) {
-  return prisma.route.findMany({
+  const routes = await prisma.route.findMany({
     where: user.role === 'DRIVER' ? { driverId: user.id } : undefined,
     include,
     orderBy: { createdAt: 'desc' },
   });
+
+  return withTollAmounts(routes);
 }
 
 async function getRoute(id) {
   const route = await prisma.route.findUnique({ where: { id }, include });
   if (!route) throw new AppError('Rota nao encontrada', 404);
-  return route;
+  return withTollAmount(route);
 }
 
 async function getActiveRoute(driverId) {
-  return prisma.route.findFirst({
+  const route = await prisma.route.findFirst({
     where: { driverId, status: RouteStatus.IN_PROGRESS },
     include,
   });
+
+  return withTollAmount(route);
 }
 
 async function startRoute(user, input) {
@@ -174,7 +217,7 @@ async function startRoute(user, input) {
     throw new AppError('KM inicial nao pode ser menor que o KM atual do veiculo', 400);
   }
 
-  return prisma.route.create({
+  const route = await prisma.route.create({
     data: {
       vehicleId: vehicle.id,
       driverId: user.id,
@@ -185,6 +228,8 @@ async function startRoute(user, input) {
     },
     include,
   });
+
+  return { ...route, tollAmount: 0 };
 }
 
 async function createRoute(input) {
@@ -221,7 +266,7 @@ async function createRoute(input) {
       });
     }
 
-    return tx.route.create({
+    const route = await tx.route.create({
       data: {
         vehicleId: vehicle.id,
         driverId: vehicle.driverId,
@@ -241,6 +286,8 @@ async function createRoute(input) {
       },
       include,
     });
+
+    return { ...route, tollAmount: 0 };
   });
 }
 
@@ -318,7 +365,7 @@ async function finishRoute(user, id, input) {
       });
     }
 
-    return updatedRoute;
+    return withTollAmount(updatedRoute, tx);
   });
 }
 
@@ -421,7 +468,8 @@ async function reviewRoute(id, input) {
       });
     }
 
-    return tx.route.findUnique({ where: { id }, include });
+    const refreshedRoute = await tx.route.findUnique({ where: { id }, include });
+    return withTollAmount(refreshedRoute, tx);
   });
 }
 
@@ -439,7 +487,7 @@ async function addDeliveryProgress(user, id, input) {
 
   const nextIndex = route.photos.filter((photo) => photo.deliveredAt || photo.deliveryIndex).length + 1;
 
-  return prisma.route.update({
+  const updatedRoute = await prisma.route.update({
     where: { id },
     data: {
       photos: {
@@ -454,11 +502,21 @@ async function addDeliveryProgress(user, id, input) {
     },
     include,
   });
+
+  return withTollAmount(updatedRoute);
 }
 
 async function removeRoute(id) {
   await getRoute(id);
-  await prisma.route.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.expense.deleteMany({
+      where: {
+        description: tollRouteDescription(id),
+      },
+    });
+
+    await tx.route.delete({ where: { id } });
+  });
 }
 
 function dateOnly(value) {
@@ -573,9 +631,21 @@ function routeExtraAmount(route, expenses, keywords, categories = []) {
     .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
 }
 
+function routeTollAmount(route, expenses) {
+  const routeSpecificToll = expenses
+    .filter((expense) => expense.description === tollRouteDescription(route.id))
+    .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
+
+  if (routeSpecificToll > 0) return routeSpecificToll;
+
+  if (route.tollAmount !== undefined && route.tollAmount !== null) return numberValue(route.tollAmount);
+
+  return routeExtraAmount(route, expenses, ['pedagio', 'pedágio'], ['pedagio']);
+}
+
 function routeFreightValues(route, expenses, settings) {
   const excessKm = routeExcessKm(route, settings);
-  const toll = routeExtraAmount(route, expenses, ['pedagio', 'pedágio'], ['pedagio']);
+  const toll = routeTollAmount(route, expenses);
   const blueZone = routeExtraAmount(route, expenses, ['zona azul']);
   const unloading = routeExtraAmount(route, expenses, ['descarga']);
   const excessAmount = excessKm * settings.excessKmAmount;
