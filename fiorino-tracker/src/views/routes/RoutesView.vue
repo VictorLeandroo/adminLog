@@ -1229,7 +1229,7 @@ export default {
                 kmFinal: route.kmFinal || '',
                 cidadesStr: route.cidades.join(', '),
                 notasStr: route.notas.join(', '),
-                tollAmount: null
+                tollAmount: route.tollAmount ?? null
             }
             this.photos = []
             this.showFinishModal = true
@@ -1261,7 +1261,7 @@ export default {
                 notasStr: route.notas.join(', '),
                 plannedDeliveries: route.plannedDeliveries || '',
                 freightAmount: route.freightAmount ?? null,
-                tollAmount: null,
+                tollAmount: route.tollAmount ?? null,
                 useManualFreightAmount: Boolean(route.hasManualFreightAmount),
                 status: route.status,
                 correctionRequested: Boolean(route.correctionRequested),
