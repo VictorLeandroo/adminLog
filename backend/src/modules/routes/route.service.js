@@ -943,7 +943,7 @@ async function generateFreightHtml(query) {
       color: #111;
       background: #f3f4f6;
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 10px;
+      font-size: 12px;
     }
     .sheet {
       width: 190mm;
@@ -958,7 +958,7 @@ async function generateFreightHtml(query) {
       background: #fff200;
       border: 1px solid #111;
       border-bottom: 0;
-      font-size: 10px;
+      font-size: 13px;
       font-weight: 700;
       text-align: center;
       text-transform: uppercase;
