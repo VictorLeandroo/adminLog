@@ -12,6 +12,7 @@ const AppError = require('../../utils/AppError');
 const FREIGHT_TEMPLATE_PATH = path.resolve(__dirname, '../../templates/frete-base.xlsx');
 const FREIGHT_BLOCK_ROWS = [2, 11, 20, 29, 38, 47, 56, 65, 74, 83, 92];
 const FREIGHT_TOTAL_ROW = 100;
+const FREIGHT_FONT_SIZE_INCREMENT = 2;
 const DEFAULT_FREIGHT_SETTINGS = {
   baseAmount: 400,
   includedKm: 120,
@@ -591,6 +592,20 @@ function applyFreightPageSetup(worksheet) {
   };
 }
 
+function increaseFreightFontSize(worksheet) {
+  worksheet.eachRow({ includeEmpty: true }, (row) => {
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      const font = cell.font || {};
+      const currentSize = Number(font.size || 11);
+
+      cell.font = {
+        ...font,
+        size: currentSize + FREIGHT_FONT_SIZE_INCREMENT,
+      };
+    });
+  });
+}
+
 function formatDateShort(value) {
   return value.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
@@ -791,6 +806,7 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   setMoneyCell(worksheet, `D${FREIGHT_TOTAL_ROW}`, total);
   worksheet.getRow(FREIGHT_TOTAL_ROW).hidden = false;
   applyFreightPageSetup(worksheet);
+  increaseFreightFontSize(worksheet);
 
   return workbook.xlsx.writeBuffer();
 }
@@ -943,7 +959,7 @@ async function generateFreightHtml(query) {
       color: #111;
       background: #f3f4f6;
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 12px;
+      font-size: 14px;
     }
     .sheet {
       width: 190mm;
@@ -958,7 +974,7 @@ async function generateFreightHtml(query) {
       background: #fff200;
       border: 1px solid #111;
       border-bottom: 0;
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 700;
       text-align: center;
       text-transform: uppercase;
@@ -1060,7 +1076,7 @@ async function generateFreightHtml(query) {
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      font-size: 13px;
+      font-size: 15px;
     }
     .print-hint button {
       border: 0;
