@@ -139,25 +139,68 @@ function tollRouteDescription(routeId) {
   return `[ROUTE_TOLL:${routeId}] Pedagio da rota`;
 }
 
+function routeIdFromTollDescription(description) {
+  const match = String(description || '').match(/^\[ROUTE_TOLL:([^\]]+)\]/);
+  return match ? match[1] : null;
+}
+
+async function routeTollAmounts(routeIds, client = prisma) {
+  const ids = [...new Set((routeIds || []).filter(Boolean))];
+  if (!ids.length) return new Map();
+
+  const expenses = await client.expense.findMany({
+    where: {
+      description: { in: ids.map(tollRouteDescription) },
+    },
+    select: {
+      description: true,
+      amount: true,
+    },
+  });
+
+  return expenses.reduce((amounts, expense) => {
+    const routeId = routeIdFromTollDescription(expense.description);
+    if (!routeId) return amounts;
+
+    amounts.set(routeId, (amounts.get(routeId) || 0) + numberValue(expense.amount));
+    return amounts;
+  }, new Map());
+}
+
+async function withTollAmount(route, client = prisma) {
+  if (!route) return route;
+  const amounts = await routeTollAmounts([route.id], client);
+  return { ...route, tollAmount: amounts.get(route.id) || 0 };
+}
+
+async function withTollAmounts(routes, client = prisma) {
+  const amounts = await routeTollAmounts(routes.map((route) => route.id), client);
+  return routes.map((route) => ({ ...route, tollAmount: amounts.get(route.id) || 0 }));
+}
+
 async function listRoutes(user) {
-  return prisma.route.findMany({
+  const routes = await prisma.route.findMany({
     where: user.role === 'DRIVER' ? { driverId: user.id } : undefined,
     include,
     orderBy: { createdAt: 'desc' },
   });
+
+  return withTollAmounts(routes);
 }
 
 async function getRoute(id) {
   const route = await prisma.route.findUnique({ where: { id }, include });
   if (!route) throw new AppError('Rota nao encontrada', 404);
-  return route;
+  return withTollAmount(route);
 }
 
 async function getActiveRoute(driverId) {
-  return prisma.route.findFirst({
+  const route = await prisma.route.findFirst({
     where: { driverId, status: RouteStatus.IN_PROGRESS },
     include,
   });
+
+  return withTollAmount(route);
 }
 
 async function startRoute(user, input) {
@@ -174,7 +217,7 @@ async function startRoute(user, input) {
     throw new AppError('KM inicial nao pode ser menor que o KM atual do veiculo', 400);
   }
 
-  return prisma.route.create({
+  const route = await prisma.route.create({
     data: {
       vehicleId: vehicle.id,
       driverId: user.id,
@@ -185,6 +228,8 @@ async function startRoute(user, input) {
     },
     include,
   });
+
+  return { ...route, tollAmount: 0 };
 }
 
 async function createRoute(input) {
@@ -221,7 +266,7 @@ async function createRoute(input) {
       });
     }
 
-    return tx.route.create({
+    const route = await tx.route.create({
       data: {
         vehicleId: vehicle.id,
         driverId: vehicle.driverId,
@@ -241,6 +286,8 @@ async function createRoute(input) {
       },
       include,
     });
+
+    return { ...route, tollAmount: 0 };
   });
 }
 
@@ -318,7 +365,7 @@ async function finishRoute(user, id, input) {
       });
     }
 
-    return updatedRoute;
+    return withTollAmount(updatedRoute, tx);
   });
 }
 
@@ -421,7 +468,8 @@ async function reviewRoute(id, input) {
       });
     }
 
-    return tx.route.findUnique({ where: { id }, include });
+    const refreshedRoute = await tx.route.findUnique({ where: { id }, include });
+    return withTollAmount(refreshedRoute, tx);
   });
 }
 
@@ -439,7 +487,7 @@ async function addDeliveryProgress(user, id, input) {
 
   const nextIndex = route.photos.filter((photo) => photo.deliveredAt || photo.deliveryIndex).length + 1;
 
-  return prisma.route.update({
+  const updatedRoute = await prisma.route.update({
     where: { id },
     data: {
       photos: {
@@ -454,11 +502,21 @@ async function addDeliveryProgress(user, id, input) {
     },
     include,
   });
+
+  return withTollAmount(updatedRoute);
 }
 
 async function removeRoute(id) {
   await getRoute(id);
-  await prisma.route.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.expense.deleteMany({
+      where: {
+        description: tollRouteDescription(id),
+      },
+    });
+
+    await tx.route.delete({ where: { id } });
+  });
 }
 
 function dateOnly(value) {
@@ -488,11 +546,49 @@ function formatDate(value) {
   return value.toLocaleDateString('pt-BR');
 }
 
-function formatMoney(value) {
-  return Number(value || 0).toLocaleString('pt-BR', {
+function formatBRL(value) {
+  if (value == null || value === '') return '';
+
+  return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  });
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+}
+
+function formatMoney(value) {
+  return formatBRL(value || 0);
+}
+
+function setMoneyCell(worksheet, address, value) {
+  const cell = worksheet.getCell(address);
+
+  cell.value = formatBRL(value);
+
+  cell.alignment = {
+    horizontal: 'right',
+    vertical: 'middle',
+  };
+
+  cell.numFmt = '@';
+}
+
+function positiveMoneyOrBlank(value) {
+  return numberValue(value) > 0 ? numberValue(value) : '';
+}
+
+function applyFreightPageSetup(worksheet) {
+  worksheet.pageSetup = {
+    orientation: 'portrait',
+    paperSize: 9,
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    horizontalCentered: true,
+    verticalCentered: false,
+    printArea: `A1:D${FREIGHT_TOTAL_ROW}`,
+  };
 }
 
 function formatDateShort(value) {
@@ -535,9 +631,21 @@ function routeExtraAmount(route, expenses, keywords, categories = []) {
     .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
 }
 
+function routeTollAmount(route, expenses) {
+  const routeSpecificToll = expenses
+    .filter((expense) => expense.description === tollRouteDescription(route.id))
+    .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
+
+  if (routeSpecificToll > 0) return routeSpecificToll;
+
+  if (route.tollAmount !== undefined && route.tollAmount !== null) return numberValue(route.tollAmount);
+
+  return routeExtraAmount(route, expenses, ['pedagio', 'pedágio'], ['pedagio']);
+}
+
 function routeFreightValues(route, expenses, settings) {
   const excessKm = routeExcessKm(route, settings);
-  const toll = routeExtraAmount(route, expenses, ['pedagio', 'pedágio'], ['pedagio']);
+  const toll = routeTollAmount(route, expenses);
   const blueZone = routeExtraAmount(route, expenses, ['zona azul']);
   const unloading = routeExtraAmount(route, expenses, ['descarga']);
   const excessAmount = excessKm * settings.excessKmAmount;
@@ -564,10 +672,6 @@ function routeFreightValues(route, expenses, settings) {
 
 function setCellValue(worksheet, address, value) {
   worksheet.getCell(address).value = value;
-}
-
-function moneyOrBlank(value) {
-  return numberValue(value) > 0 ? numberValue(value) : null;
 }
 
 function escapeHtml(value) {
@@ -631,49 +735,32 @@ function showBlockRows(worksheet, startRow) {
 
 function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
   const values = routeFreightValues(route, expenses, settings);
-  const cities = route.cities.map((city) => city.name).join(', ')
-  const invoices = route.invoices.map((invoice) => invoice.number).join(', ')
+  const cities = route.cities.map((city) => city.name).join(', ');
+  const invoices = route.invoices.map((invoice) => invoice.number).join(', ');
 
   showBlockRows(worksheet, startRow);
+
   setCellValue(worksheet, `A${startRow + 1}`, formatDate(route.date));
   setCellValue(worksheet, `C${startRow + 1}`, cities);
-  setCellValue(worksheet, `D${startRow + 2}`, values.baseAmount);
+
+  setMoneyCell(worksheet, `D${startRow + 2}`, values.baseAmount);
   setCellValue(worksheet, `A${startRow + 2}`, invoices);
-  setCellValue(worksheet, `D${startRow + 3}`, values.excessAmount);
+
+  setMoneyCell(worksheet, `D${startRow + 3}`, values.excessAmount);
+
   setCellValue(worksheet, `A${startRow + 5}`, numberValue(route.initialKm));
   setCellValue(worksheet, `B${startRow + 5}`, numberValue(route.finalKm));
-  setCellValue(worksheet, `D${startRow + 4}`, moneyOrBlank(values.toll));
-  setCellValue(worksheet, `D${startRow + 5}`, moneyOrBlank(values.blueZone));
-  setCellValue(worksheet, `B${startRow + 6}`, values.km);
-  setCellValue(worksheet, `D${startRow + 6}`, moneyOrBlank(values.unloading));
-  setCellValue(worksheet, `B${startRow + 7}`, values.excessKm);
-  setCellValue(worksheet, `D${startRow + 7}`, values.total);
 
-  return values.total;
-}
+  setMoneyCell(worksheet, `D${startRow + 4}`, positiveMoneyOrBlank(values.toll));
+  setMoneyCell(worksheet, `D${startRow + 5}`, positiveMoneyOrBlank(values.blueZone));
 
-function applyFreightFormatting(worksheet) {
-  const currencyFormat =
-    '"R$"* #.##0,00;[Red]-"R$"* #.##0,00'
+  setCellValue(worksheet, `B${startRow + 6}`, numberValue(values.km));
+  setMoneyCell(worksheet, `D${startRow + 6}`, positiveMoneyOrBlank(values.unloading));
 
-  FREIGHT_BLOCK_ROWS.forEach((startRow) => {
-    [startRow + 2, startRow + 3, startRow + 4, startRow + 5, startRow + 6, startRow + 7].forEach((rowNumber) => {
-      worksheet.getCell(`D${rowNumber}`).numFmt = currencyFormat
-    })
-  })
+  setCellValue(worksheet, `B${startRow + 7}`, numberValue(values.excessKm));
+  setMoneyCell(worksheet, `D${startRow + 7}`, values.total);
 
-  worksheet.getCell(`D${FREIGHT_TOTAL_ROW}`).numFmt = currencyFormat
-
-  worksheet.pageSetup = {
-    orientation: 'portrait',
-    paperSize: 9,
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 1,
-    horizontalCentered: true,
-    verticalCentered: false,
-    printArea: `A1:D${FREIGHT_TOTAL_ROW}`
-  }
+  return numberValue(values.total);
 }
 
 async function buildFreightWorkbook(routes, expenses, settings, { start, end, title }) {
@@ -701,9 +788,9 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   });
 
   setCellValue(worksheet, `A${FREIGHT_TOTAL_ROW}`, 'TOTAL GERAL');
-  setCellValue(worksheet, `D${FREIGHT_TOTAL_ROW}`, total);
+  setMoneyCell(worksheet, `D${FREIGHT_TOTAL_ROW}`, total);
   worksheet.getRow(FREIGHT_TOTAL_ROW).hidden = false;
-  applyFreightFormatting(worksheet);
+  applyFreightPageSetup(worksheet);
 
   return workbook.xlsx.writeBuffer();
 }
@@ -856,7 +943,7 @@ async function generateFreightHtml(query) {
       color: #111;
       background: #f3f4f6;
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 10px;
+      font-size: 12px;
     }
     .sheet {
       width: 190mm;
@@ -871,7 +958,7 @@ async function generateFreightHtml(query) {
       background: #fff200;
       border: 1px solid #111;
       border-bottom: 0;
-      font-size: 10px;
+      font-size: 13px;
       font-weight: 700;
       text-align: center;
       text-transform: uppercase;

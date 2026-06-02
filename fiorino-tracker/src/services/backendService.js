@@ -145,6 +145,7 @@ export function normalizeRoute(route) {
     plannedDeliveries: route.plannedDeliveries,
     freightAmount: route.freightAmount === null || route.freightAmount === undefined ? null : Number(route.freightAmount),
     hasManualFreightAmount: route.freightAmount !== null && route.freightAmount !== undefined,
+    tollAmount: route.tollAmount === null || route.tollAmount === undefined ? null : Number(route.tollAmount),
     cidades: (route.cities || []).map(city => city.name),
     notas: (route.invoices || []).map(invoice => invoice.number),
     photos: (route.photos || []).map(normalizePhoto),
