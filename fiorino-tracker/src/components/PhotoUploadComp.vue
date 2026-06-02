@@ -1,10 +1,18 @@
 <template>
     <div class="photo-upload">
-        <label class="upload-box">
-            <input type="file" multiple accept="image/*" @change="handleFiles" hidden />
-            <i class="fa-solid fa-camera"></i>
-            <span>Adicionar fotos</span>
-        </label>
+        <div class="upload-actions">
+            <label class="upload-box">
+                <input type="file" accept="image/*" capture="environment" @change="handleFiles" hidden />
+                <i class="fa-solid fa-camera"></i>
+                <span>Tirar foto</span>
+            </label>
+
+            <label class="upload-box">
+                <input type="file" multiple accept="image/*" @change="handleFiles" hidden />
+                <i class="fa-solid fa-images"></i>
+                <span>Galeria</span>
+            </label>
+        </div>
 
         <div class="preview-list" v-if="files.length">
             <div v-for="(file, index) in files" :key="index" class="preview-item">
@@ -72,6 +80,12 @@ export default {
     gap: 10px;
 }
 
+.upload-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
 .upload-box {
     border: 2px dashed #ced4da;
     border-radius: 8px;
@@ -87,6 +101,12 @@ export default {
 
 .upload-box i {
     font-size: 22px;
+}
+
+@media (max-width: 380px) {
+    .upload-actions {
+        grid-template-columns: 1fr;
+    }
 }
 
 .preview-list {
