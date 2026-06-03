@@ -35,6 +35,38 @@ const removeExpense = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
+const reviewExpense = asyncHandler(async (req, res) => {
+  res.json(await service.reviewExpense(req.user, req.params.id, req.body));
+});
+
+const getSummary = asyncHandler(async (req, res) => {
+  res.json(await service.getSummary(req.user, req.query));
+});
+
+const getCashFlow = asyncHandler(async (req, res) => {
+  res.json(await service.getCashFlow(req.user, req.query));
+});
+
+const getDre = asyncHandler(async (req, res) => {
+  res.json(await service.getDre(req.user, req.query));
+});
+
+const getVehicleDre = asyncHandler(async (req, res) => {
+  res.json(await service.getVehicleDre(req.user, req.query));
+});
+
+const getFunds = asyncHandler(async (req, res) => {
+  res.json(await service.getFunds(req.user, req.query));
+});
+
+const getSalarySettlements = asyncHandler(async (req, res) => {
+  res.json(await service.getSalarySettlements(req.user, req.query));
+});
+
+const getInsights = asyncHandler(async (req, res) => {
+  res.json(await service.getInsights(req.user, req.query));
+});
+
 const listStatementRequests = asyncHandler(async (_req, res) => {
   res.json(await service.listStatementRequests());
 });
@@ -55,7 +87,15 @@ module.exports = {
   listExpenses,
   createExpense,
   updateExpense,
+  reviewExpense,
   removeExpense,
+  getSummary,
+  getCashFlow,
+  getDre,
+  getVehicleDre,
+  getFunds,
+  getSalarySettlements,
+  getInsights,
   listStatementRequests,
   createStatementRequest,
   updateStatementRequest,

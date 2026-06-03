@@ -40,6 +40,13 @@ enum StatementStatus {
   CANCELED
 }
 
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CORRECTION_REQUESTED
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -184,6 +191,10 @@ model Expense {
   description String?
   amount      Decimal  @db.Decimal(12, 2)
   paid        Boolean  @default(true)
+  status      ExpenseStatus @default(APPROVED)
+  reviewNote  String?
+  reviewedAt  DateTime?
+  reviewedById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
