@@ -12,6 +12,10 @@ const EXPENSE_CATEGORIES = {
   INSURANCE: 'Seguro',
   FINE: 'Multa',
   SALARY: 'Salario',
+  ADMINISTRATION: 'Administracao',
+  OFFICE: 'Escritorio',
+  TAX: 'Impostos',
+  INSTALLMENT: 'Parcela/financiamento',
   OTHER: 'Outros',
 };
 
@@ -37,8 +41,6 @@ const VEHICLE_REQUIRED_CATEGORIES = new Set([
   EXPENSE_CATEGORIES.TOLL,
   EXPENSE_CATEGORIES.MAINTENANCE,
   EXPENSE_CATEGORIES.TIRE,
-  EXPENSE_CATEGORIES.INSURANCE,
-  EXPENSE_CATEGORIES.FINE,
 ]);
 
 const expenseSchema = z.object({
@@ -230,7 +232,7 @@ async function createExpense(user, input) {
 
   return prisma.expense.create({
     data: {
-      vehicleId: category === EXPENSE_CATEGORIES.SALARY ? null : data.vehicleId,
+      vehicleId: category === EXPENSE_CATEGORIES.SALARY ? null : (data.vehicleId || null),
       createdById: user.id,
       driverId: category === EXPENSE_CATEGORIES.SALARY ? data.driverId : null,
       date: new Date(data.date),
