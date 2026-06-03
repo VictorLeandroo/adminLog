@@ -73,6 +73,20 @@ const statementSchema = z.object({
   note: z.string().optional().nullable(),
 });
 
+const fundSchema = z.object({
+  name: z.string().min(2),
+  description: z.string().optional().nullable(),
+  target: z.number().min(0).default(0),
+  active: z.boolean().default(true),
+});
+
+const fundMovementSchema = z.object({
+  type: z.enum(['IN', 'OUT']),
+  date: z.string(),
+  amount: z.number().positive(),
+  note: z.string().optional().nullable(),
+});
+
 function numberValue(value) {
   return Number(value || 0);
 }
@@ -491,23 +505,74 @@ async function getVehicleDre(user, query) {
 
 async function getFunds(user, query) {
   const summary = await getSummary(user, query);
-  const activeVehicles = await prisma.vehicle.count({ where: { status: { not: 'MAINTENANCE' } } });
   const surplus = Math.max(0, summary.netBalance);
-  const operationalTarget = activeVehicles * 10000;
-  const maintenanceTarget = activeVehicles * 5000;
-  const funds = [
-    { key: 'cash', label: 'Caixa operacional', value: surplus * 0.3, target: activeVehicles * 3000 },
-    { key: 'reserve', label: 'Reserva de emergencia', value: surplus * 0.35, target: operationalTarget },
-    { key: 'maintenance', label: 'Fundo de manutencao', value: surplus * 0.25, target: maintenanceTarget },
-    { key: 'expansion', label: 'Expansao / frota', value: surplus * 0.2, target: activeVehicles * 3000 },
-    { key: 'office', label: 'Reforma escritorio', value: surplus * 0.05, target: 8000 },
-    { key: 'partners', label: 'Distribuicao socios', value: operationalTarget > surplus * 0.35 ? surplus * 0.15 : surplus * 0.25, target: surplus },
-  ];
+  const funds = await prisma.financialFund.findMany({
+    where: { active: true },
+    include: { movements: { orderBy: { date: 'desc' } } },
+    orderBy: { createdAt: 'asc' },
+  });
 
   return {
     surplus,
-    funds: funds.map((fund) => ({ ...fund, progress: fund.target ? Math.min(100, (fund.value / fund.target) * 100) : 0 })),
+    funds: funds.map((fund) => {
+      const value = fund.movements.reduce((total, movement) => (
+        movement.type === 'IN'
+          ? total + numberValue(movement.amount)
+          : total - numberValue(movement.amount)
+      ), 0);
+      const target = numberValue(fund.target);
+      return {
+        id: fund.id,
+        key: fund.id,
+        label: fund.name,
+        name: fund.name,
+        description: fund.description,
+        value,
+        target,
+        active: fund.active,
+        progress: target ? Math.min(100, (value / target) * 100) : 0,
+        movements: fund.movements,
+      };
+    }),
   };
+}
+
+async function createFund(input) {
+  const data = fundSchema.parse(input);
+  return prisma.financialFund.create({
+    data: {
+      name: data.name,
+      description: data.description,
+      target: data.target,
+      active: data.active,
+    },
+  });
+}
+
+async function updateFund(id, input) {
+  const data = fundSchema.partial().parse(input);
+  return prisma.financialFund.update({
+    where: { id },
+    data: {
+      name: data.name,
+      description: data.description,
+      target: data.target,
+      active: data.active,
+    },
+  });
+}
+
+async function createFundMovement(fundId, input) {
+  const data = fundMovementSchema.parse(input);
+  return prisma.financialFundMovement.create({
+    data: {
+      fundId,
+      type: data.type,
+      date: new Date(data.date),
+      amount: data.amount,
+      note: data.note,
+    },
+  });
 }
 
 async function getSalarySettlements(user, query) {
@@ -600,6 +665,9 @@ module.exports = {
   getDre,
   getVehicleDre,
   getFunds,
+  createFund,
+  updateFund,
+  createFundMovement,
   getSalarySettlements,
   getInsights,
   listStatementRequests,

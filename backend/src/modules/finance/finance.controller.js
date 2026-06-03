@@ -59,6 +59,18 @@ const getFunds = asyncHandler(async (req, res) => {
   res.json(await service.getFunds(req.user, req.query));
 });
 
+const createFund = asyncHandler(async (req, res) => {
+  res.status(201).json(await service.createFund(req.body));
+});
+
+const updateFund = asyncHandler(async (req, res) => {
+  res.json(await service.updateFund(req.params.id, req.body));
+});
+
+const createFundMovement = asyncHandler(async (req, res) => {
+  res.status(201).json(await service.createFundMovement(req.params.id, req.body));
+});
+
 const getSalarySettlements = asyncHandler(async (req, res) => {
   res.json(await service.getSalarySettlements(req.user, req.query));
 });
@@ -94,6 +106,9 @@ module.exports = {
   getDre,
   getVehicleDre,
   getFunds,
+  createFund,
+  updateFund,
+  createFundMovement,
   getSalarySettlements,
   getInsights,
   listStatementRequests,

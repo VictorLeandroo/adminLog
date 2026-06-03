@@ -47,6 +47,11 @@ enum ExpenseStatus {
   CORRECTION_REQUESTED
 }
 
+enum FundMovementType {
+  IN
+  OUT
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -238,4 +243,29 @@ model FreightStatementRequest {
   fileUrl   String?
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
+}
+
+model FinancialFund {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  target      Decimal  @default(0) @db.Decimal(12, 2)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  movements FinancialFundMovement[]
+}
+
+model FinancialFundMovement {
+  id        String           @id @default(uuid())
+  fundId    String
+  type      FundMovementType
+  date      DateTime
+  amount    Decimal          @db.Decimal(12, 2)
+  note      String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  fund FinancialFund @relation(fields: [fundId], references: [id], onDelete: Cascade)
 }

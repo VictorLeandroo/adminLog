@@ -12,6 +12,9 @@ router.get('/cash-flow', requireRole('ADMIN', 'FINANCE'), controller.getCashFlow
 router.get('/dre', requireRole('ADMIN', 'FINANCE'), controller.getDre);
 router.get('/vehicle-dre', requireRole('ADMIN', 'FINANCE'), controller.getVehicleDre);
 router.get('/funds', requireRole('ADMIN', 'FINANCE'), controller.getFunds);
+router.post('/funds', requireRole('ADMIN', 'FINANCE'), controller.createFund);
+router.put('/funds/:id', requireRole('ADMIN', 'FINANCE'), controller.updateFund);
+router.post('/funds/:id/movements', requireRole('ADMIN', 'FINANCE'), controller.createFundMovement);
 router.get('/salary-settlements', requireRole('ADMIN', 'FINANCE'), controller.getSalarySettlements);
 router.get('/insights', controller.getInsights);
 
