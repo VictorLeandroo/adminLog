@@ -163,6 +163,8 @@ export function normalizeExpense(expense) {
     photos: (expense.photos || []).map(normalizePhoto),
     editable: expense.editable !== false,
     sourceType: expense.sourceType || 'EXPENSE',
+    status: expense.status || 'APPROVED',
+    reviewNote: expense.reviewNote,
     driver: expense.driver ? normalizeUser(expense.driver) : null
   }
 }
@@ -277,6 +279,11 @@ export async function listVehicles() {
 
 export async function getDashboardData(query = {}) {
   const response = await api.get('/dashboard', { params: query })
+  return response.data
+}
+
+export async function getExecutiveDashboardData(query = {}) {
+  const response = await api.get('/dashboard/executive', { params: query })
   return response.data
 }
 
@@ -463,6 +470,64 @@ export async function listExpenses(query = {}) {
   return response.data.map(normalizeExpense)
 }
 
+export async function getFinanceSummary(query = {}) {
+  const response = await api.get('/finance/summary', { params: query })
+  return response.data
+}
+
+export async function getCashFlow(query = {}) {
+  const response = await api.get('/finance/cash-flow', { params: query })
+  return response.data
+}
+
+export async function getDre(query = {}) {
+  const response = await api.get('/finance/dre', { params: query })
+  return response.data
+}
+
+export async function getVehicleDre(query = {}) {
+  const response = await api.get('/finance/vehicle-dre', { params: query })
+  return response.data
+}
+
+export async function getFinanceFunds(query = {}) {
+  const response = await api.get('/finance/funds', { params: query })
+  return response.data
+}
+
+export async function saveFinanceFundApi(fund) {
+  const payload = {
+    name: fund.name,
+    description: fund.description || null,
+    target: Number(fund.target || 0),
+    active: fund.active !== false
+  }
+  const response = fund.id
+    ? await api.put(`/finance/funds/${fund.id}`, payload)
+    : await api.post('/finance/funds', payload)
+  return response.data
+}
+
+export async function createFundMovementApi(fundId, movement) {
+  const response = await api.post(`/finance/funds/${fundId}/movements`, {
+    type: movement.type,
+    date: movement.date,
+    amount: Number(movement.amount || 0),
+    note: movement.note || null
+  })
+  return response.data
+}
+
+export async function getSalarySettlements(query = {}) {
+  const response = await api.get('/finance/salary-settlements', { params: query })
+  return response.data
+}
+
+export async function getFinanceInsights(query = {}) {
+  const response = await api.get('/finance/insights', { params: query })
+  return response.data
+}
+
 export async function listRevenues(query = {}) {
   const response = await api.get('/finance/revenues', { params: query })
   return response.data.map(normalizeRevenue)
@@ -509,6 +574,11 @@ export async function saveExpenseApi(expense) {
 
 export async function removeExpenseApi(id) {
   await api.delete(`/finance/expenses/${id}`)
+}
+
+export async function reviewExpenseApi(id, payload) {
+  const response = await api.patch(`/finance/expenses/${id}/review`, payload)
+  return normalizeExpense(response.data)
 }
 
 export async function listStatementRequests() {

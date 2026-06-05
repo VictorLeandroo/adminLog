@@ -94,7 +94,7 @@ p,
     textarea,
     .select2-container--default .select2-selection--single {
         border: 1px solid var(--dark-gray-default);
-        color: var(--dark-color-text);
+        color: var(--dark-color-text) !important;
         background-color: var(--dark-gray-default);
     }
 

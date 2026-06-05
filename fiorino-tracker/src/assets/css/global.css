@@ -250,6 +250,11 @@ button:disabled,
     color: #f2a6a6;
     box-shadow: none;
 }
+:root[data-theme="dark"] {
+    input, select {
+        color: var(--dark-color-text);
+    }
+}
 
 .button-secundary,
 .button-secundary-red,
