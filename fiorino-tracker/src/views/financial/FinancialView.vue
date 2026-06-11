@@ -80,9 +80,14 @@
 
                         <article v-for="expense in filteredExpenses" :key="expense.id" class="expense-card">
                             <div class="expense-head">
-                                <div>
-                                    <strong>{{ expense.category }}</strong>
-                                    <small>{{ formatDate(expense.date) }} - {{ expense.quinzenna }} quinzena</small>
+                                <div class="expense-title">
+                                    <span class="expense-icon">
+                                        <i class="fa-solid" :class="expenseCategoryIcon(expense.category)"></i>
+                                    </span>
+                                    <div>
+                                        <strong>{{ expense.category }}</strong>
+                                        <small>{{ formatDate(expense.date) }} - {{ expense.quinzenna }} quinzena</small>
+                                    </div>
                                 </div>
                                 <div class="amount-stack">
                                     <span class="status-badge" :class="expense.status">{{ statusLabel(expense.status) }}</span>
@@ -90,11 +95,13 @@
                                 </div>
                             </div>
 
-                            <p>{{ expense.description || 'Sem descricao' }}</p>
+                            <p class="expense-description">{{ expense.description || 'Sem descricao' }}</p>
                             <p v-if="expense.reviewNote" class="review-note">{{ expense.reviewNote }}</p>
 
                             <div class="photo-strip" v-if="expense.photos?.length">
-                                <img v-for="(photo, index) in expense.photos" :key="index" :src="photo.url || photo.preview" @click="openLightbox(photo.url || photo.preview)" />
+                                <button v-for="(photo, index) in expense.photos" :key="index" type="button" @click="openLightbox(photo.url || photo.preview)">
+                                    <img :src="photo.url || photo.preview" />
+                                </button>
                             </div>
 
                             <div class="expense-actions" v-if="canManageExpenses && expense.editable">
@@ -683,6 +690,24 @@ export default {
         statusLabel(status) {
             return { PENDING: 'Pendente', APPROVED: 'Aprovada', REJECTED: 'Recusada', CORRECTION_REQUESTED: 'Correcao' }[status] || 'Aprovada'
         },
+        expenseCategoryIcon(category) {
+            const icons = {
+                Combustivel: 'fa-gas-pump',
+                'Manutencao do carro': 'fa-screwdriver-wrench',
+                Pedagio: 'fa-road',
+                Pneus: 'fa-circle-dot',
+                Seguro: 'fa-shield-halved',
+                Multa: 'fa-triangle-exclamation',
+                Salario: 'fa-money-check-dollar',
+                Administracao: 'fa-briefcase',
+                Escritorio: 'fa-building',
+                Impostos: 'fa-file-invoice-dollar',
+                'Parcela/financiamento': 'fa-calendar-check',
+                Outros: 'fa-receipt'
+            }
+
+            return icons[category] || 'fa-receipt'
+        },
         progressWidth(value) {
             return `${Math.min(100, Math.max(0, Number(value || 0)))}%`
         },
@@ -876,11 +901,13 @@ export default {
 .finance-layout {
     display: grid;
     gap: 12px;
+    min-width: 0;
 }
 
 .finance-column {
     display: grid;
     gap: 12px;
+    min-width: 0;
 }
 
 .finance-side,
@@ -922,22 +949,88 @@ export default {
 
 .expense-card {
     border-radius: 18px;
-    padding: 14px;
+    padding: 16px;
+    overflow: hidden;
+}
+
+.expense-head {
+    align-items: center;
+}
+
+.expense-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.expense-title > div {
+    min-width: 0;
+}
+
+.expense-title strong {
+    display: block;
+    overflow: hidden;
+    color: var(--text-strong);
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.expense-title small {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.expense-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(var(--primary-color-rgb), 0.14);
+    color: var(--primary-color);
+}
+
+.expense-description {
+    margin: 14px 0 0;
+    color: var(--text-strong) !important;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
 }
 
 .amount-stack {
+    display: grid;
+    justify-items: end;
+    gap: 5px;
     text-align: right;
+    flex: 0 0 auto;
+}
+
+.amount-stack .amount {
+    display: block;
+    font-size: 15px;
+    line-height: 1.15;
+    white-space: nowrap;
 }
 
 .status-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
     border-radius: 999px;
-    padding: 5px 8px;
-    font-size: 11px;
+    padding: 6px 9px;
+    font-size: 10px;
+    line-height: 1;
     font-weight: 900;
     color: var(--text-strong);
     background: var(--surface-muted);
-    margin-bottom: 5px;
+    white-space: nowrap;
 }
 
 .status-badge.PENDING { color: #f59e0b; background: rgba(245, 158, 11, 0.14); }
@@ -956,19 +1049,29 @@ export default {
     display: flex;
     gap: 8px;
     margin-top: 12px;
-    padding: 8px;
+    padding: 10px;
     overflow-x: auto;
     border-radius: 12px;
     background: var(--surface-muted);
 }
 
-.photo-strip img {
+.photo-strip button {
     flex: 0 0 auto;
-    width: 64px;
-    height: 64px;
+    width: 66px;
+    height: 66px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
     border-radius: 10px;
-    object-fit: cover;
+    background: var(--surface-card);
     cursor: pointer;
+}
+
+.photo-strip img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .expense-actions {
@@ -1193,13 +1296,74 @@ export default {
 }
 
 @media (max-width: 700px) {
+    .finance-page .container {
+        padding-right: 10px;
+        padding-left: 10px;
+    }
     .finance-hero,
     .hero-actions,
     .filter-card,
-    .section-title,
-    .expense-head {
+    .section-title {
         flex-direction: column;
         align-items: stretch;
+    }
+    .expense-card {
+        width: 100%;
+        min-width: 0;
+        padding: 12px;
+        border-radius: 16px;
+    }
+    .expense-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .expense-title {
+        width: 100%;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .expense-title strong {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    .expense-title small {
+        font-size: 11px;
+    }
+    .expense-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+    }
+    .amount-stack {
+        width: 100%;
+        grid-template-columns: auto auto;
+        align-items: center;
+        justify-content: space-between;
+        justify-items: start;
+        text-align: left;
+    }
+    .amount-stack .amount {
+        justify-self: end;
+        font-size: 14px;
+    }
+    .status-badge {
+        padding: 6px 8px;
+        font-size: 9px;
+    }
+    .expense-description {
+        margin-top: 10px;
+        font-size: 13px;
+    }
+    .photo-strip {
+        gap: 6px;
+        margin-top: 10px;
+        padding: 8px;
+    }
+    .photo-strip button {
+        width: 54px;
+        height: 54px;
+        border-radius: 9px;
     }
     .summary-grid,
     .fund-grid {

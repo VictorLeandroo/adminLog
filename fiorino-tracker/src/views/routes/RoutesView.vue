@@ -834,6 +834,24 @@ import {
     money
 } from '@/services/backendService';
 
+function toInputDateValue(date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
+}
+
+function currentMonthDateFilter() {
+    const today = new Date()
+    const start = new Date(today.getFullYear(), today.getMonth(), 1)
+
+    return {
+        startDate: toInputDateValue(start),
+        endDate: toInputDateValue(today)
+    }
+}
+
 export default {
     name: 'RoutesView',
 
@@ -845,6 +863,8 @@ export default {
     },
 
     data() {
+        const defaultDateFilter = currentMonthDateFilter()
+
         return {
             profileType: this.initialProfileType(),
             routes: [],
@@ -854,8 +874,9 @@ export default {
             isVehicleLoading: false,
             searchTerm: '',
             statusFilter: 'all',
-            dateFilterStart: '',
-            dateFilterEnd: '',
+            dateFilterStart: defaultDateFilter.startDate,
+            dateFilterEnd: defaultDateFilter.endDate,
+            routeFetchTimer: null,
             adminVehicles: [],
             showStartModal: false,
             showCreateRouteModal: false,
@@ -1021,9 +1042,6 @@ export default {
 
             return this.decoratedRoutes.filter(route => {
                 const matchesStatus = this.statusFilter === 'all' || route.status === this.statusFilter
-                const routeDate = this.routeInputDate(route)
-                const matchesStart = !this.dateFilterStart || routeDate >= this.dateFilterStart
-                const matchesEnd = !this.dateFilterEnd || routeDate <= this.dateFilterEnd
                 const haystack = [
                     route.data,
                     route.driver,
@@ -1033,8 +1051,6 @@ export default {
                 ].join(' ').toLowerCase()
 
                 return matchesStatus &&
-                    matchesStart &&
-                    matchesEnd &&
                     (!term || haystack.includes(term) || this.formatDate(route.data).toLowerCase().includes(term))
             })
         },
@@ -1158,6 +1174,8 @@ export default {
     },
 
     watch: {
+        dateFilterStart: 'scheduleFetchRoutes',
+        dateFilterEnd: 'scheduleFetchRoutes',
         'adminForm.kmInicial': 'syncAdminReviewStatus',
         'adminForm.kmFinal': 'syncAdminReviewStatus',
         'adminForm.cidadesStr': 'syncAdminReviewStatus',
@@ -1174,6 +1192,7 @@ export default {
 
     beforeUnmount() {
         window.removeEventListener('profile-updated', this.syncProfile)
+        if (this.routeFetchTimer) clearTimeout(this.routeFetchTimer)
     },
 
     methods: {
@@ -1199,13 +1218,30 @@ export default {
         async fetchRoutes() {
             this.isLoading = true
             try {
-                this.routes = await listRoutes()
+                this.routes = await listRoutes(this.routeDateQuery())
             } catch (error) {
                 console.error(error)
                 notifyError(error, 'Não foi possível carregar as rotas.')
             } finally {
                 this.isLoading = false
             }
+        },
+
+        scheduleFetchRoutes() {
+            if (this.routeFetchTimer) clearTimeout(this.routeFetchTimer)
+
+            this.routeFetchTimer = setTimeout(() => {
+                this.fetchRoutes()
+            }, 250)
+        },
+
+        routeDateQuery() {
+            const query = {}
+
+            if (this.dateFilterStart) query.startDate = this.dateFilterStart
+            if (this.dateFilterEnd) query.endDate = this.dateFilterEnd
+
+            return query
         },
 
         async fetchMyVehicle() {
@@ -2026,10 +2062,7 @@ export default {
         },
 
         toInputDate(date) {
-            const year = date.getFullYear()
-            const month = String(date.getMonth() + 1).padStart(2, '0')
-            const day = String(date.getDate()).padStart(2, '0')
-            return `${year}-${month}-${day}`
+            return toInputDateValue(date)
         },
 
         routeInputDate(route) {

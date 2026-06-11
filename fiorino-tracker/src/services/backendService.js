@@ -352,8 +352,8 @@ export async function createDocumentApi(vehicleId, document) {
   await api.post(`/vehicles/${vehicleId}/documents`, payload)
 }
 
-export async function listRoutes() {
-  const response = await api.get('/routes')
+export async function listRoutes(query = {}) {
+  const response = await api.get('/routes', { params: query })
   return response.data.map(normalizeRoute)
 }
 
