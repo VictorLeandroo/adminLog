@@ -107,6 +107,10 @@ function routeRevenue(route) {
   return numberValue(route.freightAmount);
 }
 
+function isOperationalRoute(route) {
+  return route.status !== RouteStatus.IN_PROGRESS;
+}
+
 function userRouteWhere(user) {
   return user.role === 'DRIVER' ? { driverId: user.id } : {};
 }
@@ -358,7 +362,7 @@ function buildSummary(context, query = {}) {
   const previousRevenue = sum(previousRevenues, (item) => item.amount);
   const previousExpensesTotal = sum(previousExpenses, (item) => item.amount);
   const previousProfit = previousRevenue - previousExpensesTotal;
-  const completedRoutes = routes.filter((route) => route.status === RouteStatus.COMPLETED);
+  const completedRoutes = routes.filter(isOperationalRoute);
   const totalKm = sum(completedRoutes, routeKm);
   const activeVehicles = vehicles.filter((vehicle) => vehicle.status !== VehicleStatus.MAINTENANCE).length;
   const maintenanceVehicles = vehicles.filter((vehicle) => vehicle.status === VehicleStatus.MAINTENANCE).length;
@@ -472,7 +476,7 @@ function buildDriversRanking(context) {
   const { drivers, routes, expenses } = context;
   return drivers.map((driver) => {
     const driverRoutes = routes.filter((route) => route.driverId === driver.id);
-    const completedRoutes = driverRoutes.filter((route) => route.status === RouteStatus.COMPLETED);
+    const completedRoutes = driverRoutes.filter(isOperationalRoute);
     const km = sum(completedRoutes, routeKm);
     const fines = expenses.filter((expense) => expenseBucket(expense.category) === 'fine' && expense.vehicle?.driverId === driver.id);
     const pendingReview = driverRoutes.filter((route) => route.status === RouteStatus.PENDING_REVIEW).length;

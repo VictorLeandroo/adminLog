@@ -67,6 +67,7 @@ const reviewSchema = finishSchema.extend({
 
 const deliveryProgressSchema = z.object({
   note: z.string().optional().nullable(),
+  lateInvoice: z.boolean().optional().default(false),
   photos: z.array(z.object({
     fileUrl: z.string(),
     fileName: z.string().optional(),
@@ -481,21 +482,31 @@ async function addDeliveryProgress(user, id, input) {
     throw new AppError('Acesso negado', 403);
   }
 
-  if (route.status !== RouteStatus.IN_PROGRESS) {
+  if (!data.lateInvoice && route.status !== RouteStatus.IN_PROGRESS) {
     throw new AppError('So e possivel registrar entrega em rota em andamento', 400);
   }
 
+  if (data.lateInvoice && route.status === RouteStatus.IN_PROGRESS) {
+    throw new AppError('Nota pendente so pode ser enviada depois da rota finalizada', 400);
+  }
+
   const nextIndex = route.photos.filter((photo) => photo.deliveredAt || photo.deliveryIndex).length + 1;
+  const correctionNote = data.note
+    ? `Nota fiscal enviada apos finalizacao: ${data.note}`
+    : 'Nota fiscal enviada apos a rota ja estar finalizada.';
 
   const updatedRoute = await prisma.route.update({
     where: { id },
     data: {
+      status: data.lateInvoice ? RouteStatus.PENDING_REVIEW : undefined,
+      correctionRequested: data.lateInvoice ? true : undefined,
+      correctionNote: data.lateInvoice ? correctionNote : undefined,
       photos: {
         create: data.photos.map((photo, index) => ({
           fileUrl: photo.fileUrl,
           fileName: photo.fileName || null,
           deliveryIndex: nextIndex + index,
-          deliveryNote: data.note || null,
+          deliveryNote: data.lateInvoice ? correctionNote : data.note || null,
           deliveredAt: new Date(),
         })),
       },

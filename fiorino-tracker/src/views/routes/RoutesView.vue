@@ -180,6 +180,14 @@
                         <span class="status-pill" :class="route.statusClass">{{ route.status }}</span>
                     </div>
 
+                    <div class="late-invoice-card" v-if="routeNeedsInvoiceReview(route)">
+                        <i class="fa-solid fa-file-circle-exclamation"></i>
+                        <div>
+                            <strong>Nota pendente de revisão</strong>
+                            <p>{{ route.correctionRequested ? 'Motorista enviou uma correção para validar.' : 'Rota finalizada sem nota fiscal cadastrada.' }}</p>
+                        </div>
+                    </div>
+
                     <div class="route-metrics">
                         <div>
                             <span class="metric-icon"><i class="fa-solid fa-truck-ramp-box"></i></span>
@@ -262,6 +270,12 @@
                         <ButtonComp v-if="isDriver && route.status === 'Em andamento'" btn-class="button-primary w-100"
                             :click-action="() => openFinishModal(route)">
                             Finalizar
+                        </ButtonComp>
+
+                        <ButtonComp v-if="isDriver && route.status !== 'Em andamento'"
+                            btn-class="button-primary w-100" :click-action="() => openLateInvoiceModal(route)">
+                            <i class="fa-solid fa-file-arrow-up"></i>
+                            Enviar nota
                         </ButtonComp>
 
                         <ButtonComp v-if="isDriver && route.status !== 'Em andamento'"
@@ -387,14 +401,19 @@
             <div class="route-modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-camera"></i></span>
                 <div>
-                    <h6>Registrar entrega</h6>
-                    <p>Envie a foto da nota ou comprovante. Número da nota é opcional.</p>
+                    <h6>{{ deliveryModalTitle }}</h6>
+                    <p>{{ deliveryModalSubtitle }}</p>
                 </div>
             </div>
 
-            <div class="delivery-modal-summary" v-if="routeSelected">
+            <div class="delivery-modal-summary" v-if="routeSelected && !deliveryForm.isLateInvoice">
                 <span>{{ deliveryProgressLabel(routeSelected) }}</span>
                 <strong>Próxima: {{ deliveredCount(routeSelected) + 1 }}</strong>
+            </div>
+
+            <div class="analysis-note" v-if="deliveryForm.isLateInvoice">
+                <i class="fa-solid fa-circle-info"></i>
+                A nota ficará marcada para a administração revisar antes de fechar a pendência.
             </div>
 
             <label class="form-label">Fotos da entrega</label>
@@ -402,11 +421,11 @@
 
             <label class="form-label mt-2">Observação <span class="optional-label">opcional</span></label>
             <input type="text" v-model="deliveryForm.note" class="w-100 mb-2"
-                placeholder="Ex: NF 5674 ou cliente Maria" />
+                :placeholder="deliveryForm.isLateInvoice ? 'Ex: NF 5674 enviada após finalizar' : 'Ex: NF 5674 ou cliente Maria'" />
 
             <ButtonComp :click-action="saveDeliveryProgress" :is-disabled="!canSaveDeliveryProgress"
                 btn-class="button-primary button-big w-100">
-                Salvar entrega
+                {{ deliveryForm.isLateInvoice ? 'Enviar nota para revisão' : 'Salvar entrega' }}
             </ButtonComp>
         </ModalDefault>
 
@@ -518,6 +537,11 @@
             <div class="analysis-note" v-if="willNeedAnalysis">
                 <i class="fa-solid fa-circle-info"></i>
                 Sem cidades ou notas preenchidas, a rota será finalizada como pendente de análise.
+            </div>
+
+            <div class="analysis-note warning" v-if="willFinishWithoutInvoice">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Você está finalizando sem número de nota e sem foto. Se lembrar depois, use "Enviar nota" na rota finalizada.
             </div>
 
             <ButtonComp :click-action="finishRoute" :is-disabled="!canFinishRoute"
@@ -868,7 +892,8 @@ export default {
                 tollAmount: null
             },
             deliveryForm: {
-                note: ''
+                note: '',
+                isLateInvoice: false
             },
             adminForm: {
                 kmInicial: '',
@@ -1048,8 +1073,22 @@ export default {
             return Boolean(this.routeSelected && this.deliveryPhotos.length)
         },
 
+        deliveryModalTitle() {
+            return this.deliveryForm.isLateInvoice ? 'Enviar nota pendente' : 'Registrar entrega'
+        },
+
+        deliveryModalSubtitle() {
+            return this.deliveryForm.isLateInvoice
+                ? 'Envie a foto da nota fiscal esquecida. A administração receberá como pendência.'
+                : 'Envie a foto da nota ou comprovante. Número da nota é opcional.'
+        },
+
         willNeedAnalysis() {
             return !this.finishForm.cidadesStr.trim() || !this.finishForm.notasStr.trim()
+        },
+
+        willFinishWithoutInvoice() {
+            return !this.finishForm.notasStr.trim() && !this.photos.length
         },
 
         canCreateAdminRoute() {
@@ -1238,7 +1277,18 @@ export default {
         openDeliveryModal(route) {
             this.routeSelected = route
             this.deliveryForm = {
-                note: ''
+                note: '',
+                isLateInvoice: false
+            }
+            this.deliveryPhotos = []
+            this.showDeliveryModal = true
+        },
+
+        openLateInvoiceModal(route) {
+            this.routeSelected = route
+            this.deliveryForm = {
+                note: '',
+                isLateInvoice: true
             }
             this.deliveryPhotos = []
             this.showDeliveryModal = true
@@ -1373,6 +1423,12 @@ export default {
 
             const cidades = this.toList(this.finishForm.cidadesStr)
             const notas = this.toList(this.finishForm.notasStr)
+
+            if (!notas.length && !this.photos.length) {
+                const shouldContinue = window.confirm('Esta rota não possui nota fiscal nem foto anexada. Deseja finalizar mesmo assim?')
+                if (!shouldContinue) return
+            }
+
             const newPhotos = this.photos.map((photo, index) => ({
                 file: photo.file,
                 name: photo.file?.name || `foto-${Date.now()}-${index}`,
@@ -1403,6 +1459,7 @@ export default {
         async saveDeliveryProgress() {
             if (!this.canSaveDeliveryProgress) return
 
+            const isLateInvoice = this.deliveryForm.isLateInvoice
             const newPhotos = this.deliveryPhotos.map((photo, index) => ({
                 file: photo.file,
                 name: photo.file?.name || `entrega-${Date.now()}-${index}`,
@@ -1414,14 +1471,16 @@ export default {
             try {
                 await addRouteDeliveryApi(this.routeSelected.id, {
                     note: this.deliveryForm.note,
+                    lateInvoice: isLateInvoice,
                     photos: newPhotos
                 })
+
                 await this.fetchRoutes()
                 this.cancelDelivery()
-                notifySuccess('Entrega registrada com sucesso.')
+                notifySuccess(isLateInvoice ? 'Nota enviada para revisão.' : 'Entrega registrada com sucesso.')
             } catch (error) {
                 console.error(error)
-                notifyError(error, 'Não foi possível registrar a entrega.')
+                notifyError(error, isLateInvoice ? 'Não foi possível enviar a nota.' : 'Não foi possível registrar a entrega.')
             } finally {
                 this.isModalLoading = false
             }
@@ -1523,7 +1582,7 @@ export default {
         cancelDelivery() {
             this.showDeliveryModal = false
             this.routeSelected = null
-            this.deliveryForm = { note: '' }
+            this.deliveryForm = { note: '', isLateInvoice: false }
             this.deliveryPhotos = []
         },
 
@@ -1719,6 +1778,15 @@ export default {
                 default:
                     return 'idle'
             }
+        },
+
+        routeNeedsInvoiceReview(route) {
+            if (!route || route.status === 'Em andamento') return false
+
+            const hasInvoices = Array.isArray(route.notas) && route.notas.length > 0
+            const hasPhotos = Array.isArray(route.photos) && route.photos.length > 0
+
+            return route.correctionRequested || (!hasInvoices && !hasPhotos)
         },
 
         routeStatusSortOrder(status) {
@@ -2950,6 +3018,10 @@ export default {
     font-size: 13px;
 }
 
+.analysis-note.warning {
+    color: #b45309;
+}
+
 .freight-summary,
 .freight-review-box {
     display: flex;
@@ -3010,6 +3082,33 @@ export default {
     border-radius: 14px;
     background: rgba(217, 119, 6, 0.11);
     color: #d97706;
+}
+
+.late-invoice-card {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid rgba(217, 119, 6, 0.28);
+    border-radius: 14px;
+    background: rgba(217, 119, 6, 0.11);
+    color: #d97706;
+}
+
+.late-invoice-card i {
+    margin-top: 2px;
+}
+
+.late-invoice-card strong {
+    display: block;
+    color: #d97706;
+    line-height: 1.2;
+}
+
+.late-invoice-card p {
+    margin: 3px 0 0;
+    color: var(--text-strong);
+    line-height: 1.35;
 }
 
 .correction-card i {

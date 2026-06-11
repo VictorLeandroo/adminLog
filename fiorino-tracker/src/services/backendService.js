@@ -415,6 +415,7 @@ export async function finishRouteApi(id, payload) {
 export async function addRouteDeliveryApi(id, payload) {
   const response = await api.post(`/routes/${id}/deliveries`, {
     note: payload.note || null,
+    lateInvoice: Boolean(payload.lateInvoice),
     photos: await photosPayload(payload.photos)
   })
   return normalizeRoute(response.data)
