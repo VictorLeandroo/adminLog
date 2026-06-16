@@ -148,6 +148,10 @@ function tollRouteDescription(routeId) {
 }
 
 function loadingRouteDescription(routeId) {
+  return `[ROUTE_LOADING:${routeId}] Zona Azul da rota`;
+}
+
+function legacyLoadingRouteDescription(routeId) {
   return `[ROUTE_LOADING:${routeId}] Carga da rota`;
 }
 
@@ -166,7 +170,12 @@ function routeIdFromExpenseDescription(description) {
 }
 
 function routeExpenseDescriptions(routeId) {
-  return [tollRouteDescription(routeId), loadingRouteDescription(routeId), unloadingRouteDescription(routeId)];
+  return [
+    tollRouteDescription(routeId),
+    loadingRouteDescription(routeId),
+    legacyLoadingRouteDescription(routeId),
+    unloadingRouteDescription(routeId),
+  ];
 }
 
 function normalizePositiveAmounts(values, fallback) {
@@ -201,7 +210,7 @@ async function routeExtraAmounts(routeIds, client = prisma) {
     if (expense.description === tollRouteDescription(routeId)) {
       current.tollAmounts.push(amount);
       current.tollAmount += amount;
-    } else if (expense.description === loadingRouteDescription(routeId)) {
+    } else if ([loadingRouteDescription(routeId), legacyLoadingRouteDescription(routeId)].includes(expense.description)) {
       current.loadingAmount += amount;
     } else if (expense.description === unloadingRouteDescription(routeId)) {
       current.unloadingAmount += amount;
@@ -246,7 +255,7 @@ async function replaceRouteExtraExpenses(tx, route, data, createdById) {
       amount,
     })),
     loadingAmount > 0 ? {
-      category: 'Carga',
+      category: 'Zona Azul',
       description: loadingRouteDescription(route.id),
       amount: loadingAmount,
     } : null,
@@ -713,13 +722,13 @@ function routeTollAmount(route, expenses) {
 
 function routeLoadingAmount(route, expenses) {
   const routeSpecificLoading = expenses
-    .filter((expense) => expense.description === loadingRouteDescription(route.id))
+    .filter((expense) => [loadingRouteDescription(route.id), legacyLoadingRouteDescription(route.id)].includes(expense.description))
     .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
 
   if (routeSpecificLoading > 0) return routeSpecificLoading;
   if (route.loadingAmount !== undefined && route.loadingAmount !== null) return numberValue(route.loadingAmount);
 
-  return routeExtraAmount(route, expenses, ['carga'], ['carga']);
+  return routeExtraAmount(route, expenses, ['zona azul'], ['zona azul']);
 }
 
 function routeUnloadingAmount(route, expenses) {
@@ -736,11 +745,10 @@ function routeUnloadingAmount(route, expenses) {
 function routeFreightValues(route, expenses, settings) {
   const excessKm = routeExcessKm(route, settings);
   const toll = routeTollAmount(route, expenses);
-  const loading = routeLoadingAmount(route, expenses);
-  const blueZone = routeExtraAmount(route, expenses, ['zona azul']);
+  const blueZone = routeLoadingAmount(route, expenses);
   const unloading = routeUnloadingAmount(route, expenses);
   const excessAmount = excessKm * settings.excessKmAmount;
-  const calculatedTotal = settings.baseAmount + excessAmount + toll + loading + blueZone + unloading;
+  const calculatedTotal = settings.baseAmount + excessAmount + toll + blueZone + unloading;
   const manualAmount = route.freightAmount !== null && route.freightAmount !== undefined
     ? numberValue(route.freightAmount)
     : null;
@@ -751,7 +759,6 @@ function routeFreightValues(route, expenses, settings) {
     excessKm,
     excessAmount,
     toll,
-    loading,
     blueZone,
     unloading,
     total,
@@ -844,8 +851,8 @@ function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
   setCellValue(worksheet, `B${startRow + 5}`, numberValue(route.finalKm));
 
   setMoneyCell(worksheet, `D${startRow + 4}`, positiveMoneyOrBlank(values.toll));
-  setCellValue(worksheet, `C${startRow + 5}`, 'Carga / Zona Azul');
-  setMoneyCell(worksheet, `D${startRow + 5}`, positiveMoneyOrBlank(values.loading + values.blueZone));
+  setCellValue(worksheet, `C${startRow + 5}`, 'Zona Azul');
+  setMoneyCell(worksheet, `D${startRow + 5}`, positiveMoneyOrBlank(values.blueZone));
 
   setCellValue(worksheet, `B${startRow + 6}`, numberValue(values.km));
   setMoneyCell(worksheet, `D${startRow + 6}`, positiveMoneyOrBlank(values.unloading));
@@ -992,8 +999,8 @@ function renderFreightRouteBlock(route, expenses, settings) {
           <span>Final</span>
           <strong>${numberValue(route.finalKm)}</strong>
         </div>
-        <div class="label">Carga / Zona Azul</div>
-        <div class="amount">${values.loading || values.blueZone ? formatMoney(values.loading + values.blueZone) : ''}</div>
+        <div class="label">Zona Azul</div>
+        <div class="amount">${values.blueZone ? formatMoney(values.blueZone) : ''}</div>
       </div>
       <div class="grid">
         <div class="km-pair">

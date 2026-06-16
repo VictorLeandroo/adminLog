@@ -319,9 +319,7 @@
             <input type="number" v-model.number="startForm.kmInicial" class="w-100 mb-2" placeholder="Ex: 42380"
                 :disabled="!myVehicle" />
 
-            <label class="form-label">Quantidade de entregas <span class="optional-label">opcional</span></label>
-            <input type="number" min="0" v-model.number="startForm.plannedDeliveries" class="w-100 mb-2"
-                placeholder="Ex: 4" :disabled="!myVehicle" />
+
 
             <ButtonComp :click-action="startRoute" :is-disabled="!canStartRoute"
                 btn-class="button-primary button-big w-100">
@@ -371,9 +369,9 @@
                 <input type="text" v-model="createRouteForm.notasStr" class="w-100 mb-2"
                     placeholder="Ex: 5674, 5675, 5676" />
 
-                <label class="form-label">Quantidade de entregas <span class="optional-label">opcional</span></label>
-                <input type="number" min="0" v-model.number="createRouteForm.plannedDeliveries" class="w-100 mb-2"
-                    placeholder="Ex: 4" />
+                <label class="form-label">Zona Azul <span class="optional-label">opcional</span></label>
+                <input type="number" min="0" step="0.01" v-model.number="createRouteForm.loadingAmount"
+                    class="w-100 mb-2" placeholder="Ex: 20,00" />
 
                 <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
                 <input type="number" min="0" step="0.01" v-model.number="createRouteForm.unloadingAmount"
@@ -559,6 +557,10 @@
                 <input type="text" v-model="finishForm.notasStr" class="w-100 mb-2"
                     placeholder="Ex: 5674, 5675, 5676" />
 
+                <label class="form-label">Zona Azul <span class="optional-label">opcional</span></label>
+                <input type="number" min="0" step="0.01" v-model.number="finishForm.loadingAmount" class="w-100 mb-2"
+                    placeholder="Ex: 20,00" />
+
                 <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
                 <input type="number" min="0" step="0.01" v-model.number="finishForm.unloadingAmount" class="w-100 mb-2"
                     placeholder="Ex: 50,00" />
@@ -705,11 +707,6 @@
                         <label class="form-label">Notas fiscais</label>
                         <textarea v-model="adminForm.notasStr" class="w-100 admin-textarea notes mb-2"></textarea>
 
-                        <label class="form-label">Quantidade de entregas <span
-                                class="optional-label">opcional</span></label>
-                        <input type="number" min="0" v-model.number="adminForm.plannedDeliveries" class="w-100 mb-2"
-                            placeholder="Ex: 4" />
-
                         <div class="admin-delivery-overview" v-if="routeSelected">
                             <div>
                                 <small>Progresso</small>
@@ -738,6 +735,10 @@
                             <input v-if="adminForm.useManualFreightAmount" type="number"
                                 v-model.number="adminForm.freightAmount" class="w-100" placeholder="0,00" />
                         </div>
+
+                        <label class="form-label">Zona Azul <span class="optional-label">opcional</span></label>
+                        <input type="number" min="0" step="0.01" v-model.number="adminForm.loadingAmount"
+                            class="w-100 mb-2" placeholder="Ex: 20,00" />
 
                         <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
                         <input type="number" min="0" step="0.01" v-model.number="adminForm.unloadingAmount"
@@ -2215,9 +2216,9 @@ export default {
             return route.hasManualFreightAmount
                 ? route.freightAmount
                 : this.calculateFreightAmount(route.kmInicial, route.kmFinal) +
-                this.moneyNumber(route.tollAmount) +
-                this.moneyNumber(route.loadingAmount) +
-                this.moneyNumber(route.unloadingAmount)
+                    this.moneyNumber(route.tollAmount) +
+                    this.moneyNumber(route.loadingAmount) +
+                    this.moneyNumber(route.unloadingAmount)
         },
 
         toInputDate(date) {
