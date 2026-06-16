@@ -250,10 +250,22 @@ button:disabled,
     color: #f2a6a6;
     box-shadow: none;
 }
-:root[data-theme="dark"] {
-    input, select {
-        color: var(--dark-color-text);
-    }
+:root[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea,
+#app-body.dark-mode input:not([type="checkbox"]):not([type="radio"]),
+#app-body.dark-mode select,
+#app-body.dark-mode textarea {
+    color: var(--dark-color-text) !important;
+    background-color: var(--dark-gray-default);
+    color-scheme: dark;
+}
+
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder,
+#app-body.dark-mode input::placeholder,
+#app-body.dark-mode textarea::placeholder {
+    color: rgba(var(--dark-color-text-rgb), 0.62) !important;
 }
 
 .button-secundary,

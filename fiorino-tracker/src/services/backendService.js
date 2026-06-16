@@ -137,6 +137,13 @@ export function normalizeUser(user) {
 }
 
 export function normalizeRoute(route) {
+  const tollAmounts = Array.isArray(route.tollAmounts)
+    ? route.tollAmounts.map(Number).filter(value => Number.isFinite(value) && value > 0)
+    : []
+  const tollAmount = tollAmounts.length
+    ? tollAmounts.reduce((sum, value) => sum + value, 0)
+    : route.tollAmount === null || route.tollAmount === undefined ? null : Number(route.tollAmount)
+
   return {
     ...route,
     data: dateOnly(route.date),
@@ -145,7 +152,10 @@ export function normalizeRoute(route) {
     plannedDeliveries: route.plannedDeliveries,
     freightAmount: route.freightAmount === null || route.freightAmount === undefined ? null : Number(route.freightAmount),
     hasManualFreightAmount: route.freightAmount !== null && route.freightAmount !== undefined,
-    tollAmount: route.tollAmount === null || route.tollAmount === undefined ? null : Number(route.tollAmount),
+    tollAmount,
+    tollAmounts,
+    loadingAmount: route.loadingAmount === null || route.loadingAmount === undefined ? null : Number(route.loadingAmount),
+    unloadingAmount: route.unloadingAmount === null || route.unloadingAmount === undefined ? null : Number(route.unloadingAmount),
     cidades: (route.cities || []).map(city => city.name),
     notas: (route.invoices || []).map(invoice => invoice.number),
     photos: (route.photos || []).map(normalizePhoto),
@@ -394,6 +404,10 @@ export async function createRouteApi(payload) {
     finalKm: payload.kmFinal ? Number(payload.kmFinal) : null,
     plannedDeliveries: payload.plannedDeliveries ? Number(payload.plannedDeliveries) : null,
     freightAmount: payload.useManualFreightAmount ? Number(payload.freightAmount || 0) : null,
+    tollAmount: payload.tollAmount === null || payload.tollAmount === undefined || payload.tollAmount === '' ? null : Number(payload.tollAmount),
+    tollAmounts: Array.isArray(payload.tollAmounts) ? payload.tollAmounts.map(Number).filter(value => Number.isFinite(value) && value > 0) : [],
+    loadingAmount: payload.loadingAmount === null || payload.loadingAmount === undefined || payload.loadingAmount === '' ? null : Number(payload.loadingAmount),
+    unloadingAmount: payload.unloadingAmount === null || payload.unloadingAmount === undefined || payload.unloadingAmount === '' ? null : Number(payload.unloadingAmount),
     cidades: payload.cidades,
     notas: payload.notas,
     status: routeStatusToApi[payload.status]
@@ -405,6 +419,9 @@ export async function finishRouteApi(id, payload) {
   const response = await api.patch(`/routes/${id}/finish`, {
     finalKm: Number(payload.kmFinal),
     tollAmount: payload.tollAmount === null || payload.tollAmount === undefined || payload.tollAmount === '' ? null : Number(payload.tollAmount),
+    tollAmounts: Array.isArray(payload.tollAmounts) ? payload.tollAmounts.map(Number).filter(value => Number.isFinite(value) && value > 0) : [],
+    loadingAmount: payload.loadingAmount === null || payload.loadingAmount === undefined || payload.loadingAmount === '' ? null : Number(payload.loadingAmount),
+    unloadingAmount: payload.unloadingAmount === null || payload.unloadingAmount === undefined || payload.unloadingAmount === '' ? null : Number(payload.unloadingAmount),
     cidades: payload.cidades,
     notas: payload.notas,
     photos: await photosPayload(payload.photos)
@@ -428,6 +445,9 @@ export async function reviewRouteApi(id, payload) {
     plannedDeliveries: payload.plannedDeliveries ? Number(payload.plannedDeliveries) : null,
     freightAmount: payload.useManualFreightAmount ? Number(payload.freightAmount || 0) : null,
     tollAmount: payload.tollAmount === null || payload.tollAmount === undefined || payload.tollAmount === '' ? null : Number(payload.tollAmount),
+    tollAmounts: Array.isArray(payload.tollAmounts) ? payload.tollAmounts.map(Number).filter(value => Number.isFinite(value) && value > 0) : [],
+    loadingAmount: payload.loadingAmount === null || payload.loadingAmount === undefined || payload.loadingAmount === '' ? null : Number(payload.loadingAmount),
+    unloadingAmount: payload.unloadingAmount === null || payload.unloadingAmount === undefined || payload.unloadingAmount === '' ? null : Number(payload.unloadingAmount),
     cidades: payload.cidades,
     notas: payload.notas,
     status: routeStatusToApi[payload.status],

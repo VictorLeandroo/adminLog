@@ -33,6 +33,10 @@ const createSchema = z.object({
   finalKm: z.number().int().optional().nullable(),
   plannedDeliveries: z.number().int().min(0).optional().nullable(),
   freightAmount: z.number().optional().nullable(),
+  tollAmount: z.number().min(0).optional().nullable(),
+  tollAmounts: z.array(z.number().min(0)).optional().default([]),
+  loadingAmount: z.number().min(0).optional().nullable(),
+  unloadingAmount: z.number().min(0).optional().nullable(),
   status: z.enum(['IN_PROGRESS', 'PENDING_REVIEW', 'COMPLETED']).optional(),
   cities: z.array(z.string()).optional(),
   cidades: z.array(z.string()).optional(),
@@ -45,6 +49,9 @@ const finishSchema = z.object({
   finalKm: z.number().int(),
   plannedDeliveries: z.number().int().min(0).optional().nullable(),
   tollAmount: z.number().min(0).optional().nullable(),
+  tollAmounts: z.array(z.number().min(0)).optional().default([]),
+  loadingAmount: z.number().min(0).optional().nullable(),
+  unloadingAmount: z.number().min(0).optional().nullable(),
   cities: z.array(z.string()).optional(),
   cidades: z.array(z.string()).optional(),
   invoices: z.array(z.string()).optional(),
@@ -140,18 +147,43 @@ function tollRouteDescription(routeId) {
   return `[ROUTE_TOLL:${routeId}] Pedagio da rota`;
 }
 
+function loadingRouteDescription(routeId) {
+  return `[ROUTE_LOADING:${routeId}] Carga da rota`;
+}
+
+function unloadingRouteDescription(routeId) {
+  return `[ROUTE_UNLOADING:${routeId}] Descarga da rota`;
+}
+
 function routeIdFromTollDescription(description) {
   const match = String(description || '').match(/^\[ROUTE_TOLL:([^\]]+)\]/);
   return match ? match[1] : null;
 }
 
-async function routeTollAmounts(routeIds, client = prisma) {
+function routeIdFromExpenseDescription(description) {
+  const match = String(description || '').match(/^\[ROUTE_(?:TOLL|LOADING|UNLOADING):([^\]]+)\]/);
+  return match ? match[1] : null;
+}
+
+function routeExpenseDescriptions(routeId) {
+  return [tollRouteDescription(routeId), loadingRouteDescription(routeId), unloadingRouteDescription(routeId)];
+}
+
+function normalizePositiveAmounts(values, fallback) {
+  const amounts = (Array.isArray(values) ? values : [])
+    .map((value) => numberValue(value))
+    .filter((value) => value > 0);
+  if (!amounts.length && numberValue(fallback) > 0) return [numberValue(fallback)];
+  return amounts;
+}
+
+async function routeExtraAmounts(routeIds, client = prisma) {
   const ids = [...new Set((routeIds || []).filter(Boolean))];
   if (!ids.length) return new Map();
 
   const expenses = await client.expense.findMany({
     where: {
-      description: { in: ids.map(tollRouteDescription) },
+      description: { in: ids.flatMap(routeExpenseDescriptions) },
     },
     select: {
       description: true,
@@ -160,23 +192,84 @@ async function routeTollAmounts(routeIds, client = prisma) {
   });
 
   return expenses.reduce((amounts, expense) => {
-    const routeId = routeIdFromTollDescription(expense.description);
+    const routeId = routeIdFromExpenseDescription(expense.description);
     if (!routeId) return amounts;
 
-    amounts.set(routeId, (amounts.get(routeId) || 0) + numberValue(expense.amount));
+    const current = amounts.get(routeId) || { tollAmounts: [], tollAmount: 0, loadingAmount: 0, unloadingAmount: 0 };
+    const amount = numberValue(expense.amount);
+
+    if (expense.description === tollRouteDescription(routeId)) {
+      current.tollAmounts.push(amount);
+      current.tollAmount += amount;
+    } else if (expense.description === loadingRouteDescription(routeId)) {
+      current.loadingAmount += amount;
+    } else if (expense.description === unloadingRouteDescription(routeId)) {
+      current.unloadingAmount += amount;
+    }
+
+    amounts.set(routeId, current);
     return amounts;
   }, new Map());
 }
 
 async function withTollAmount(route, client = prisma) {
   if (!route) return route;
-  const amounts = await routeTollAmounts([route.id], client);
-  return { ...route, tollAmount: amounts.get(route.id) || 0 };
+  const amounts = await routeExtraAmounts([route.id], client);
+  const extras = amounts.get(route.id) || { tollAmounts: [], tollAmount: 0, loadingAmount: 0, unloadingAmount: 0 };
+  return { ...route, ...extras };
 }
 
 async function withTollAmounts(routes, client = prisma) {
-  const amounts = await routeTollAmounts(routes.map((route) => route.id), client);
-  return routes.map((route) => ({ ...route, tollAmount: amounts.get(route.id) || 0 }));
+  const amounts = await routeExtraAmounts(routes.map((route) => route.id), client);
+  return routes.map((route) => {
+    const extras = amounts.get(route.id) || { tollAmounts: [], tollAmount: 0, loadingAmount: 0, unloadingAmount: 0 };
+    return { ...route, ...extras };
+  });
+}
+
+async function replaceRouteExtraExpenses(tx, route, data, createdById) {
+  const tollAmounts = normalizePositiveAmounts(data.tollAmounts, data.tollAmount);
+  const loadingAmount = numberValue(data.loadingAmount);
+  const unloadingAmount = numberValue(data.unloadingAmount);
+
+  await tx.expense.deleteMany({
+    where: {
+      vehicleId: route.vehicleId,
+      description: { in: routeExpenseDescriptions(route.id) },
+    },
+  });
+
+  const expenses = [
+    ...tollAmounts.map((amount) => ({
+      category: 'Pedagio',
+      description: tollRouteDescription(route.id),
+      amount,
+    })),
+    loadingAmount > 0 ? {
+      category: 'Carga',
+      description: loadingRouteDescription(route.id),
+      amount: loadingAmount,
+    } : null,
+    unloadingAmount > 0 ? {
+      category: 'Descarga',
+      description: unloadingRouteDescription(route.id),
+      amount: unloadingAmount,
+    } : null,
+  ].filter(Boolean);
+
+  if (!expenses.length) return;
+
+  await tx.expense.createMany({
+    data: expenses.map((expense) => ({
+      vehicleId: route.vehicleId,
+      createdById,
+      date: new Date(route.date),
+      category: expense.category,
+      description: expense.description,
+      amount: expense.amount,
+      paid: true,
+    })),
+  });
 }
 
 async function listRoutes(user) {
@@ -230,7 +323,7 @@ async function startRoute(user, input) {
     include,
   });
 
-  return { ...route, tollAmount: 0 };
+  return { ...route, tollAmounts: [], tollAmount: 0, loadingAmount: 0, unloadingAmount: 0 };
 }
 
 async function createRoute(input) {
@@ -288,7 +381,9 @@ async function createRoute(input) {
       include,
     });
 
-    return { ...route, tollAmount: 0 };
+    await replaceRouteExtraExpenses(tx, route, data, vehicle.driverId);
+
+    return withTollAmount(route, tx);
   });
 }
 
@@ -345,26 +440,7 @@ async function finishRoute(user, id, input) {
       include,
     });
 
-    await tx.expense.deleteMany({
-      where: {
-        vehicleId: route.vehicleId,
-        description: tollRouteDescription(id),
-      },
-    });
-
-    if (Number(data.tollAmount || 0) > 0) {
-      await tx.expense.create({
-        data: {
-          vehicleId: route.vehicleId,
-          createdById: user.id,
-          date: new Date(updatedRoute.date),
-          category: 'Pedagio',
-          description: tollRouteDescription(id),
-          amount: Number(data.tollAmount),
-          paid: true,
-        },
-      });
-    }
+    await replaceRouteExtraExpenses(tx, { ...updatedRoute, vehicleId: route.vehicleId }, data, user.id);
 
     return withTollAmount(updatedRoute, tx);
   });
@@ -448,26 +524,7 @@ async function reviewRoute(id, input) {
       });
     }
 
-    await tx.expense.deleteMany({
-      where: {
-        vehicleId: route.vehicleId,
-        description: tollRouteDescription(id),
-      },
-    });
-
-    if (Number(data.tollAmount || 0) > 0) {
-      await tx.expense.create({
-        data: {
-          vehicleId: route.vehicleId,
-          createdById: route.driverId,
-          date: new Date(updatedRoute.date),
-          category: 'Pedagio',
-          description: tollRouteDescription(id),
-          amount: Number(data.tollAmount),
-          paid: true,
-        },
-      });
-    }
+    await replaceRouteExtraExpenses(tx, { ...updatedRoute, vehicleId: route.vehicleId }, data, route.driverId);
 
     const refreshedRoute = await tx.route.findUnique({ where: { id }, include });
     return withTollAmount(refreshedRoute, tx);
@@ -522,7 +579,7 @@ async function removeRoute(id) {
   await prisma.$transaction(async (tx) => {
     await tx.expense.deleteMany({
       where: {
-        description: tollRouteDescription(id),
+        description: { in: routeExpenseDescriptions(id) },
       },
     });
 
@@ -654,13 +711,36 @@ function routeTollAmount(route, expenses) {
   return routeExtraAmount(route, expenses, ['pedagio', 'pedágio'], ['pedagio']);
 }
 
+function routeLoadingAmount(route, expenses) {
+  const routeSpecificLoading = expenses
+    .filter((expense) => expense.description === loadingRouteDescription(route.id))
+    .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
+
+  if (routeSpecificLoading > 0) return routeSpecificLoading;
+  if (route.loadingAmount !== undefined && route.loadingAmount !== null) return numberValue(route.loadingAmount);
+
+  return routeExtraAmount(route, expenses, ['carga'], ['carga']);
+}
+
+function routeUnloadingAmount(route, expenses) {
+  const routeSpecificUnloading = expenses
+    .filter((expense) => expense.description === unloadingRouteDescription(route.id))
+    .reduce((sum, expense) => sum + numberValue(expense.amount), 0);
+
+  if (routeSpecificUnloading > 0) return routeSpecificUnloading;
+  if (route.unloadingAmount !== undefined && route.unloadingAmount !== null) return numberValue(route.unloadingAmount);
+
+  return routeExtraAmount(route, expenses, ['descarga'], ['descarga']);
+}
+
 function routeFreightValues(route, expenses, settings) {
   const excessKm = routeExcessKm(route, settings);
   const toll = routeTollAmount(route, expenses);
+  const loading = routeLoadingAmount(route, expenses);
   const blueZone = routeExtraAmount(route, expenses, ['zona azul']);
-  const unloading = routeExtraAmount(route, expenses, ['descarga']);
+  const unloading = routeUnloadingAmount(route, expenses);
   const excessAmount = excessKm * settings.excessKmAmount;
-  const calculatedTotal = settings.baseAmount + excessAmount + toll + blueZone + unloading;
+  const calculatedTotal = settings.baseAmount + excessAmount + toll + loading + blueZone + unloading;
   const manualAmount = route.freightAmount !== null && route.freightAmount !== undefined
     ? numberValue(route.freightAmount)
     : null;
@@ -671,6 +751,7 @@ function routeFreightValues(route, expenses, settings) {
     excessKm,
     excessAmount,
     toll,
+    loading,
     blueZone,
     unloading,
     total,
@@ -763,7 +844,8 @@ function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
   setCellValue(worksheet, `B${startRow + 5}`, numberValue(route.finalKm));
 
   setMoneyCell(worksheet, `D${startRow + 4}`, positiveMoneyOrBlank(values.toll));
-  setMoneyCell(worksheet, `D${startRow + 5}`, positiveMoneyOrBlank(values.blueZone));
+  setCellValue(worksheet, `C${startRow + 5}`, 'Carga / Zona Azul');
+  setMoneyCell(worksheet, `D${startRow + 5}`, positiveMoneyOrBlank(values.loading + values.blueZone));
 
   setCellValue(worksheet, `B${startRow + 6}`, numberValue(values.km));
   setMoneyCell(worksheet, `D${startRow + 6}`, positiveMoneyOrBlank(values.unloading));
@@ -910,8 +992,8 @@ function renderFreightRouteBlock(route, expenses, settings) {
           <span>Final</span>
           <strong>${numberValue(route.finalKm)}</strong>
         </div>
-        <div class="label">Zona Azul</div>
-        <div class="amount">${values.blueZone ? formatMoney(values.blueZone) : ''}</div>
+        <div class="label">Carga / Zona Azul</div>
+        <div class="amount">${values.loading || values.blueZone ? formatMoney(values.loading + values.blueZone) : ''}</div>
       </div>
       <div class="grid">
         <div class="km-pair">

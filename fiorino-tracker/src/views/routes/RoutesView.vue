@@ -374,6 +374,41 @@
                 <input type="number" min="0" v-model.number="createRouteForm.plannedDeliveries"
                     class="w-100 mb-2" placeholder="Ex: 4" />
 
+                <div class="form-grid">
+                    <div>
+                        <label class="form-label">Carga <span class="optional-label">opcional</span></label>
+                        <input type="number" min="0" step="0.01" v-model.number="createRouteForm.loadingAmount"
+                            class="w-100 mb-2" placeholder="Ex: 40,00" />
+                    </div>
+                    <div>
+                        <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
+                        <input type="number" min="0" step="0.01" v-model.number="createRouteForm.unloadingAmount"
+                            class="w-100 mb-2" placeholder="Ex: 60,00" />
+                    </div>
+                </div>
+
+                <label class="form-label">Pedágios <span class="optional-label">opcional</span></label>
+                <div class="toll-builder mb-2">
+                    <div class="toll-input-row">
+                        <input type="number" min="0" step="0.01" v-model.number="createRouteForm.tollInput"
+                            class="w-100" placeholder="Ex: 25,90" @keyup.enter.prevent="addTollAmount('createRouteForm')" />
+                        <button type="button" @click="addTollAmount('createRouteForm')" :disabled="!createRouteForm.tollInput">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="toll-chip-list" v-if="createRouteForm.tollAmounts.length">
+                        <button v-for="(amount, index) in createRouteForm.tollAmounts" :key="`create-toll-${index}`"
+                            type="button" @click="removeTollAmount('createRouteForm', index)">
+                            {{ formatMoney(amount) }}
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div class="toll-total">
+                        <span>Total de pedágio</span>
+                        <strong>{{ formatMoney(tollTotal(createRouteForm)) }}</strong>
+                    </div>
+                </div>
+
                 <div class="freight-summary mb-2">
                     <div>
                         <small>Frete calculado</small>
@@ -529,9 +564,40 @@
                 <input type="text" v-model="finishForm.notasStr" class="w-100 mb-2"
                     placeholder="Ex: 5674, 5675, 5676" />
 
-                <label class="form-label">Pedágio <span class="optional-label">opcional</span></label>
-                <input type="number" min="0" step="0.01" v-model.number="finishForm.tollAmount" class="w-100 mb-2"
-                    placeholder="Ex: 25,90" />
+                <div class="form-grid mt-2">
+                    <div>
+                        <label class="form-label">Carga <span class="optional-label">opcional</span></label>
+                        <input type="number" min="0" step="0.01" v-model.number="finishForm.loadingAmount"
+                            class="w-100 mb-2" placeholder="Ex: 40,00" />
+                    </div>
+                    <div>
+                        <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
+                        <input type="number" min="0" step="0.01" v-model.number="finishForm.unloadingAmount"
+                            class="w-100 mb-2" placeholder="Ex: 60,00" />
+                    </div>
+                </div>
+
+                <label class="form-label">Pedágios <span class="optional-label">opcional</span></label>
+                <div class="toll-builder mb-2">
+                    <div class="toll-input-row">
+                        <input type="number" min="0" step="0.01" v-model.number="finishForm.tollInput"
+                            class="w-100" placeholder="Ex: 25,90" @keyup.enter.prevent="addTollAmount('finishForm')" />
+                        <button type="button" @click="addTollAmount('finishForm')" :disabled="!finishForm.tollInput">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="toll-chip-list" v-if="finishForm.tollAmounts.length">
+                        <button v-for="(amount, index) in finishForm.tollAmounts" :key="`finish-toll-${index}`"
+                            type="button" @click="removeTollAmount('finishForm', index)">
+                            {{ formatMoney(amount) }}
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div class="toll-total">
+                        <span>Total de pedágio</span>
+                        <strong>{{ formatMoney(tollTotal(finishForm)) }}</strong>
+                    </div>
+                </div>
             </div>
 
             <div class="analysis-note" v-if="willNeedAnalysis">
@@ -683,9 +749,40 @@
                                 v-model.number="adminForm.freightAmount" class="w-100" placeholder="0,00" />
                         </div>
 
-                        <label class="form-label">Pedágio <span class="optional-label">opcional</span></label>
-                        <input type="number" min="0" step="0.01" v-model.number="adminForm.tollAmount" class="w-100 mb-2"
-                            placeholder="Ex: 25,90" />
+                        <div class="form-grid">
+                            <div>
+                                <label class="form-label">Carga <span class="optional-label">opcional</span></label>
+                                <input type="number" min="0" step="0.01" v-model.number="adminForm.loadingAmount"
+                                    class="w-100 mb-2" placeholder="Ex: 40,00" />
+                            </div>
+                            <div>
+                                <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
+                                <input type="number" min="0" step="0.01" v-model.number="adminForm.unloadingAmount"
+                                    class="w-100 mb-2" placeholder="Ex: 60,00" />
+                            </div>
+                        </div>
+
+                        <label class="form-label">Pedágios <span class="optional-label">opcional</span></label>
+                        <div class="toll-builder mb-2">
+                            <div class="toll-input-row">
+                                <input type="number" min="0" step="0.01" v-model.number="adminForm.tollInput"
+                                    class="w-100" placeholder="Ex: 25,90" @keyup.enter.prevent="addTollAmount('adminForm')" />
+                                <button type="button" @click="addTollAmount('adminForm')" :disabled="!adminForm.tollInput">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                            <div class="toll-chip-list" v-if="adminForm.tollAmounts.length">
+                                <button v-for="(amount, index) in adminForm.tollAmounts" :key="`admin-toll-${index}`"
+                                    type="button" @click="removeTollAmount('adminForm', index)">
+                                    {{ formatMoney(amount) }}
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <div class="toll-total">
+                                <span>Total de pedágio</span>
+                                <strong>{{ formatMoney(tollTotal(adminForm)) }}</strong>
+                            </div>
+                        </div>
 
                         <label class="form-label">Status</label>
                         <select v-model="adminForm.status" class="form-select w-100 mb-2">
@@ -903,6 +1000,10 @@ export default {
                 notasStr: '',
                 plannedDeliveries: '',
                 freightAmount: null,
+                tollInput: null,
+                tollAmounts: [],
+                loadingAmount: null,
+                unloadingAmount: null,
                 useManualFreightAmount: false,
                 status: 'Concluida'
             },
@@ -910,7 +1011,10 @@ export default {
                 kmFinal: '',
                 cidadesStr: '',
                 notasStr: '',
-                tollAmount: null
+                tollInput: null,
+                tollAmounts: [],
+                loadingAmount: null,
+                unloadingAmount: null
             },
             deliveryForm: {
                 note: '',
@@ -923,7 +1027,10 @@ export default {
                 notasStr: '',
                 plannedDeliveries: '',
                 freightAmount: null,
-                tollAmount: null,
+                tollInput: null,
+                tollAmounts: [],
+                loadingAmount: null,
+                unloadingAmount: null,
                 useManualFreightAmount: false,
                 status: 'Pendente de analise',
                 correctionRequested: false,
@@ -1129,11 +1236,17 @@ export default {
         },
 
         createRouteFreightAmount() {
-            return this.calculateFreightAmount(this.createRouteForm.kmInicial, this.createRouteForm.kmFinal)
+            return this.calculateFreightAmount(this.createRouteForm.kmInicial, this.createRouteForm.kmFinal) +
+                this.tollTotal(this.createRouteForm) +
+                this.moneyNumber(this.createRouteForm.loadingAmount) +
+                this.moneyNumber(this.createRouteForm.unloadingAmount)
         },
 
         adminCalculatedFreightAmount() {
-            return this.calculateFreightAmount(this.adminForm.kmInicial, this.adminForm.kmFinal)
+            return this.calculateFreightAmount(this.adminForm.kmInicial, this.adminForm.kmFinal) +
+                this.tollTotal(this.adminForm) +
+                this.moneyNumber(this.adminForm.loadingAmount) +
+                this.moneyNumber(this.adminForm.unloadingAmount)
         },
 
         adminPreviewRoute() {
@@ -1304,7 +1417,10 @@ export default {
                 kmFinal: route.kmFinal || '',
                 cidadesStr: route.cidades.join(', '),
                 notasStr: route.notas.join(', '),
-                tollAmount: route.tollAmount ?? null
+                tollInput: null,
+                tollAmounts: this.routeTollAmounts(route),
+                loadingAmount: route.loadingAmount ?? null,
+                unloadingAmount: route.unloadingAmount ?? null
             }
             this.photos = []
             this.showFinishModal = true
@@ -1347,7 +1463,10 @@ export default {
                 notasStr: route.notas.join(', '),
                 plannedDeliveries: route.plannedDeliveries || '',
                 freightAmount: route.freightAmount ?? null,
-                tollAmount: route.tollAmount ?? null,
+                tollInput: null,
+                tollAmounts: this.routeTollAmounts(route),
+                loadingAmount: route.loadingAmount ?? null,
+                unloadingAmount: route.unloadingAmount ?? null,
                 useManualFreightAmount: Boolean(route.hasManualFreightAmount),
                 status: route.status,
                 correctionRequested: Boolean(route.correctionRequested),
@@ -1440,6 +1559,10 @@ export default {
                     notas: this.toList(this.createRouteForm.notasStr),
                     plannedDeliveries: this.createRouteForm.plannedDeliveries,
                     freightAmount: this.createRouteForm.freightAmount,
+                    tollAmount: this.tollTotal(this.createRouteForm),
+                    tollAmounts: this.createRouteForm.tollAmounts,
+                    loadingAmount: this.createRouteForm.loadingAmount,
+                    unloadingAmount: this.createRouteForm.unloadingAmount,
                     useManualFreightAmount: this.createRouteForm.useManualFreightAmount,
                     status: this.createRouteForm.status
                 })
@@ -1478,7 +1601,10 @@ export default {
                     kmFinal: this.finishForm.kmFinal,
                     cidades,
                     notas,
-                    tollAmount: this.finishForm.tollAmount,
+                    tollAmount: this.tollTotal(this.finishForm),
+                    tollAmounts: this.finishForm.tollAmounts,
+                    loadingAmount: this.finishForm.loadingAmount,
+                    unloadingAmount: this.finishForm.unloadingAmount,
                     photos: newPhotos
                 })
                 await this.fetchRoutes()
@@ -1563,7 +1689,10 @@ export default {
                     notas: this.toList(this.adminForm.notasStr),
                     plannedDeliveries: this.adminForm.plannedDeliveries,
                     freightAmount: this.adminForm.freightAmount,
-                    tollAmount: this.adminForm.tollAmount,
+                    tollAmount: this.tollTotal(this.adminForm),
+                    tollAmounts: this.adminForm.tollAmounts,
+                    loadingAmount: this.adminForm.loadingAmount,
+                    unloadingAmount: this.adminForm.unloadingAmount,
                     useManualFreightAmount: this.adminForm.useManualFreightAmount,
                     status: this.adminForm.status,
                     photos: routePhotos
@@ -1611,7 +1740,15 @@ export default {
         cancelFinish() {
             this.showFinishModal = false
             this.routeSelected = null
-            this.finishForm = { kmFinal: '', cidadesStr: '', notasStr: '', tollAmount: null }
+            this.finishForm = {
+                kmFinal: '',
+                cidadesStr: '',
+                notasStr: '',
+                tollInput: null,
+                tollAmounts: [],
+                loadingAmount: null,
+                unloadingAmount: null
+            }
             this.photos = []
         },
 
@@ -1791,6 +1928,10 @@ export default {
                 notasStr: '',
                 plannedDeliveries: '',
                 freightAmount: null,
+                tollInput: null,
+                tollAmounts: [],
+                loadingAmount: null,
+                unloadingAmount: null,
                 useManualFreightAmount: false,
                 status: 'Concluida'
             }
@@ -2045,6 +2186,39 @@ export default {
             return money(value)
         },
 
+        moneyNumber(value) {
+            const parsed = Number(value)
+            return Number.isFinite(parsed) ? parsed : 0
+        },
+
+        routeTollAmounts(route) {
+            const amounts = Array.isArray(route?.tollAmounts) ? route.tollAmounts : []
+            if (amounts.length) return amounts.map(this.moneyNumber).filter(value => value > 0)
+            return this.moneyNumber(route?.tollAmount) > 0 ? [this.moneyNumber(route.tollAmount)] : []
+        },
+
+        tollTotal(form) {
+            return (form?.tollAmounts || []).reduce((sum, amount) => sum + this.moneyNumber(amount), 0)
+        },
+
+        addTollAmount(formKey) {
+            const form = this[formKey]
+            if (!form) return
+
+            const amount = this.moneyNumber(form.tollInput)
+            if (amount <= 0) return
+
+            form.tollAmounts = [...(form.tollAmounts || []), amount]
+            form.tollInput = null
+        },
+
+        removeTollAmount(formKey, index) {
+            const form = this[formKey]
+            if (!form) return
+
+            form.tollAmounts = (form.tollAmounts || []).filter((_, itemIndex) => itemIndex !== index)
+        },
+
         calculateFreightAmount(initialKm, finalKm) {
             if (!initialKm || !finalKm) return Number(this.freightSettings.baseAmount || 0)
 
@@ -2058,7 +2232,10 @@ export default {
         routeFreightAmount(route) {
             return route.hasManualFreightAmount
                 ? route.freightAmount
-                : this.calculateFreightAmount(route.kmInicial, route.kmFinal)
+                : this.calculateFreightAmount(route.kmInicial, route.kmFinal) +
+                    this.moneyNumber(route.tollAmount) +
+                    this.moneyNumber(route.loadingAmount) +
+                    this.moneyNumber(route.unloadingAmount)
         },
 
         toInputDate(date) {
@@ -3175,6 +3352,78 @@ export default {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+}
+
+.toll-builder {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background: var(--surface-muted);
+}
+
+.toll-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 8px;
+}
+
+.toll-input-row button,
+.toll-chip-list button {
+    border: 1px solid var(--border-soft);
+    background: var(--surface-card);
+    color: var(--text-strong);
+}
+
+.toll-input-row button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    min-height: 40px;
+    border-radius: 10px;
+}
+
+.toll-input-row button:disabled {
+    opacity: 0.45;
+}
+
+.toll-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.toll-chip-list button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.toll-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-soft);
+}
+
+.toll-total span {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.toll-total strong {
+    color: var(--text-strong);
+    font-size: 15px;
 }
 
 .input-error {
