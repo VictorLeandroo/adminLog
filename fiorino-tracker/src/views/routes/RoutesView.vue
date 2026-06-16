@@ -184,7 +184,8 @@
                         <i class="fa-solid fa-file-circle-exclamation"></i>
                         <div>
                             <strong>Nota pendente de revisão</strong>
-                            <p>{{ route.correctionRequested ? 'Motorista enviou uma correção para validar.' : 'Rota finalizada sem nota fiscal cadastrada.' }}</p>
+                            <p>{{ route.correctionRequested ? 'Motorista enviou uma correção para validar.' :
+                                'Rota finalizada sem nota fiscal cadastrada.' }}</p>
                         </div>
                     </div>
 
@@ -237,8 +238,8 @@
                     </div>
 
                     <div class="photo-strip" v-if="route.photos.length">
-                        <img v-for="(photo, index) in visibleRoutePhotos(route)" :key="photo.id || photo.fileUrl || index"
-                            :src="photo.url || photo.preview"
+                        <img v-for="(photo, index) in visibleRoutePhotos(route)"
+                            :key="photo.id || photo.fileUrl || index" :src="photo.url || photo.preview"
                             @click="openPhotoPreview(route, index)" />
                         <button v-if="hiddenRoutePhotoCount(route)" type="button" class="photo-more"
                             @click="openPhotoPreview(route, visibleRoutePhotos(route).length)">
@@ -272,8 +273,8 @@
                             Finalizar
                         </ButtonComp>
 
-                        <ButtonComp v-if="isDriver && route.status !== 'Em andamento'"
-                            btn-class="button-primary w-100" :click-action="() => openLateInvoiceModal(route)">
+                        <ButtonComp v-if="isDriver && route.status !== 'Em andamento'" btn-class="button-primary w-100"
+                            :click-action="() => openLateInvoiceModal(route)">
                             <i class="fa-solid fa-file-arrow-up"></i>
                             Enviar nota
                         </ButtonComp>
@@ -371,28 +372,21 @@
                     placeholder="Ex: 5674, 5675, 5676" />
 
                 <label class="form-label">Quantidade de entregas <span class="optional-label">opcional</span></label>
-                <input type="number" min="0" v-model.number="createRouteForm.plannedDeliveries"
-                    class="w-100 mb-2" placeholder="Ex: 4" />
+                <input type="number" min="0" v-model.number="createRouteForm.plannedDeliveries" class="w-100 mb-2"
+                    placeholder="Ex: 4" />
 
-                <div class="form-grid">
-                    <div>
-                        <label class="form-label">Carga <span class="optional-label">opcional</span></label>
-                        <input type="number" min="0" step="0.01" v-model.number="createRouteForm.loadingAmount"
-                            class="w-100 mb-2" placeholder="Ex: 40,00" />
-                    </div>
-                    <div>
-                        <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
-                        <input type="number" min="0" step="0.01" v-model.number="createRouteForm.unloadingAmount"
-                            class="w-100 mb-2" placeholder="Ex: 60,00" />
-                    </div>
-                </div>
+                <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
+                <input type="number" min="0" step="0.01" v-model.number="createRouteForm.unloadingAmount"
+                    class="w-100 mb-2" placeholder="Ex: 60,00" />
 
                 <label class="form-label">Pedágios <span class="optional-label">opcional</span></label>
                 <div class="toll-builder mb-2">
                     <div class="toll-input-row">
                         <input type="number" min="0" step="0.01" v-model.number="createRouteForm.tollInput"
-                            class="w-100" placeholder="Ex: 25,90" @keyup.enter.prevent="addTollAmount('createRouteForm')" />
-                        <button type="button" @click="addTollAmount('createRouteForm')" :disabled="!createRouteForm.tollInput">
+                            class="w-100" placeholder="Ex: 25,90"
+                            @keyup.enter.prevent="addTollAmount('createRouteForm')" />
+                        <button type="button" @click="addTollAmount('createRouteForm')"
+                            :disabled="!createRouteForm.tollInput">
                             <i class="fa-solid fa-plus"></i>
                         </button>
                     </div>
@@ -464,8 +458,8 @@
             </ButtonComp>
         </ModalDefault>
 
-        <ModalDefault :isLoading="isModalLoading" :is-visible="showDriverDetailsModal" max-width="760px" min-width="320px"
-            @update:isVisible="cancelDriverRouteDetails">
+        <ModalDefault :isLoading="isModalLoading" :is-visible="showDriverDetailsModal" max-width="760px"
+            min-width="320px" @update:isVisible="cancelDriverRouteDetails">
             <div class="route-modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-list-check"></i></span>
                 <div>
@@ -490,7 +484,8 @@
                     </div>
                     <div>
                         <small>KM</small>
-                        <strong>{{ formatKm(routeSelected.kmInicial) }} / {{ routeSelected.kmFinal ? formatKm(routeSelected.kmFinal) : '-' }}</strong>
+                        <strong>{{ formatKm(routeSelected.kmInicial) }} / {{ routeSelected.kmFinal ?
+                            formatKm(routeSelected.kmFinal) : '-' }}</strong>
                     </div>
                 </div>
 
@@ -580,8 +575,8 @@
                 <label class="form-label">Pedágios <span class="optional-label">opcional</span></label>
                 <div class="toll-builder mb-2">
                     <div class="toll-input-row">
-                        <input type="number" min="0" step="0.01" v-model.number="finishForm.tollInput"
-                            class="w-100" placeholder="Ex: 25,90" @keyup.enter.prevent="addTollAmount('finishForm')" />
+                        <input type="number" min="0" step="0.01" v-model.number="finishForm.tollInput" class="w-100"
+                            placeholder="Ex: 25,90" @keyup.enter.prevent="addTollAmount('finishForm')" />
                         <button type="button" @click="addTollAmount('finishForm')" :disabled="!finishForm.tollInput">
                             <i class="fa-solid fa-plus"></i>
                         </button>
@@ -607,7 +602,8 @@
 
             <div class="analysis-note warning" v-if="willFinishWithoutInvoice">
                 <i class="fa-solid fa-triangle-exclamation"></i>
-                Você está finalizando sem número de nota e sem foto. Se lembrar depois, use "Enviar nota" na rota finalizada.
+                Você está finalizando sem número de nota e sem foto. Se lembrar depois, use "Enviar nota" na rota
+                finalizada.
             </div>
 
             <ButtonComp :click-action="finishRoute" :is-disabled="!canFinishRoute"
@@ -631,7 +627,8 @@
                     <div class="photo-workspace-head">
                         <div>
                             <span class="eyebrow">Fotos da rota</span>
-                            <strong>{{ adminPhotos.length ? `${adminPhotoIndex + 1} de ${adminPhotos.length}` : 'Sem fotos' }}</strong>
+                            <strong>{{ adminPhotos.length ? `${adminPhotoIndex + 1} de ${adminPhotos.length}` :
+                                'Sem fotos' }}</strong>
                         </div>
                         <div class="photo-tool-group" v-if="adminPhotos.length">
                             <button type="button" title="Diminuir zoom" @click="zoomAdminPhoto(-0.2)">
@@ -717,9 +714,10 @@
                         <label class="form-label">Notas fiscais</label>
                         <textarea v-model="adminForm.notasStr" class="w-100 admin-textarea notes mb-2"></textarea>
 
-                        <label class="form-label">Quantidade de entregas <span class="optional-label">opcional</span></label>
-                        <input type="number" min="0" v-model.number="adminForm.plannedDeliveries"
-                            class="w-100 mb-2" placeholder="Ex: 4" />
+                        <label class="form-label">Quantidade de entregas <span
+                                class="optional-label">opcional</span></label>
+                        <input type="number" min="0" v-model.number="adminForm.plannedDeliveries" class="w-100 mb-2"
+                            placeholder="Ex: 4" />
 
                         <div class="admin-delivery-overview" v-if="routeSelected">
                             <div>
@@ -739,7 +737,8 @@
                             <div>
                                 <small>Frete calculado</small>
                                 <strong>{{ formatMoney(adminCalculatedFreightAmount) }}</strong>
-                                <span>{{ freightSettings.includedKm }} km inclusos + {{ formatMoney(freightSettings.excessKmAmount) }} por km excedente</span>
+                                <span>{{ freightSettings.includedKm }} km inclusos + {{
+                                    formatMoney(freightSettings.excessKmAmount) }} por km excedente</span>
                             </div>
                             <label class="freight-manual-toggle">
                                 <input type="checkbox" v-model="adminForm.useManualFreightAmount" />
@@ -766,8 +765,10 @@
                         <div class="toll-builder mb-2">
                             <div class="toll-input-row">
                                 <input type="number" min="0" step="0.01" v-model.number="adminForm.tollInput"
-                                    class="w-100" placeholder="Ex: 25,90" @keyup.enter.prevent="addTollAmount('adminForm')" />
-                                <button type="button" @click="addTollAmount('adminForm')" :disabled="!adminForm.tollInput">
+                                    class="w-100" placeholder="Ex: 25,90"
+                                    @keyup.enter.prevent="addTollAmount('adminForm')" />
+                                <button type="button" @click="addTollAmount('adminForm')"
+                                    :disabled="!adminForm.tollInput">
                                     <i class="fa-solid fa-plus"></i>
                                 </button>
                             </div>
@@ -881,8 +882,7 @@
                 placeholder="400,00" />
 
             <label class="form-label">KM incluso</label>
-            <input type="number" v-model.number="freightSettingsForm.includedKm" class="w-100 mb-2"
-                placeholder="120" />
+            <input type="number" v-model.number="freightSettingsForm.includedKm" class="w-100 mb-2" placeholder="120" />
 
             <label class="form-label">Valor por KM excedente</label>
             <input type="number" v-model.number="freightSettingsForm.excessKmAmount" class="w-100 mb-2"
@@ -1399,7 +1399,7 @@ export default {
             localStorage.setItem('profileType', profile)
             window.dispatchEvent(new CustomEvent('profile-updated', { detail: profile }))
         },
- 
+
         openStartModal() {
             if (this.activeRoute || !this.myVehicle) return
             this.showStartModal = true
@@ -2233,9 +2233,9 @@ export default {
             return route.hasManualFreightAmount
                 ? route.freightAmount
                 : this.calculateFreightAmount(route.kmInicial, route.kmFinal) +
-                    this.moneyNumber(route.tollAmount) +
-                    this.moneyNumber(route.loadingAmount) +
-                    this.moneyNumber(route.unloadingAmount)
+                this.moneyNumber(route.tollAmount) +
+                this.moneyNumber(route.loadingAmount) +
+                this.moneyNumber(route.unloadingAmount)
         },
 
         toInputDate(date) {
