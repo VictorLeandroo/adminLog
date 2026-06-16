@@ -559,18 +559,9 @@
                 <input type="text" v-model="finishForm.notasStr" class="w-100 mb-2"
                     placeholder="Ex: 5674, 5675, 5676" />
 
-                <div class="form-grid mt-2">
-                    <div>
-                        <label class="form-label">Carga <span class="optional-label">opcional</span></label>
-                        <input type="number" min="0" step="0.01" v-model.number="finishForm.loadingAmount"
-                            class="w-100 mb-2" placeholder="Ex: 40,00" />
-                    </div>
-                    <div>
-                        <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
-                        <input type="number" min="0" step="0.01" v-model.number="finishForm.unloadingAmount"
-                            class="w-100 mb-2" placeholder="Ex: 60,00" />
-                    </div>
-                </div>
+                <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
+                <input type="number" min="0" step="0.01" v-model.number="finishForm.unloadingAmount" class="w-100 mb-2"
+                    placeholder="Ex: 50,00" />
 
                 <label class="form-label">Pedágios <span class="optional-label">opcional</span></label>
                 <div class="toll-builder mb-2">
@@ -748,18 +739,9 @@
                                 v-model.number="adminForm.freightAmount" class="w-100" placeholder="0,00" />
                         </div>
 
-                        <div class="form-grid">
-                            <div>
-                                <label class="form-label">Carga <span class="optional-label">opcional</span></label>
-                                <input type="number" min="0" step="0.01" v-model.number="adminForm.loadingAmount"
-                                    class="w-100 mb-2" placeholder="Ex: 40,00" />
-                            </div>
-                            <div>
-                                <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
-                                <input type="number" min="0" step="0.01" v-model.number="adminForm.unloadingAmount"
-                                    class="w-100 mb-2" placeholder="Ex: 60,00" />
-                            </div>
-                        </div>
+                        <label class="form-label">Descarga <span class="optional-label">opcional</span></label>
+                        <input type="number" min="0" step="0.01" v-model.number="adminForm.unloadingAmount"
+                            class="w-100 mb-2" placeholder="Ex: 60,00" />
 
                         <label class="form-label">Pedágios <span class="optional-label">opcional</span></label>
                         <div class="toll-builder mb-2">
