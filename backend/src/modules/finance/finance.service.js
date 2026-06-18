@@ -26,6 +26,8 @@ const EXPENSE_STATUSES = {
   CORRECTION_REQUESTED: 'CORRECTION_REQUESTED',
 };
 
+const ROUTE_UNLOADING_DESCRIPTION_PREFIX = '[ROUTE_UNLOADING:';
+
 const DRIVER_ALLOWED_CATEGORIES = new Set([
   EXPENSE_CATEGORIES.FUEL,
   EXPENSE_CATEGORIES.TOLL,
@@ -135,6 +137,7 @@ function expenseWhere(user, query = {}) {
   if (query.status) where.status = query.status;
   if (query.paid !== undefined) where.paid = String(query.paid) === 'true';
   if (user.role === 'DRIVER') where.vehicle = { driverId: user.id };
+  where.NOT = { description: { startsWith: ROUTE_UNLOADING_DESCRIPTION_PREFIX } };
 
   return where;
 }

@@ -5,14 +5,16 @@
                 <div>
                     <span class="eyebrow">{{ isDriverUser ? 'Financeiro do motorista' : 'Centro financeiro' }}</span>
                     <h4>{{ isDriverUser ? 'Meus gastos' : 'Financeiro' }}</h4>
-                    <p>{{ isDriverUser ? 'Registre gastos do seu veiculo e acompanhe aprovacoes.' : 'Despesas, receitas, caixa, DRE, fundos e pagamentos em uma visao organizada.' }}</p>
+                    <p>{{ isDriverUser ? 'Registre gastos do seu veiculo e acompanhe aprovacoes.' :
+                        'Despesas, receitas, caixa, DRE, fundos e pagamentos em uma visao organizada.' }}</p>
                 </div>
                 <div class="hero-actions">
                     <ButtonComp btn-class="button-primary button-big" :click-action="openExpenseModal">
                         <i class="fa-solid fa-plus"></i>
                         Nova despesa
                     </ButtonComp>
-                    <ButtonComp v-if="!isDriverUser" btn-class="button-secundary button-big" :click-action="openRevenueModal">
+                    <ButtonComp v-if="!isDriverUser" btn-class="button-secundary button-big"
+                        :click-action="openRevenueModal">
                         <i class="fa-solid fa-arrow-trend-up"></i>
                         Nova receita
                     </ButtonComp>
@@ -35,14 +37,16 @@
                 </section>
 
                 <section v-if="isDriverUser" class="driver-quick-panel">
-                    <button v-for="action in quickExpenseActions" :key="action.category" type="button" @click="openExpenseModal(null, action.category)">
+                    <button v-for="action in quickExpenseActions" :key="action.category" type="button"
+                        @click="openExpenseModal(null, action.category)">
                         <i class="fa-solid" :class="action.icon"></i>
                         <span>{{ action.label }}</span>
                     </button>
                 </section>
 
                 <nav class="finance-tabs" v-if="!isDriverUser">
-                    <button v-for="tab in adminTabs" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
+                    <button v-for="tab in adminTabs" :key="tab.key" type="button"
+                        :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
                         <i class="fa-solid" :class="tab.icon"></i>
                         {{ tab.label }}
                     </button>
@@ -54,12 +58,14 @@
                         <input v-model="searchTerm" type="text" placeholder="Buscar por descricao, categoria ou data" />
                     </div>
                     <select v-model.number="selectedMonth" class="form-select" @change="fetchFinance">
-                        <option v-for="month in months" :key="month.value" :value="month.value">{{ month.label }}</option>
+                        <option v-for="month in months" :key="month.value" :value="month.value">{{ month.label }}
+                        </option>
                     </select>
                     <select v-model.number="selectedYear" class="form-select" @change="fetchFinance">
                         <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
                     </select>
-                    <select v-if="!isDriverUser && activeTab === 'expenses'" v-model="filters.status" class="form-select">
+                    <select v-if="!isDriverUser && activeTab === 'expenses'" v-model="filters.status"
+                        class="form-select">
                         <option value="">Todos status</option>
                         <option value="PENDING">Pendente</option>
                         <option value="APPROVED">Aprovada</option>
@@ -90,7 +96,8 @@
                                     </div>
                                 </div>
                                 <div class="amount-stack">
-                                    <span class="status-badge" :class="expense.status">{{ statusLabel(expense.status) }}</span>
+                                    <span class="status-badge" :class="expense.status">{{ statusLabel(expense.status)
+                                    }}</span>
                                     <strong class="amount danger">{{ formatMoney(expense.amount) }}</strong>
                                 </div>
                             </div>
@@ -99,24 +106,32 @@
                             <p v-if="expense.reviewNote" class="review-note">{{ expense.reviewNote }}</p>
 
                             <div class="photo-strip" v-if="expense.photos?.length">
-                                <button v-for="(photo, index) in expense.photos" :key="index" type="button" @click="openLightbox(photo.url || photo.preview)">
+                                <button v-for="(photo, index) in expense.photos" :key="index" type="button"
+                                    @click="openLightbox(photo.url || photo.preview)">
                                     <img :src="photo.url || photo.preview" />
                                 </button>
                             </div>
 
                             <div class="expense-actions" v-if="canManageExpenses && expense.editable">
-                                <ButtonComp btn-class="button-secundary w-100" :click-action="() => openExpenseModal(expense)">Editar</ButtonComp>
-                                <ButtonComp v-if="expense.status === 'PENDING'" btn-class="button-primary w-100" :click-action="() => reviewExpense(expense, 'APPROVED')">Aprovar</ButtonComp>
-                                <ButtonComp v-if="expense.status === 'PENDING'" btn-class="button-secundary w-100" :click-action="() => askReview(expense, 'CORRECTION_REQUESTED')">Corrigir</ButtonComp>
-                                <ButtonComp v-if="expense.status === 'PENDING'" btn-class="button-secundary-red w-100" :click-action="() => askReview(expense, 'REJECTED')">Recusar</ButtonComp>
-                                <ButtonComp btn-class="button-secundary-red w-100" :click-action="() => deleteExpense(expense.id)">Excluir</ButtonComp>
+                                <ButtonComp btn-class="button-secundary w-100"
+                                    :click-action="() => openExpenseModal(expense)">Editar</ButtonComp>
+                                <ButtonComp v-if="expense.status === 'PENDING'" btn-class="button-primary w-100"
+                                    :click-action="() => reviewExpense(expense, 'APPROVED')">Aprovar</ButtonComp>
+                                <ButtonComp v-if="expense.status === 'PENDING'" btn-class="button-secundary w-100"
+                                    :click-action="() => askReview(expense, 'CORRECTION_REQUESTED')">Corrigir
+                                </ButtonComp>
+                                <ButtonComp v-if="expense.status === 'PENDING'" btn-class="button-secundary-red w-100"
+                                    :click-action="() => askReview(expense, 'REJECTED')">Recusar</ButtonComp>
+                                <ButtonComp btn-class="button-secundary-red w-100"
+                                    :click-action="() => deleteExpense(expense.id)">Excluir</ButtonComp>
                             </div>
                         </article>
 
                         <div v-if="!filteredExpenses.length" class="empty-state">
                             <span class="empty-icon"><i class="fa-solid fa-receipt"></i></span>
                             <strong>Nenhuma despesa encontrada</strong>
-                            <p>{{ isDriverUser ? 'Use os botoes rapidos para registrar um gasto do veiculo.' : 'Crie uma despesa ou ajuste os filtros do periodo.' }}</p>
+                            <p>{{ isDriverUser ? 'Use os botoes rapidos para registrar um gasto do veiculo.' :
+                                'Crie uma despesa ou ajuste os filtros do periodo.' }}</p>
                         </div>
                     </div>
 
@@ -138,7 +153,9 @@
                         </div>
                         <div v-else class="mini-empty">
                             <span class="empty-icon small"><i class="fa-solid fa-chart-pie"></i></span>
-                            <div><strong>Sem categorias</strong><p>Nenhuma despesa encontrada.</p></div>
+                            <div><strong>Sem categorias</strong>
+                                <p>Nenhuma despesa encontrada.</p>
+                            </div>
                         </div>
                     </aside>
                 </section>
@@ -146,54 +163,81 @@
                 <section v-if="!isDriverUser && activeTab === 'revenues'" class="panel-grid">
                     <article class="finance-panel wide">
                         <div class="section-title">
-                            <div><span class="eyebrow">Receitas</span><h5>Entradas registradas</h5></div>
+                            <div><span class="eyebrow">Receitas</span>
+                                <h5>Entradas registradas</h5>
+                            </div>
                             <strong class="positive">{{ formatMoney(totalRevenues) }}</strong>
                         </div>
                         <div v-for="revenue in filteredRevenues" :key="revenue.id" class="list-row revenue-row">
-                            <div><strong>{{ revenue.description }}</strong><small>{{ formatDate(revenue.date) }} - {{ revenue.company || 'Sem cliente' }}</small></div>
+                            <div><strong>{{ revenue.description }}</strong><small>{{ formatDate(revenue.date) }} - {{
+                                revenue.company || 'Sem cliente' }}</small></div>
                             <div class="row-value-actions">
                                 <span class="positive">{{ formatMoney(revenue.amount) }}</span>
                                 <div class="row-actions">
                                     <button type="button" @click="openRevenueModal(revenue)" title="Editar receita">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
-                                    <button type="button" class="danger-action" @click="deleteRevenue(revenue.id)" title="Excluir receita">
+                                    <button type="button" class="danger-action" @click="deleteRevenue(revenue.id)"
+                                        title="Excluir receita">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
-                        <div v-if="!filteredRevenues.length" class="empty-state compact"><strong>Nenhuma receita no periodo</strong></div>
+                        <div v-if="!filteredRevenues.length" class="empty-state compact"><strong>Nenhuma receita no
+                                periodo</strong></div>
                     </article>
                 </section>
 
                 <section v-if="!isDriverUser && activeTab === 'cashflow'" class="finance-panel">
-                    <div class="section-title"><div><span class="eyebrow">Fluxo de caixa</span><h5>Entradas, saidas e saldo acumulado</h5></div></div>
+                    <div class="section-title">
+                        <div><span class="eyebrow">Fluxo de caixa</span>
+                            <h5>Entradas, saidas e saldo acumulado</h5>
+                        </div>
+                    </div>
                     <div v-for="item in cashFlow" :key="item.id" class="cash-row" :class="item.type">
-                        <div><strong>{{ item.description }}</strong><small>{{ formatDate(item.date) }} - {{ item.category }} - {{ item.related }}</small></div>
-                        <div><span>{{ formatMoney(item.amount) }}</span><small>Saldo {{ formatMoney(item.balance) }}</small></div>
+                        <div><strong>{{ item.description }}</strong><small>{{ formatDate(item.date) }} - {{
+                            item.category }} - {{ item.related }}</small></div>
+                        <div><span>{{ formatMoney(item.amount) }}</span><small>Saldo {{ formatMoney(item.balance)
+                        }}</small></div>
                     </div>
                 </section>
 
                 <section v-if="!isDriverUser && activeTab === 'dre'" class="panel-grid">
                     <article class="finance-panel">
-                        <div class="section-title"><div><span class="eyebrow">DRE geral</span><h5>Resultado do mes</h5></div></div>
-                        <div class="dre-line positive"><span>Receitas</span><strong>{{ formatMoney(dre.totalRevenue) }}</strong></div>
-                        <div v-for="category in dre.categories" :key="category.category" class="dre-line"><span>{{ category.category }}</span><strong>{{ formatMoney(category.total) }}</strong></div>
-                        <div class="dre-line total"><span>Lucro liquido</span><strong>{{ formatMoney(dre.netProfit) }}</strong></div>
+                        <div class="section-title">
+                            <div><span class="eyebrow">DRE geral</span>
+                                <h5>Resultado do mes</h5>
+                            </div>
+                        </div>
+                        <div class="dre-line positive"><span>Receitas</span><strong>{{ formatMoney(dre.totalRevenue)
+                        }}</strong></div>
+                        <div v-for="category in dre.categories" :key="category.category" class="dre-line"><span>{{
+                            category.category }}</span><strong>{{ formatMoney(category.total) }}</strong></div>
+                        <div class="dre-line total"><span>Lucro liquido</span><strong>{{ formatMoney(dre.netProfit)
+                        }}</strong></div>
                     </article>
                     <article class="finance-panel">
-                        <div class="section-title"><div><span class="eyebrow">DRE por Fiorino</span><h5>Lucro real por veiculo</h5></div></div>
+                        <div class="section-title">
+                            <div><span class="eyebrow">DRE por Fiorino</span>
+                                <h5>Lucro real por veiculo</h5>
+                            </div>
+                        </div>
                         <div v-for="vehicle in vehicleDre" :key="vehicle.vehicleId" class="vehicle-dre-row">
-                            <div><strong>{{ vehicle.plate }}</strong><small>{{ vehicle.driver }} - {{ formatKm(vehicle.km) }} km</small></div>
-                            <div><span :class="{ positive: vehicle.netProfit >= 0, danger: vehicle.netProfit < 0 }">{{ formatMoney(vehicle.netProfit) }}</span><small>{{ formatPercent(vehicle.margin) }}</small></div>
+                            <div><strong>{{ vehicle.plate }}</strong><small>{{ vehicle.driver }} - {{
+                                formatKm(vehicle.km) }} km</small></div>
+                            <div><span :class="{ positive: vehicle.netProfit >= 0, danger: vehicle.netProfit < 0 }">{{
+                                formatMoney(vehicle.netProfit) }}</span><small>{{ formatPercent(vehicle.margin)
+                                    }}</small></div>
                         </div>
                     </article>
                 </section>
 
                 <section v-if="!isDriverUser && activeTab === 'funds'" class="finance-panel">
                     <div class="section-title">
-                        <div><span class="eyebrow">Fundos e reservas</span><h5>Caixinhas financeiras</h5></div>
+                        <div><span class="eyebrow">Fundos e reservas</span>
+                            <h5>Caixinhas financeiras</h5>
+                        </div>
                         <ButtonComp btn-class="button-primary" :click-action="openFundModal">
                             <i class="fa-solid fa-plus"></i>
                             Novo fundo
@@ -214,16 +258,26 @@
                 </section>
 
                 <section v-if="!isDriverUser && activeTab === 'salaries'" class="finance-panel">
-                    <div class="section-title"><div><span class="eyebrow">Salarios</span><h5>Motoristas e pagamentos</h5></div></div>
+                    <div class="section-title">
+                        <div><span class="eyebrow">Salarios</span>
+                            <h5>Motoristas e pagamentos</h5>
+                        </div>
+                    </div>
                     <div v-for="salary in salaries" :key="salary.driverId" class="list-row">
-                        <div><strong>{{ salary.driver }}</strong><small>{{ salary.vehicle }} - descontos {{ formatMoney(salary.discounts) }}</small></div>
+                        <div><strong>{{ salary.driver }}</strong><small>{{ salary.vehicle }} - descontos {{
+                            formatMoney(salary.discounts) }}</small></div>
                         <span>{{ formatMoney(salary.totalToPay) }}</span>
                     </div>
                 </section>
 
                 <section v-if="!isDriverUser && activeTab === 'insights'" class="finance-panel">
-                    <div class="section-title"><div><span class="eyebrow">Insights</span><h5>Alertas financeiros</h5></div></div>
-                    <div v-for="insight in insights" :key="`${insight.title}-${insight.text}`" class="insight-row" :class="insight.tone">
+                    <div class="section-title">
+                        <div><span class="eyebrow">Insights</span>
+                            <h5>Alertas financeiros</h5>
+                        </div>
+                    </div>
+                    <div v-for="insight in insights" :key="`${insight.title}-${insight.text}`" class="insight-row"
+                        :class="insight.tone">
                         <i class="fa-solid fa-circle-info"></i>
                         <div><strong>{{ insight.title }}</strong><small>{{ insight.text }}</small></div>
                     </div>
@@ -231,10 +285,14 @@
             </template>
         </div>
 
-        <ModalDefault :isLoading="isLoading" :is-visible="showExpenseModal" max-width="460px" min-width="320px" @update:isVisible="cancelExpense">
+        <ModalDefault :isLoading="isLoading" :is-visible="showExpenseModal" max-width="460px" min-width="320px"
+            @update:isVisible="cancelExpense">
             <div class="modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-receipt"></i></span>
-                <div><h6>{{ expenseForm.id ? 'Editar despesa' : 'Nova despesa' }}</h6><p>Foto do comprovante e descricao ajudam na aprovacao.</p></div>
+                <div>
+                    <h6>{{ expenseForm.id ? 'Editar despesa' : 'Nova despesa' }}</h6>
+                    <p>Foto do comprovante e descricao ajudam na aprovacao.</p>
+                </div>
             </div>
             <label class="form-label">Data</label>
             <input type="date" v-model="expenseForm.date" class="w-100 mb-2" />
@@ -245,30 +303,39 @@
             <template v-if="showVehicleField && !isDriverUser">
                 <label class="form-label">Veiculo {{ vehicleRequiredForExpense ? '' : '(opcional)' }}</label>
                 <select v-model="expenseForm.vehicleId" class="form-select w-100 mb-2">
-                    <option value="">{{ vehicleRequiredForExpense ? 'Selecione um veiculo' : 'Sem vinculo com veiculo' }}</option>
-                    <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">{{ vehicle.plate }} - {{ vehicle.model }}</option>
+                    <option value="">{{ vehicleRequiredForExpense ? 'Selecione um veiculo' : 'Sem vinculo com veiculo'
+                    }}</option>
+                    <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">{{ vehicle.plate }} - {{
+                        vehicle.model }}</option>
                 </select>
             </template>
             <template v-if="expenseForm.category === expenseCategories.SALARY">
                 <label class="form-label">Motorista</label>
                 <select v-model="expenseForm.driverId" class="form-select w-100 mb-2">
                     <option value="">Selecione um motorista</option>
-                    <option v-for="driver in drivers" :key="driver.id" :value="driver.id">{{ driver.name }} - {{ driver.email }}</option>
+                    <option v-for="driver in drivers" :key="driver.id" :value="driver.id">{{ driver.name }} - {{
+                        driver.email }}</option>
                 </select>
             </template>
             <label class="form-label">Descricao</label>
-            <input type="text" v-model="expenseForm.description" class="w-100 mb-2" placeholder="Ex: abastecimento, pedagio, troca de pneu" />
+            <input type="text" v-model="expenseForm.description" class="w-100 mb-2"
+                placeholder="Ex: abastecimento, pedagio, troca de pneu" />
             <label class="form-label">Valor</label>
             <input type="number" v-model.number="expenseForm.amount" class="w-100 mb-2" placeholder="0,00" />
             <label class="form-label">Comprovante</label>
             <PhotoUploadComp v-model="photos" />
-            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveExpense" :click-action="saveExpense">Salvar despesa</ButtonComp>
+            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveExpense"
+                :click-action="saveExpense">Salvar despesa</ButtonComp>
         </ModalDefault>
 
-        <ModalDefault :isLoading="isLoading" :is-visible="showFundModal" max-width="460px" min-width="320px" @update:isVisible="cancelFund">
+        <ModalDefault :isLoading="isLoading" :is-visible="showFundModal" max-width="460px" min-width="320px"
+            @update:isVisible="cancelFund">
             <div class="modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-vault"></i></span>
-                <div><h6>{{ fundForm.id ? 'Editar fundo' : 'Novo fundo' }}</h6><p>Defina a meta e o nome da caixinha.</p></div>
+                <div>
+                    <h6>{{ fundForm.id ? 'Editar fundo' : 'Novo fundo' }}</h6>
+                    <p>Defina a meta e o nome da caixinha.</p>
+                </div>
             </div>
             <label class="form-label">Nome</label>
             <input type="text" v-model="fundForm.name" class="w-100 mb-2" />
@@ -276,13 +343,19 @@
             <input type="text" v-model="fundForm.description" class="w-100 mb-2" />
             <label class="form-label">Meta</label>
             <input type="number" v-model.number="fundForm.target" class="w-100 mb-2" />
-            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!fundForm.name" :click-action="saveFund">Salvar fundo</ButtonComp>
+            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!fundForm.name"
+                :click-action="saveFund">
+                Salvar fundo</ButtonComp>
         </ModalDefault>
 
-        <ModalDefault :isLoading="isLoading" :is-visible="showFundMovementModal" max-width="460px" min-width="320px" @update:isVisible="cancelFundMovement">
+        <ModalDefault :isLoading="isLoading" :is-visible="showFundMovementModal" max-width="460px" min-width="320px"
+            @update:isVisible="cancelFundMovement">
             <div class="modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-money-bill-transfer"></i></span>
-                <div><h6>Movimentar fundo</h6><p>{{ selectedFund?.label || selectedFund?.name }}</p></div>
+                <div>
+                    <h6>Movimentar fundo</h6>
+                    <p>{{ selectedFund?.label || selectedFund?.name }}</p>
+                </div>
             </div>
             <label class="form-label">Tipo</label>
             <select v-model="fundMovementForm.type" class="form-select w-100 mb-2">
@@ -295,13 +368,18 @@
             <input type="number" v-model.number="fundMovementForm.amount" class="w-100 mb-2" />
             <label class="form-label">Observacao</label>
             <input type="text" v-model="fundMovementForm.note" class="w-100 mb-2" />
-            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveFundMovement" :click-action="saveFundMovement">Salvar movimento</ButtonComp>
+            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveFundMovement"
+                :click-action="saveFundMovement">Salvar movimento</ButtonComp>
         </ModalDefault>
 
-        <ModalDefault :isLoading="isLoading" :is-visible="showRevenueModal" max-width="460px" min-width="320px" @update:isVisible="cancelRevenue">
+        <ModalDefault :isLoading="isLoading" :is-visible="showRevenueModal" max-width="460px" min-width="320px"
+            @update:isVisible="cancelRevenue">
             <div class="modal-head">
                 <span class="modal-icon positive-bg"><i class="fa-solid fa-arrow-trend-up"></i></span>
-                <div><h6>{{ revenueForm.id ? 'Editar receita' : 'Nova receita' }}</h6><p>Registre entradas por cliente/transportadora.</p></div>
+                <div>
+                    <h6>{{ revenueForm.id ? 'Editar receita' : 'Nova receita' }}</h6>
+                    <p>Registre entradas por cliente/transportadora.</p>
+                </div>
             </div>
             <label class="form-label">Data</label>
             <input type="date" v-model="revenueForm.date" class="w-100 mb-2" />
@@ -311,7 +389,8 @@
             <input type="text" v-model="revenueForm.company" class="w-100 mb-2" />
             <label class="form-label">Valor</label>
             <input type="number" v-model.number="revenueForm.amount" class="w-100 mb-2" />
-            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveRevenue" :click-action="saveRevenue">Salvar receita</ButtonComp>
+            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveRevenue"
+                :click-action="saveRevenue">Salvar receita</ButtonComp>
         </ModalDefault>
 
         <div v-if="lightboxPhoto" class="lightbox" @click.self="closeLightbox">
@@ -931,6 +1010,11 @@ export default {
     align-items: center;
 }
 
+.category-row>div {
+    display: flex;
+    flex-direction: column;
+}
+
 .section-title {
     margin-bottom: 12px;
 }
@@ -964,7 +1048,7 @@ export default {
     min-width: 0;
 }
 
-.expense-title > div {
+.expense-title>div {
     min-width: 0;
 }
 
@@ -1033,10 +1117,25 @@ export default {
     white-space: nowrap;
 }
 
-.status-badge.PENDING { color: #f59e0b; background: rgba(245, 158, 11, 0.14); }
-.status-badge.APPROVED { color: #22c55e; background: rgba(34, 197, 94, 0.14); }
-.status-badge.REJECTED { color: #ef4444; background: rgba(239, 68, 68, 0.14); }
-.status-badge.CORRECTION_REQUESTED { color: #62a8ff; background: rgba(98, 168, 255, 0.16); }
+.status-badge.PENDING {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.14);
+}
+
+.status-badge.APPROVED {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.14);
+}
+
+.status-badge.REJECTED {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.14);
+}
+
+.status-badge.CORRECTION_REQUESTED {
+    color: #62a8ff;
+    background: rgba(98, 168, 255, 0.16);
+}
 
 .review-note {
     border-radius: 12px;
@@ -1079,7 +1178,7 @@ export default {
     flex-wrap: wrap;
 }
 
-.expense-actions > * {
+.expense-actions>* {
     min-width: 110px;
     flex: 1;
 }
@@ -1283,13 +1382,16 @@ export default {
         grid-template-columns: minmax(0, 1fr) 320px;
         align-items: start;
     }
+
     .finance-side {
         position: sticky;
         top: 18px;
     }
+
     .panel-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
     .finance-panel.wide {
         grid-column: 1 / -1;
     }
@@ -1300,6 +1402,7 @@ export default {
         padding-right: 10px;
         padding-left: 10px;
     }
+
     .finance-hero,
     .hero-actions,
     .filter-card,
@@ -1307,34 +1410,41 @@ export default {
         flex-direction: column;
         align-items: stretch;
     }
+
     .expense-card {
         width: 100%;
         min-width: 0;
         padding: 12px;
         border-radius: 16px;
     }
+
     .expense-head {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
     }
+
     .expense-title {
         width: 100%;
         align-items: flex-start;
         gap: 10px;
     }
+
     .expense-title strong {
         white-space: normal;
         overflow-wrap: anywhere;
     }
+
     .expense-title small {
         font-size: 11px;
     }
+
     .expense-icon {
         width: 36px;
         height: 36px;
         border-radius: 11px;
     }
+
     .amount-stack {
         width: 100%;
         grid-template-columns: auto auto;
@@ -1343,32 +1453,39 @@ export default {
         justify-items: start;
         text-align: left;
     }
+
     .amount-stack .amount {
         justify-self: end;
         font-size: 14px;
     }
+
     .status-badge {
         padding: 6px 8px;
         font-size: 9px;
     }
+
     .expense-description {
         margin-top: 10px;
         font-size: 13px;
     }
+
     .photo-strip {
         gap: 6px;
         margin-top: 10px;
         padding: 8px;
     }
+
     .photo-strip button {
         width: 54px;
         height: 54px;
         border-radius: 9px;
     }
+
     .summary-grid,
     .fund-grid {
         grid-template-columns: 1fr;
     }
+
     .filter-card select {
         max-width: none;
     }

@@ -13,6 +13,8 @@ const EXPENSE_BUCKETS = {
   fine: ['multa'],
 };
 
+const ROUTE_UNLOADING_DESCRIPTION_PREFIX = '[ROUTE_UNLOADING:';
+
 const DEFAULT_TARGETS = {
   operationalReservePerVehicle: 10000,
   maintenanceFundPerVehicle: 5000,
@@ -116,7 +118,13 @@ function userRouteWhere(user) {
 }
 
 function expenseVisibleWhere(user) {
-  return user.role === 'DRIVER' ? { vehicle: { driverId: user.id } } : {};
+  const where = {
+    NOT: { description: { startsWith: ROUTE_UNLOADING_DESCRIPTION_PREFIX } },
+  };
+
+  if (user.role === 'DRIVER') where.vehicle = { driverId: user.id };
+
+  return where;
 }
 
 function monthKey(date) {

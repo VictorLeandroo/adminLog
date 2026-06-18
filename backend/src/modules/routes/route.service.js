@@ -144,19 +144,19 @@ function getFinishPayload(data) {
 }
 
 function tollRouteDescription(routeId) {
-  return `[ROUTE_TOLL:${routeId}] Pedagio da rota`;
+  return `Pedagio da rota`;
 }
 
 function loadingRouteDescription(routeId) {
-  return `[ROUTE_LOADING:${routeId}] Zona Azul da rota`;
+  return `Zona Azul da rota`;
 }
 
 function legacyLoadingRouteDescription(routeId) {
-  return `[ROUTE_LOADING:${routeId}] Carga da rota`;
+  return `Carga da rota`;
 }
 
 function unloadingRouteDescription(routeId) {
-  return `[ROUTE_UNLOADING:${routeId}] Descarga da rota`;
+  return `Descarga da rota`;
 }
 
 function routeIdFromTollDescription(description) {
