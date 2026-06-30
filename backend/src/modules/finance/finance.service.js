@@ -122,6 +122,10 @@ function publicStatus(item) {
   return item.status || EXPENSE_STATUSES.APPROVED;
 }
 
+function publicDescription(description) {
+  return String(description || '').replace(/^\[ROUTE_(?:TOLL|LOADING|UNLOADING):[^\]]+\]\s*/, '');
+}
+
 function routeKm(route) {
   if (!route.finalKm) return 0;
   return Math.max(0, numberValue(route.finalKm) - numberValue(route.initialKm));
@@ -219,6 +223,7 @@ async function listExpenses(user, query = {}) {
 
   const rawExpenses = expenses.map((item) => ({
     ...item,
+    description: publicDescription(item.description),
     status: publicStatus(item),
     sourceType: 'EXPENSE',
     editable: true,
@@ -447,7 +452,7 @@ async function getCashFlow(user, query) {
       id: `expense-${item.id}`,
       date: item.date,
       type: 'OUT',
-      description: item.description || item.category,
+      description: publicDescription(item.description) || item.category,
       category: item.category,
       related: item.vehicle?.plate || item.driver?.name || '-',
       status: publicStatus(item),

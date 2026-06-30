@@ -144,19 +144,19 @@ function getFinishPayload(data) {
 }
 
 function tollRouteDescription(routeId) {
-  return `Pedagio da rota`;
+  return `[ROUTE_TOLL:${routeId}] Pedagio da rota`;
 }
 
 function loadingRouteDescription(routeId) {
-  return `Zona Azul da rota`;
+  return `[ROUTE_LOADING:${routeId}] Zona Azul da rota`;
 }
 
 function legacyLoadingRouteDescription(routeId) {
-  return `Carga da rota`;
+  return `[ROUTE_LOADING:${routeId}] Carga da rota`;
 }
 
 function unloadingRouteDescription(routeId) {
-  return `Descarga da rota`;
+  return `[ROUTE_UNLOADING:${routeId}] Descarga da rota`;
 }
 
 function routeIdFromTollDescription(description) {
@@ -167,6 +167,10 @@ function routeIdFromTollDescription(description) {
 function routeIdFromExpenseDescription(description) {
   const match = String(description || '').match(/^\[ROUTE_(?:TOLL|LOADING|UNLOADING):([^\]]+)\]/);
   return match ? match[1] : null;
+}
+
+function isRouteManagedExpense(expense) {
+  return Boolean(routeIdFromExpenseDescription(expense?.description));
 }
 
 function routeExpenseDescriptions(routeId) {
@@ -700,6 +704,7 @@ function expenseText(expense) {
 
 function routeExtraAmount(route, expenses, keywords, categories = []) {
   return expenses
+    .filter((expense) => !isRouteManagedExpense(expense))
     .filter((expense) => expense.vehicleId === route.vehicleId && dateOnly(expense.date) === dateOnly(route.date))
     .filter((expense) => {
       const categoryText = String(expense.category || '').toLowerCase();
