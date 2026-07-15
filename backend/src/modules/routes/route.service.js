@@ -954,10 +954,20 @@ async function convertXlsxToPdf(xlsxBuffer, filename) {
   }
 }
 
-async function generateFreightPdf(query) {
+async function generateFreightXlsx(query) {
   const { start, end, routes, expenses, settings, title } = await getFreightData(query);
-  const xlsxFilename = `frete-${dateOnly(start)}-${dateOnly(end)}.xlsx`;
-  const xlsxBuffer = Buffer.from(await buildFreightWorkbook(routes, expenses, settings, { start, end, title }));
+  const filename = `frete-${dateOnly(start)}-${dateOnly(end)}.xlsx`;
+  const buffer = Buffer.from(await buildFreightWorkbook(routes, expenses, settings, { start, end, title }));
+
+  return {
+    buffer,
+    filename,
+    contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  };
+}
+
+async function generateFreightPdf(query) {
+  const { buffer: xlsxBuffer, filename: xlsxFilename } = await generateFreightXlsx(query);
   const pdfBuffer = await convertXlsxToPdf(xlsxBuffer, xlsxFilename);
 
   if (!pdfBuffer) {
@@ -1231,5 +1241,6 @@ module.exports = {
   reviewRoute,
   removeRoute,
   generateFreightPdf,
+  generateFreightXlsx,
   generateFreightHtml,
 };

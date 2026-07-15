@@ -54,6 +54,14 @@ const freightPdf = asyncHandler(async (req, res) => {
   res.send(buffer);
 });
 
+const freightXlsx = asyncHandler(async (req, res) => {
+  const { buffer, filename, contentType } = await service.generateFreightXlsx(req.query);
+
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(buffer);
+});
+
 const freightReport = asyncHandler(async (req, res) => {
   const html = await service.generateFreightHtml(req.query);
 
@@ -74,5 +82,6 @@ module.exports = {
   review,
   remove,
   freightPdf,
+  freightXlsx,
   freightReport,
 };

@@ -17,8 +17,8 @@
 
                     <ButtonComp v-if="!isDriver" btn-class="button-secundary button-big"
                         :click-action="openFreightModal">
-                        <i class="fa-solid fa-file-pdf"></i>
-                        Frete PDF
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                        Frete
                     </ButtonComp>
 
                     <ButtonComp v-if="!isDriver" btn-class="button-secundary button-big"
@@ -827,8 +827,8 @@
             <div class="route-modal-head">
                 <span class="modal-icon"><i class="fa-solid fa-file-pdf"></i></span>
                 <div>
-                    <h6>Gerar PDF de frete</h6>
-                    <p>O periodo quinzenal ja vem preenchido, mas voce pode ajustar as datas.</p>
+                    <h6>Gerar frete</h6>
+                    <p>O periodo quinzenal ja vem preenchido. Escolha se quer baixar PDF ou Excel.</p>
                 </div>
             </div>
 
@@ -854,10 +854,18 @@
             <label class="form-label">Titulo</label>
             <input type="text" v-model="freightForm.title" class="w-100 mb-2" />
 
-            <ButtonComp :click-action="generateFreightPdf" :is-disabled="!canGenerateFreightPdf"
-                btn-class="button-primary button-big w-100">
-                Gerar PDF
-            </ButtonComp>
+            <div class="freight-download-actions">
+                <ButtonComp :click-action="() => generateFreightFile('pdf')" :is-disabled="!canGenerateFreightPdf"
+                    btn-class="button-primary button-big w-100">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    Baixar PDF
+                </ButtonComp>
+                <ButtonComp :click-action="() => generateFreightFile('xlsx')" :is-disabled="!canGenerateFreightPdf"
+                    btn-class="button-secundary button-big w-100">
+                    <i class="fa-solid fa-file-excel"></i>
+                    Baixar Excel
+                </ButtonComp>
+            </div>
         </ModalDefault>
 
         <ModalDefault :isLoading="isModalLoading" :is-visible="showFreightSettingsModal" max-width="460px"
@@ -909,6 +917,7 @@ import {
     addRouteDeliveryApi,
     createRouteApi,
     downloadFreightPdf,
+    downloadFreightXlsx,
     finishRouteApi,
     formatLocalDate,
     getFreightSettingsApi,
@@ -1866,12 +1875,16 @@ export default {
             this.freightForm = this.freightPeriodForm(this.freightForm.periodType)
         },
 
-        async generateFreightPdf() {
+        async generateFreightFile(type = 'pdf') {
             if (!this.canGenerateFreightPdf) return
+
+            const isExcel = type === 'xlsx'
+            const download = isExcel ? downloadFreightXlsx : downloadFreightPdf
+            const fallbackFilename = isExcel ? 'frete.xlsx' : 'frete.pdf'
 
             this.isModalLoading = true
             try {
-                const { blob, filename } = await downloadFreightPdf({
+                const { blob, filename } = await download({
                     startDate: this.freightForm.startDate,
                     endDate: this.freightForm.endDate,
                     title: this.freightForm.title
@@ -1880,17 +1893,17 @@ export default {
                 const url = URL.createObjectURL(blob)
                 const link = document.createElement('a')
                 link.href = url
-                link.download = filename || 'frete.pdf'
+                link.download = filename || fallbackFilename
                 document.body.appendChild(link)
                 link.click()
                 document.body.removeChild(link)
                 URL.revokeObjectURL(url)
 
                 this.cancelFreightModal()
-                notifySuccess('PDF de frete gerado com sucesso.')
+                notifySuccess(`Frete em ${isExcel ? 'Excel' : 'PDF'} gerado com sucesso.`)
             } catch (error) {
                 console.error(error)
-                notifyError(error, 'Nao foi possivel gerar o PDF de frete.')
+                notifyError(error, `Nao foi possivel gerar o frete em ${isExcel ? 'Excel' : 'PDF'}.`)
             } finally {
                 this.isModalLoading = false
             }
@@ -3235,6 +3248,12 @@ export default {
 
 .analysis-note.warning {
     color: #b45309;
+}
+
+.freight-download-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
 }
 
 .freight-summary,

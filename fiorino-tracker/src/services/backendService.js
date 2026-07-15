@@ -468,16 +468,31 @@ export async function removeRouteApi(id) {
   await api.delete(`/routes/${id}`)
 }
 
+function downloadFilename(response) {
+  const disposition = response.headers['content-disposition'] || ''
+  const filenameMatch = disposition.match(/filename="?([^"]+)"?/)
+  return filenameMatch?.[1]
+}
+
 export async function downloadFreightPdf(params) {
   const response = await api.get('/routes/freight-pdf', {
     params,
     responseType: 'blob'
   })
-  const disposition = response.headers['content-disposition'] || ''
-  const filenameMatch = disposition.match(/filename="?([^"]+)"?/)
   return {
     blob: response.data,
-    filename: filenameMatch?.[1]
+    filename: downloadFilename(response)
+  }
+}
+
+export async function downloadFreightXlsx(params) {
+  const response = await api.get('/routes/freight-xlsx', {
+    params,
+    responseType: 'blob'
+  })
+  return {
+    blob: response.data,
+    filename: downloadFilename(response)
   }
 }
 
