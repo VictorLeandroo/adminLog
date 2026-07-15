@@ -1,0 +1,1 @@
+ALTER TABLE "Route" ADD COLUMN "freightDailyOnly" BOOLEAN NOT NULL DEFAULT false;

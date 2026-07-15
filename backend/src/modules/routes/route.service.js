@@ -33,6 +33,7 @@ const createSchema = z.object({
   finalKm: z.number().int().optional().nullable(),
   plannedDeliveries: z.number().int().min(0).optional().nullable(),
   freightAmount: z.number().optional().nullable(),
+  freightDailyOnly: z.boolean().optional().default(false),
   tollAmount: z.number().min(0).optional().nullable(),
   tollAmounts: z.array(z.number().min(0)).optional().default([]),
   loadingAmount: z.number().min(0).optional().nullable(),
@@ -69,6 +70,7 @@ const finishSchema = z.object({
 const reviewSchema = finishSchema.extend({
   initialKm: z.number().int().optional(),
   freightAmount: z.number().optional().nullable(),
+  freightDailyOnly: z.boolean().optional().default(false),
   status: z.enum(['IN_PROGRESS', 'PENDING_REVIEW', 'COMPLETED']).optional(),
 });
 
@@ -382,6 +384,7 @@ async function createRoute(input) {
         finalKm: hasFinishedData ? data.finalKm : null,
         plannedDeliveries: data.plannedDeliveries || null,
         freightAmount: data.freightAmount,
+        freightDailyOnly: data.freightDailyOnly,
         status,
         finishedAt: hasFinishedData ? new Date() : null,
         cities: {
@@ -507,6 +510,7 @@ async function reviewRoute(id, input) {
         finalKm: data.finalKm,
         plannedDeliveries: data.plannedDeliveries,
         freightAmount: data.freightAmount,
+        freightDailyOnly: data.freightDailyOnly,
         status: data.status ? RouteStatus[data.status] : undefined,
         finishedAt: data.finalKm !== undefined && data.finalKm !== null && data.status !== 'IN_PROGRESS' ? new Date() : undefined,
         correctionRequested: data.status === 'COMPLETED' ? false : undefined,
@@ -748,19 +752,21 @@ function routeUnloadingAmount(route, expenses) {
 }
 
 function routeFreightValues(route, expenses, settings) {
-  const excessKm = routeExcessKm(route, settings);
-  const toll = routeTollAmount(route, expenses);
-  const blueZone = routeLoadingAmount(route, expenses);
-  const unloading = routeUnloadingAmount(route, expenses);
+  const dailyOnly = Boolean(route.freightDailyOnly);
+  const excessKm = dailyOnly ? 0 : routeExcessKm(route, settings);
+  const toll = dailyOnly ? 0 : routeTollAmount(route, expenses);
+  const blueZone = dailyOnly ? 0 : routeLoadingAmount(route, expenses);
+  const unloading = dailyOnly ? 0 : routeUnloadingAmount(route, expenses);
   const excessAmount = excessKm * settings.excessKmAmount;
   const calculatedTotal = settings.baseAmount + excessAmount + toll + blueZone + unloading;
-  const manualAmount = route.freightAmount !== null && route.freightAmount !== undefined
+  const manualAmount = !dailyOnly && route.freightAmount !== null && route.freightAmount !== undefined
     ? numberValue(route.freightAmount)
     : null;
   const total = manualAmount ?? calculatedTotal;
 
   return {
-    km: routeKm(route),
+    dailyOnly,
+    km: dailyOnly ? 0 : routeKm(route),
     excessKm,
     excessAmount,
     toll,
@@ -850,19 +856,19 @@ function fillRouteBlock(worksheet, route, expenses, settings, startRow) {
   setMoneyCell(worksheet, `D${startRow + 2}`, values.baseAmount);
   setCellValue(worksheet, `A${startRow + 2}`, invoices);
 
-  setMoneyCell(worksheet, `D${startRow + 3}`, values.excessAmount);
+  setMoneyCell(worksheet, `D${startRow + 3}`, values.dailyOnly ? null : values.excessAmount);
 
-  setCellValue(worksheet, `A${startRow + 5}`, numberValue(route.initialKm));
-  setCellValue(worksheet, `B${startRow + 5}`, numberValue(route.finalKm));
+  setCellValue(worksheet, `A${startRow + 5}`, values.dailyOnly ? null : numberValue(route.initialKm));
+  setCellValue(worksheet, `B${startRow + 5}`, values.dailyOnly ? null : numberValue(route.finalKm));
 
   setMoneyCell(worksheet, `D${startRow + 4}`, positiveMoneyOrBlank(values.toll));
   setCellValue(worksheet, `C${startRow + 5}`, 'Zona Azul');
   setMoneyCell(worksheet, `D${startRow + 5}`, positiveMoneyOrBlank(values.blueZone));
 
-  setCellValue(worksheet, `B${startRow + 6}`, numberValue(values.km));
+  setCellValue(worksheet, `B${startRow + 6}`, values.dailyOnly ? null : numberValue(values.km));
   setMoneyCell(worksheet, `D${startRow + 6}`, positiveMoneyOrBlank(values.unloading));
 
-  setCellValue(worksheet, `B${startRow + 7}`, numberValue(values.excessKm));
+  setCellValue(worksheet, `B${startRow + 7}`, values.dailyOnly ? null : numberValue(values.excessKm));
   setMoneyCell(worksheet, `D${startRow + 7}`, values.total);
 
   return numberValue(values.total);
@@ -967,7 +973,12 @@ function renderFreightRouteBlock(route, expenses, settings) {
   const values = routeFreightValues(route, expenses, settings);
   const cities = route.cities.map((city) => city.name).join(', ') || 'ENTREGA';
   const invoices = route.invoices.map((invoice) => invoice.number).join(', ');
-  const manualNote = values.manualAmount !== null ? ' (manual)' : '';
+  const manualNote = values.dailyOnly ? ' (somente diaria)' : values.manualAmount !== null ? ' (manual)' : '';
+  const kmInitial = values.dailyOnly ? '' : numberValue(route.initialKm);
+  const kmFinal = values.dailyOnly ? '' : numberValue(route.finalKm);
+  const kmTotal = values.dailyOnly ? '' : values.km;
+  const excessKm = values.dailyOnly ? '' : values.excessKm;
+  const excessAmount = values.dailyOnly ? '' : formatMoney(values.excessAmount);
 
   return `
     <section class="route-block">
@@ -989,12 +1000,12 @@ function renderFreightRouteBlock(route, expenses, settings) {
       <div class="grid">
         <div class="left strong">Quilometragem</div>
         <div class="label">Kms excedentes (${formatMoney(values.excessKmAmount)})</div>
-        <div class="amount">${formatMoney(values.excessAmount)}</div>
+        <div class="amount">${excessAmount}</div>
       </div>
       <div class="grid">
         <div class="km-pair">
           <span>Inicial</span>
-          <strong>${numberValue(route.initialKm)}</strong>
+          <strong>${kmInitial}</strong>
         </div>
         <div class="label">Pedagios</div>
         <div class="amount">${values.toll ? formatMoney(values.toll) : ''}</div>
@@ -1002,7 +1013,7 @@ function renderFreightRouteBlock(route, expenses, settings) {
       <div class="grid">
         <div class="km-pair">
           <span>Final</span>
-          <strong>${numberValue(route.finalKm)}</strong>
+          <strong>${kmFinal}</strong>
         </div>
         <div class="label">Zona Azul</div>
         <div class="amount">${values.blueZone ? formatMoney(values.blueZone) : ''}</div>
@@ -1010,7 +1021,7 @@ function renderFreightRouteBlock(route, expenses, settings) {
       <div class="grid">
         <div class="km-pair">
           <span>KM rodados</span>
-          <strong>${values.km}</strong>
+          <strong>${kmTotal}</strong>
         </div>
         <div class="label">Descarga</div>
         <div class="amount">${values.unloading ? formatMoney(values.unloading) : ''}</div>
@@ -1018,7 +1029,7 @@ function renderFreightRouteBlock(route, expenses, settings) {
       <div class="grid total-row">
         <div class="km-pair">
           <span>Km excedente</span>
-          <strong>${values.excessKm}</strong>
+          <strong>${excessKm}</strong>
         </div>
         <div class="label">TOTAL${manualNote}</div>
         <div class="amount">${formatMoney(values.total)}</div>

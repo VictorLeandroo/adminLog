@@ -406,8 +406,13 @@
                         <small>Frete calculado</small>
                         <strong>{{ formatMoney(createRouteFreightAmount) }}</strong>
                     </div>
-                    <span>{{ freightSettings.includedKm }} km inclusos</span>
+                    <span>{{ createRouteForm.freightDailyOnly ? 'Somente valor da saida' : `${freightSettings.includedKm} km inclusos` }}</span>
                 </div>
+
+                <label class="freight-manual-toggle mb-2">
+                    <input type="checkbox" v-model="createRouteForm.freightDailyOnly" />
+                    <span>Somente diaria no frete</span>
+                </label>
 
                 <label class="form-label">Status</label>
                 <select v-model="createRouteForm.status" class="form-select w-100 mb-2">
@@ -729,10 +734,15 @@
                                     formatMoney(freightSettings.excessKmAmount) }} por km excedente</span>
                             </div>
                             <label class="freight-manual-toggle">
-                                <input type="checkbox" v-model="adminForm.useManualFreightAmount" />
+                                <input type="checkbox" v-model="adminForm.useManualFreightAmount"
+                                    :disabled="adminForm.freightDailyOnly" />
                                 <span>Usar valor manual de frete</span>
                             </label>
-                            <input v-if="adminForm.useManualFreightAmount" type="number"
+                            <label class="freight-manual-toggle">
+                                <input type="checkbox" v-model="adminForm.freightDailyOnly" />
+                                <span>Somente diaria no frete</span>
+                            </label>
+                            <input v-if="adminForm.useManualFreightAmount && !adminForm.freightDailyOnly" type="number"
                                 v-model.number="adminForm.freightAmount" class="w-100" placeholder="0,00" />
                         </div>
 
@@ -983,6 +993,7 @@ export default {
                 notasStr: '',
                 plannedDeliveries: '',
                 freightAmount: null,
+                freightDailyOnly: false,
                 tollInput: null,
                 tollAmounts: [],
                 loadingAmount: null,
@@ -1010,6 +1021,7 @@ export default {
                 notasStr: '',
                 plannedDeliveries: '',
                 freightAmount: null,
+                freightDailyOnly: false,
                 tollInput: null,
                 tollAmounts: [],
                 loadingAmount: null,
@@ -1219,6 +1231,8 @@ export default {
         },
 
         createRouteFreightAmount() {
+            if (this.createRouteForm.freightDailyOnly) return Number(this.freightSettings.baseAmount || 0)
+
             return this.calculateFreightAmount(this.createRouteForm.kmInicial, this.createRouteForm.kmFinal) +
                 this.tollTotal(this.createRouteForm) +
                 this.moneyNumber(this.createRouteForm.loadingAmount) +
@@ -1226,6 +1240,8 @@ export default {
         },
 
         adminCalculatedFreightAmount() {
+            if (this.adminForm.freightDailyOnly) return Number(this.freightSettings.baseAmount || 0)
+
             return this.calculateFreightAmount(this.adminForm.kmInicial, this.adminForm.kmFinal) +
                 this.tollTotal(this.adminForm) +
                 this.moneyNumber(this.adminForm.loadingAmount) +
@@ -1446,6 +1462,7 @@ export default {
                 notasStr: route.notas.join(', '),
                 plannedDeliveries: route.plannedDeliveries || '',
                 freightAmount: route.freightAmount ?? null,
+                freightDailyOnly: Boolean(route.freightDailyOnly),
                 tollInput: null,
                 tollAmounts: this.routeTollAmounts(route),
                 loadingAmount: route.loadingAmount ?? null,
@@ -1542,6 +1559,7 @@ export default {
                     notas: this.toList(this.createRouteForm.notasStr),
                     plannedDeliveries: this.createRouteForm.plannedDeliveries,
                     freightAmount: this.createRouteForm.freightAmount,
+                    freightDailyOnly: this.createRouteForm.freightDailyOnly,
                     tollAmount: this.tollTotal(this.createRouteForm),
                     tollAmounts: this.createRouteForm.tollAmounts,
                     loadingAmount: this.createRouteForm.loadingAmount,
@@ -1672,6 +1690,7 @@ export default {
                     notas: this.toList(this.adminForm.notasStr),
                     plannedDeliveries: this.adminForm.plannedDeliveries,
                     freightAmount: this.adminForm.freightAmount,
+                    freightDailyOnly: this.adminForm.freightDailyOnly,
                     tollAmount: this.tollTotal(this.adminForm),
                     tollAmounts: this.adminForm.tollAmounts,
                     loadingAmount: this.adminForm.loadingAmount,
@@ -1911,6 +1930,7 @@ export default {
                 notasStr: '',
                 plannedDeliveries: '',
                 freightAmount: null,
+                freightDailyOnly: false,
                 tollInput: null,
                 tollAmounts: [],
                 loadingAmount: null,
@@ -2213,6 +2233,8 @@ export default {
         },
 
         routeFreightAmount(route) {
+            if (route.freightDailyOnly) return Number(this.freightSettings.baseAmount || 0)
+
             return route.hasManualFreightAmount
                 ? route.freightAmount
                 : this.calculateFreightAmount(route.kmInicial, route.kmFinal) +
