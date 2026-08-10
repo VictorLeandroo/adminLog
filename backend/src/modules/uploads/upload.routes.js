@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+﻿const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -64,7 +64,7 @@ function supabaseConfig() {
 async function supabaseUploadResponse(file) {
   const { url: supabaseUrl, key: supabaseKey, bucket } = supabaseConfig();
 
-  if (!supabaseUrl || !supabaseKey || !file.mimetype?.startsWith('image/')) {
+  if (!supabaseUrl || !supabaseKey) {
     return localUploadResponse(file);
   }
 
@@ -101,7 +101,7 @@ async function streamSupabaseObject(req, res, next) {
   const { url: supabaseUrl, key: supabaseKey, bucket } = supabaseConfig();
 
   if (!objectPath || !supabaseUrl || !supabaseKey) {
-    return next(new AppError('Arquivo nao encontrado', 404));
+    return next(new AppError('Arquivo não encontrado', 404));
   }
 
   try {
@@ -113,7 +113,7 @@ async function streamSupabaseObject(req, res, next) {
     });
 
     if (!response.ok) {
-      return next(new AppError('Arquivo nao encontrado', 404));
+      return next(new AppError('Arquivo não encontrado', 404));
     }
 
     const contentType = response.headers.get('content-type') || 'application/octet-stream';
@@ -132,7 +132,7 @@ async function streamSupabaseObject(req, res, next) {
 
 router.post('/', upload.single('file'), async (req, res, next) => {
   if (!req.file) {
-    return next(new AppError('Arquivo nao informado', 400));
+    return next(new AppError('Arquivo não informado', 400));
   }
 
   try {

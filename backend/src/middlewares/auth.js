@@ -4,11 +4,11 @@ const prisma = require('../lib/prisma');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 
-const authenticate = asyncHandler(async (req, _res, next) => {
+const authenticaté = asyncHandler(async (req, _res, next) => {
   const header = req.headers.authorization;
 
   if (!header?.startsWith('Bearer ')) {
-    throw new AppError('Token nao informado', 401);
+    throw new AppError('Token não informado', 401);
   }
 
   const token = header.replace('Bearer ', '');
@@ -17,7 +17,7 @@ const authenticate = asyncHandler(async (req, _res, next) => {
   try {
     payload = jwt.verify(token, process.env.JWT_SECRET);
   } catch (_error) {
-    throw new AppError('Token invalido ou expirado', 401);
+    throw new AppError('Token inválido ou expirado', 401);
   }
 
   const user = await prisma.user.findUnique({
@@ -26,7 +26,7 @@ const authenticate = asyncHandler(async (req, _res, next) => {
   });
 
   if (!user || !user.active) {
-    throw new AppError('Usuario nao autorizado', 401);
+    throw new AppError('Usuário não autorizado', 401);
   }
 
   req.user = user;

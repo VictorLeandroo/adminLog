@@ -89,7 +89,7 @@ async function register(input) {
   });
 
   if (exists) {
-    throw new AppError('Email ja cadastrado', 409);
+    throw new AppError('Email já cadastrado', 409);
   }
 
   const passwordHash = await bcrypt.hash(data.password, 10);
@@ -148,7 +148,7 @@ async function createUser(input) {
   }).parse(input);
 
   const exists = await prisma.user.findUnique({ where: { email: data.email } });
-  if (exists) throw new AppError('Email ja cadastrado', 409);
+  if (exists) throw new AppError('Email já cadastrado', 409);
 
   const passwordHash = await bcrypt.hash(data.password, 10);
 
@@ -180,11 +180,11 @@ async function updateUser(id, input) {
   const data = userSchema.partial().parse(input);
 
   const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) throw new AppError('Usuario nao encontrado', 404);
+  if (!user) throw new AppError('Usuário não encontrado', 404);
 
   if (data.email && data.email !== user.email) {
     const exists = await prisma.user.findUnique({ where: { email: data.email } });
-    if (exists) throw new AppError('Email ja cadastrado', 409);
+    if (exists) throw new AppError('Email já cadastrado', 409);
   }
 
   const passwordHash = data.password ? await bcrypt.hash(data.password, 10) : undefined;
@@ -234,7 +234,7 @@ async function resetPassword(id, input) {
   const data = schema.parse(input);
 
   const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) throw new AppError('Usuario nao encontrado', 404);
+  if (!user) throw new AppError('Usuário não encontrado', 404);
 
   const passwordHash = await bcrypt.hash(data.password, 10);
 

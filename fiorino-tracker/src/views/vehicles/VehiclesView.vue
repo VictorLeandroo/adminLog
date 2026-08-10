@@ -4,7 +4,7 @@
             <section class="vehicle-hero">
                 <div>
                     <span class="eyebrow">{{ isDriver ? 'Meu veículo' : 'Administração da frota' }}</span>
-                    <h4>{{ isDriver ? currentVehicle.model : 'Veiculos' }}</h4>
+                    <h4>{{ isDriver ? currentVehicle.model : 'Veículos' }}</h4>
                     <p>{{ isDriver ? `${currentVehicle.plate} • ${currentVehicle.year} • ${currentVehicle.driver}` : 'Cadastre, vincule motoristas e acompanhe documentos da frota.' }}</p>
                 </div>
 
@@ -16,8 +16,8 @@
 
             <div v-if="isLoading" class="page-loading-state">
                 <span class="loader"></span>
-                <strong>Carregando veiculos</strong>
-                <p>Consultando frota, motorista vinculado e historico.</p>
+                <strong>Carregando veículos</strong>
+                <p>Consultando frota, motorista vinculado e histórico.</p>
             </div>
 
             <section v-else-if="isDriver && !hasVehicle" class="driver-empty-state">
@@ -37,7 +37,7 @@
                             {{ currentVehicle.status }}
                         </span>
                         <h5>{{ formatKm(currentVehicle.currentKm) }} km</h5>
-                        <p>Proxima manutencao em {{ formatKm(nextMaintenanceKm) }} km</p>
+                        <p>Próxima manutenção em {{ formatKm(nextMaintenanceKm) }} km</p>
                     </div>
                     <ButtonComp btn-class="button-secundary" :click-action="() => openVehicleDetails(currentVehicle)">
                         Detalhes
@@ -86,7 +86,7 @@
                 <section class="document-card">
                     <div class="section-head">
                         <div>
-                            <span class="eyebrow">Manutencao</span>
+                            <span class="eyebrow">Manutenção</span>
                             <h5>Histórico recente</h5>
                         </div>
                         <ButtonComp btn-class="button-secundary" :click-action="() => openVehicleDetails(currentVehicle)">
@@ -104,7 +104,7 @@
 
                     <div v-if="!currentVehicle.maintenances?.length" class="review-empty">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
-                        <span>Nenhuma revisao registrada</span>
+                        <span>Nenhuma revisão registrada</span>
                     </div>
                 </section>
             </template>
@@ -178,10 +178,10 @@
                         </div>
 
                         <div class="fleet-review-summary">
-                            <span>{{ vehicle.maintenances?.length || 0 }} revisao(oes)</span>
+                            <span>{{ vehicle.maintenances?.length || 0 }} revisão(oes)</span>
                             <ButtonComp btn-class="button-secundary" :click-action="() => openMaintenanceModal(vehicle)">
                                 <i class="fa-solid fa-plus"></i>
-                                Revisao
+                                Revisão
                             </ButtonComp>
                         </div>
 
@@ -193,7 +193,7 @@
                                 </div>
                                 <ButtonComp btn-class="button-primary" :click-action="() => openMaintenanceModal(vehicle)">
                                     <i class="fa-solid fa-plus"></i>
-                                    Revisao
+                                    Revisão
                                 </ButtonComp>
                             </div>
 
@@ -235,10 +235,10 @@
             </div>
 
             <div class="modal-scroll">
-                <label class="form-label">Foto do veiculo</label>
+                <label class="form-label">Foto do veículo</label>
                 <div class="vehicle-photo-upload mb-2">
                     <div class="vehicle-photo preview">
-                        <img v-if="vehiclePhotoPreview" :src="vehiclePhotoPreview" :alt="vehicleForm.model || 'Foto do veiculo'" />
+                        <img v-if="vehiclePhotoPreview" :src="vehiclePhotoPreview" :alt="vehicleForm.model || 'Foto do veículo'" />
                         <i v-else class="fa-solid fa-camera"></i>
                     </div>
                     <div>
@@ -300,8 +300,8 @@
                 <label class="form-label">Status</label>
                 <select v-model="vehicleForm.status" class="form-select w-100 mb-2">
                     <option>Em dia</option>
-                    <option>Atencao</option>
-                    <option>Manutencao</option>
+                    <option>Atenção</option>
+                    <option>Manutenção</option>
                 </select>
 
                 <label class="form-label">Documento PDF</label>
@@ -377,7 +377,7 @@
                         <i v-else class="fa-solid fa-van-shuttle"></i>
                     </div>
                     <div>
-                        <span class="eyebrow">Detalhes do veiculo</span>
+                        <span class="eyebrow">Detalhes do veículo</span>
                         <h6>{{ selectedDetailVehicle.model }}</h6>
                         <p>{{ selectedDetailVehicle.plate }} - {{ selectedDetailVehicle.year }} - {{ selectedDetailVehicle.driver }}</p>
                     </div>
@@ -389,7 +389,7 @@
                         <strong>{{ formatKm(selectedDetailVehicle.currentKm) }}</strong>
                     </div>
                     <div>
-                        <small>Proxima manutencao</small>
+                        <small>Próxima manutenção</small>
                         <strong>{{ formatKm(selectedDetailVehicle.nextMaintenanceAt) }}</strong>
                     </div>
                     <div>
@@ -401,10 +401,10 @@
                 <div class="detail-actions" v-if="!isDriver">
                     <ButtonComp btn-class="button-primary" :click-action="() => openMaintenanceModal(selectedDetailVehicle)">
                         <i class="fa-solid fa-plus"></i>
-                        Nova revisao
+                        Nova revisão
                     </ButtonComp>
                     <ButtonComp btn-class="button-secundary" :click-action="() => openVehicleModal(selectedDetailVehicle)">
-                        Editar veiculo
+                        Editar veículo
                     </ButtonComp>
                 </div>
 
@@ -412,7 +412,7 @@
                     <div class="section-head">
                         <div>
                             <span class="eyebrow">Documentos</span>
-                            <h5>Arquivos do veiculo</h5>
+                            <h5>Arquivos do veículo</h5>
                         </div>
                     </div>
                     <div v-if="selectedDetailVehicle.documents?.length">
@@ -437,7 +437,7 @@
                     <div class="section-head">
                         <div>
                             <span class="eyebrow">Revisoes</span>
-                            <h5>Historico completo</h5>
+                            <h5>Histórico completo</h5>
                         </div>
                         <span>{{ selectedDetailVehicle.maintenances?.length || 0 }} registro(s)</span>
                     </div>
@@ -460,7 +460,7 @@
                     </div>
                     <div v-else class="review-empty">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
-                        <span>Nenhuma revisao registrada</span>
+                        <span>Nenhuma revisão registrada</span>
                     </div>
                 </div>
             </div>
@@ -496,7 +496,7 @@ export default {
             vehicles: [],
             drivers: [],
             isLoading: false,
-            errorMessage: '',
+            errorMêssage: '',
             showVehicleModal: false,
             showMaintenanceModal: false,
             showDetailsModal: false,
@@ -558,7 +558,7 @@ export default {
     methods: {
         async fetchVehicles() {
             this.isLoading = true
-            this.errorMessage = ''
+            this.errorMêssage = ''
 
             try {
                 this.vehicles = this.isDriver ? await getMyVehicle() : await listVehicles()
@@ -568,7 +568,7 @@ export default {
                     this.vehicles = []
                     return
                 }
-                this.errorMessage = error.response?.data?.message || 'Não foi possível carregar os veículos.'
+                this.errorMêssage = error.response?.data?.message || 'Não foi possível carregar os veículos.'
             } finally {
                 this.isLoading = false
             }
@@ -584,7 +584,7 @@ export default {
                 this.drivers = await listDrivers()
             } catch (error) {
                 console.error(error)
-                this.errorMessage = error.response?.data?.message || 'Não foi possível carregar os motoristas.'
+                this.errorMêssage = error.response?.data?.message || 'Não foi possível carregar os motoristas.'
             }
         },
 
@@ -613,7 +613,7 @@ export default {
 
         emptyMaintenanceForm() {
             return {
-                type: 'Revisao preventiva',
+                type: 'Revisão preventiva',
                 date: new Date().toISOString().slice(0, 10),
                 km: '',
                 workshop: '',
@@ -656,7 +656,7 @@ export default {
                 this.cancelVehicleModal()
             } catch (error) {
                 console.error(error)
-                this.errorMessage = error.response?.data?.message || 'Não foi possível salvar o veículo.'
+                this.errorMêssage = error.response?.data?.message || 'Não foi possível salvar o veículo.'
             } finally {
                 this.isLoading = false
             }
@@ -669,7 +669,7 @@ export default {
                 this.vehicles = this.vehicles.filter(vehicle => vehicle.id !== id)
             } catch (error) {
                 console.error(error)
-                this.errorMessage = error.response?.data?.message || 'Não foi possível remover o veículo.'
+                this.errorMêssage = error.response?.data?.message || 'Não foi possível remover o veículo.'
             } finally {
                 this.isLoading = false
             }
@@ -711,7 +711,7 @@ export default {
                 this.cancelMaintenanceModal()
             } catch (error) {
                 console.error(error)
-                this.errorMessage = error.response?.data?.message || 'Não foi possível salvar a revisão.'
+                this.errorMêssage = error.response?.data?.message || 'Não foi possível salvar a revisão.'
             } finally {
                 this.isLoading = false
             }

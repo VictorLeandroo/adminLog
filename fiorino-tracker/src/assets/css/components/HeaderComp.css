@@ -166,7 +166,7 @@
 }
 
 #header .dropdown-item-h {
-    width: 100%;
+    /* width: 100%; */
     border: none;
     background: transparent;
     color: var(--text-strong);

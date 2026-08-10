@@ -28,7 +28,7 @@
             <template v-else>
                 <section class="finance-hero" :class="hero.status">
                     <div class="hero-main">
-                        <span class="eyebrow">Resultado do m�s</span>
+                        <span class="eyebrow">Resultado do mês</span>
                         <strong>{{ formatMoney(hero.netProfit) }}</strong>
                         <p>
                             Receita {{ formatMoney(hero.totalRevenue) }} -
@@ -55,7 +55,7 @@
                             <i class="fa-solid" :class="heroIcon"></i>
                             {{ heroStatusLabel }}
                         </div>
-                        <small>Comparativo mes anterior</small>
+                        <small>Comparativo mês anterior</small>
                         <strong>{{ trendLabel(hero.previousMonth) }}</strong>
                     </div>
                 </section>
@@ -63,7 +63,7 @@
                 <section class="operations-summary">
                     <div class="section-head">
                         <div>
-                            <span class="eyebrow">Operacao do mes</span>
+                            <span class="eyebrow">Operação do mes</span>
                             <h5>Indicadores principais</h5>
                         </div>
                     </div>
@@ -94,7 +94,7 @@
                     <article class="panel-card city-frequency">
                         <div class="section-head">
                             <div>
-                                <span class="eyebrow">Operacao</span>
+                                <span class="eyebrow">Operação</span>
                                 <h5>Idas por cidade</h5>
                             </div>
                             <span>{{ cityFrequency.length }} cidade(s)</span>
@@ -122,14 +122,14 @@
                                 class="expense-line">
                                 <div>
                                     <strong>{{ expense.category }}</strong>
-                                    <small>{{ expense.count }} lancamento(s)</small>
+                                    <small>{{ expense.count }} lançamento(s)</small>
                                 </div>
                                 <span>{{ formatMoney(expense.total) }}</span>
                             </div>
                         </div>
                         <div v-else class="empty-state compact">
                             <i class="fa-solid fa-receipt"></i>
-                            <strong>Nenhum gasto no periodo</strong>
+                            <strong>Nenhum gasto no período</strong>
                         </div>
                     </article>
                 </section>
@@ -139,7 +139,7 @@
                         <div class="section-head">
                             <div>
                                 <span class="eyebrow">Centro de alertas</span>
-                                <h5>Pendencias e riscos</h5>
+                                <h5>Pendências e riscos</h5>
                             </div>
                             <span>{{ alerts.length }} alerta(s)</span>
                         </div>
@@ -166,7 +166,7 @@
                     <article class="panel-card">
                         <div class="section-head">
                             <div>
-                                <span class="eyebrow">DRE por veiculo</span>
+                                <span class="eyebrow">DRE por veículo</span>
                                 <h5>Performance real das Fiorinos</h5>
                             </div>
                         </div>
@@ -211,8 +211,8 @@
                         </div>
                         <div v-else class="empty-state">
                             <i class="fa-solid fa-truck-fast"></i>
-                            <strong>Nenhum veiculo com dados no periodo</strong>
-                            <p>Rotas concluidas e custos vinculados aos veiculos formam a DRE.</p>
+                            <strong>Nenhum veículo com dados no período</strong>
+                            <p>Rotas concluidas e custos vinculados aos veículos formam a DRE.</p>
                         </div>
                     </article>
 
@@ -228,7 +228,7 @@
                         </div>
                         <div class="chart-wrapper">
                             <Bar v-if="charts.monthly.length" :data="monthlyChartData" :options="barOptions" />
-                            <div v-else class="empty-chart">Sem historico mensal</div>
+                            <div v-else class="empty-chart">Sem histórico mensal</div>
                         </div>
                     </article>
 
@@ -242,7 +242,7 @@
                         <div class="chart-wrapper">
                             <Doughnut v-if="charts.expensesByCategory.length" :data="expenseChartData"
                                 :options="doughnutOptions" />
-                            <div v-else class="empty-chart">Sem despesas no periodo</div>
+                            <div v-else class="empty-chart">Sem despesas no período</div>
                         </div>
                     </article>
 
@@ -250,13 +250,13 @@
                         <div class="section-head">
                             <div>
                                 <span class="eyebrow">Frota</span>
-                                <h5>Lucro por veiculo</h5>
+                                <h5>Lucro por veículo</h5>
                             </div>
                         </div>
                         <div class="chart-wrapper">
                             <Bar v-if="charts.profitByVehicle.length" :data="profitVehicleChartData"
                                 :options="horizontalBarOptions" />
-                            <div v-else class="empty-chart">Sem lucro por veiculo</div>
+                            <div v-else class="empty-chart">Sem lucro por veículo</div>
                         </div>
                     </article>
 
@@ -342,7 +342,7 @@ export default {
             selectedYear: new Date().getFullYear(),
             dashboard: this.emptyDashboard(),
             months: [
-                { value: 1, label: 'Jan' },
+                { value: 1, label: 'Ján' },
                 { value: 2, label: 'Fev' },
                 { value: 3, label: 'Mar' },
                 { value: 4, label: 'Abr' },
@@ -436,7 +436,7 @@ export default {
         heroStatusLabel() {
             return {
                 positive: 'Positivo',
-                attention: 'Atencao',
+                attention: 'Atenção',
                 negative: 'Negativo'
             }[this.hero.status] || 'Sem dados'
         },
@@ -455,17 +455,17 @@ export default {
                 { label: 'Rotas concluidas', value: kpis.completedRoutes, hint: `${kpis.inProgressRoutes} em andamento`, icon: 'fa-flag-checkered', tone: 'green' },
                 { label: 'KM rodado', value: this.formatKm(kpis.totalKm), hint: `${this.formatKm(kpis.averageKmPerRoute)} km por rota`, icon: 'fa-gauge-high', tone: 'blue' },
                 { label: 'Receita por KM', value: this.formatMoney(kpis.revenuePerKm), hint: `${this.formatMoney(kpis.averageRevenuePerRoute)} por rota`, icon: 'fa-sack-dollar', tone: 'green' },
-                { label: 'Custo por KM', value: this.formatMoney(kpis.costPerKm), hint: `${kpis.pendingReviewRoutes} rota(s) em revisao`, icon: 'fa-coins', tone: kpis.pendingReviewRoutes ? 'yellow' : 'red' }
+                { label: 'Custo por KM', value: this.formatMoney(kpis.costPerKm), hint: `${kpis.pendingReviewRoutes} rota(s) em revisão`, icon: 'fa-coins', tone: kpis.pendingReviewRoutes ? 'yellow' : 'red' }
             ]
         },
 
         secondaryKpiCards() {
             const kpis = this.summary.kpis
             return [
-                { label: 'Veiculos ativos', value: kpis.activeVehicles },
-                { label: 'Em manutencao', value: kpis.maintenanceVehicles },
+                { label: 'Veículos ativos', value: kpis.activeVehicles },
+                { label: 'Em manutenção', value: kpis.maintenanceVehicles },
                 { label: 'Motoristas ativos', value: kpis.activeDrivers },
-                { label: 'Aguardando revisao', value: kpis.pendingReviewRoutes }
+                { label: 'Aguardando revisão', value: kpis.pendingReviewRoutes }
             ]
         },
 
@@ -603,13 +603,13 @@ export default {
         },
 
         trendLabel(trend) {
-            if (!trend || trend.percent === null) return 'Sem historico'
+            if (!trend || trend.percent === null) return 'Sem histórico'
             const signal = trend.change >= 0 ? '+' : '-'
             return `${signal}${Math.abs(trend.percent).toFixed(1)}%`
         },
 
         severityLabel(value) {
-            return { low: 'baixo', medium: 'medio', high: 'alto', critical: 'critico' }[value] || value
+            return { low: 'baixo', medium: 'medio', high: 'alto', critical: 'crítico' }[value] || value
         },
 
         insightIcon(tone) {

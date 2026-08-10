@@ -57,7 +57,7 @@ async function listVehicles() {
 async function getVehicle(id) {
   const vehicle = await prisma.vehicle.findUnique({ where: { id }, include });
 
-  if (!vehicle) throw new AppError('Veiculo nao encontrado', 404);
+  if (!vehicle) throw new AppError('Veículo não encontrado', 404);
 
   return vehicle;
 }
@@ -68,7 +68,7 @@ async function getDriverVehicle(driverId) {
     include,
   });
 
-  if (!vehicle) throw new AppError('Nenhum veiculo vinculado ao motorista', 404);
+  if (!vehicle) throw new AppError('Nenhum veículo vinculado ao motorista', 404);
 
   return vehicle;
 }
@@ -113,7 +113,7 @@ async function assignDriver(id, input) {
   });
 
   if (!driver || driver.role !== 'DRIVER' || !driver.active) {
-    throw new AppError('Motorista nao encontrado ou inativo', 404);
+    throw new AppError('Motorista não encontrado ou inativo', 404);
   }
 
   return prisma.vehicle.update({

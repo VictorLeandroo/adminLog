@@ -11,7 +11,7 @@
 
                     <div>
                         <span class="eyebrow">Perfil</span>
-                        <h4>{{ profileForm.name || 'Usuario' }}</h4>
+                        <h4>{{ profileForm.name || 'Usuário' }}</h4>
                         <p>{{ roleLabel }} • {{ profileForm.email }}</p>
                     </div>
                 </div>

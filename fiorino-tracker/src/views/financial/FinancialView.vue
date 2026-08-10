@@ -5,8 +5,8 @@
                 <div>
                     <span class="eyebrow">{{ isDriverUser ? 'Financeiro do motorista' : 'Centro financeiro' }}</span>
                     <h4>{{ isDriverUser ? 'Meus gastos' : 'Financeiro' }}</h4>
-                    <p>{{ isDriverUser ? 'Registre gastos do seu veiculo e acompanhe aprovacoes.' :
-                        'Despesas, receitas, caixa e resultado da frota em uma visao organizada.' }}</p>
+                    <p>{{ isDriverUser ? 'Registre gastos do seu veículo e acompanhe aprovações.' :
+                        'Despesas, receitas, caixa e resultado da frota em uma visão organizada.' }}</p>
                 </div>
                 <div class="hero-actions">
                     <ButtonComp btn-class="button-primary button-big" :click-action="openExpenseModal">
@@ -18,13 +18,18 @@
                         <i class="fa-solid fa-arrow-trend-up"></i>
                         Nova receita
                     </ButtonComp>
+                    <ButtonComp v-if="!isDriverUser" btn-class="button-secundary button-big"
+                        :click-action="downloadEmergencyBackupFile">
+                        <i class="fa-solid fa-life-ring"></i>
+                        Backup
+                    </ButtonComp>
                 </div>
             </section>
 
             <div v-if="isLoading" class="page-loading-state">
                 <span class="loader"></span>
                 <strong>Carregando financeiro</strong>
-                <p>Organizando lancamentos, comprovantes e indicadores.</p>
+                <p>Organizando lançamentos, comprovantes e indicadores.</p>
             </div>
 
             <template v-else>
@@ -55,7 +60,7 @@
                 <section class="filter-card">
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input v-model="searchTerm" type="text" placeholder="Buscar por descricao, categoria ou data" />
+                        <input v-model="searchTerm" type="text" placeholder="Buscar por descrição, categoria ou data" />
                     </div>
                     <select v-model.number="selectedMonth" class="form-select" @change="fetchFinance">
                         <option v-for="month in months" :key="month.value" :value="month.value">{{ month.label }}
@@ -70,7 +75,7 @@
                         <option value="PENDING">Pendente</option>
                         <option value="APPROVED">Aprovada</option>
                         <option value="REJECTED">Recusada</option>
-                        <option value="CORRECTION_REQUESTED">Correcao</option>
+                        <option value="CORRECTION_REQUESTED">Correção</option>
                     </select>
                 </section>
 
@@ -79,7 +84,7 @@
                         <div class="section-title">
                             <div>
                                 <span class="eyebrow">Despesas</span>
-                                <h5>{{ isDriverUser ? 'Meus lancamentos' : 'Gastos registrados' }}</h5>
+                                <h5>{{ isDriverUser ? 'Meus lançamentos' : 'Gastos registrados' }}</h5>
                             </div>
                             <strong>{{ formatMoney(totalExpenses) }}</strong>
                         </div>
@@ -95,7 +100,7 @@
                                         <span><i class="fa-regular fa-calendar-days"></i>{{ formatDate(expense.date) }}</span>
                                         <span>{{ expense.quinzenna }} quinzena</span>
                                     </small>
-                                    <p class="expense-description">{{ expense.description || 'Sem descricao' }}</p>
+                                    <p class="expense-description">{{ expense.description || 'Sem descrição' }}</p>
                                     <p v-if="expense.reviewNote" class="review-note">{{ expense.reviewNote }}</p>
 
                                     <div class="photo-strip" v-if="expense.photos?.length">
@@ -142,8 +147,8 @@
                         <div v-if="!filteredExpenses.length" class="empty-state">
                             <span class="empty-icon"><i class="fa-solid fa-receipt"></i></span>
                             <strong>Nenhuma despesa encontrada</strong>
-                            <p>{{ isDriverUser ? 'Use os botoes rapidos para registrar um gasto do veiculo.' :
-                                'Crie uma despesa ou ajuste os filtros do periodo.' }}</p>
+                            <p>{{ isDriverUser ? 'Use os botoes rapidos para registrar um gasto do veículo.' :
+                                'Crie uma despesa ou ajuste os filtros do período.' }}</p>
                         </div>
                     </div>
 
@@ -151,14 +156,14 @@
                         <div class="section-title">
                             <div>
                                 <span class="eyebrow">Categorias</span>
-                                <h5>Resumo do periodo</h5>
+                                <h5>Resumo do período</h5>
                             </div>
                         </div>
                         <div class="category-list" v-if="categoryTotals.length">
                             <div class="category-row" v-for="category in categoryTotals" :key="category.name">
                                 <div>
                                     <strong>{{ category.name }}</strong>
-                                    <small>{{ category.count }} lancamento(s)</small>
+                                    <small>{{ category.count }} lançamento(s)</small>
                                 </div>
                                 <span>{{ formatMoney(category.total) }}</span>
                             </div>
@@ -177,7 +182,7 @@
                         <div>
                             <span class="eyebrow">Receitas</span>
                             <h5>Entradas registradas</h5>
-                            <p>Total do periodo selecionado</p>
+                            <p>Total do período selecionado</p>
                         </div>
                         <div class="revenue-total">
                             <small>Total</small>
@@ -214,13 +219,13 @@
                         </article>
                     </div>
 
-                    <div v-else class="empty-state compact"><strong>Nenhuma receita no periodo</strong></div>
+                    <div v-else class="empty-state compact"><strong>Nenhuma receita no período</strong></div>
                 </section>
 
                 <section v-if="!isDriverUser && activeTab === 'cashflow'" class="finance-panel cashflow-panel">
                     <div class="cashflow-head">
                         <span class="eyebrow">Fluxo de caixa</span>
-                        <h5>Entradas, saidas e saldo acumulado</h5>
+                        <h5>Entradas, saídas e saldo acumulado</h5>
                     </div>
 
                     <div class="cashflow-metrics">
@@ -239,7 +244,7 @@
                     <div v-if="filteredCashFlow.length" class="cashflow-table">
                         <div class="cashflow-table-head">
                             <span>Tipo</span>
-                            <span>Descricao</span>
+                            <span>Descrição</span>
                             <span>Data</span>
                             <span>Categoria</span>
                             <span>Valor</span>
@@ -259,7 +264,7 @@
                         </article>
                     </div>
 
-                    <div v-else class="empty-state compact"><strong>Nenhum movimento no periodo</strong></div>
+                    <div v-else class="empty-state compact"><strong>Nenhum movimento no período</strong></div>
                 </section>
 
                 <section v-if="!isDriverUser && activeTab === 'dre'" class="panel-grid">
@@ -279,7 +284,7 @@
                     <article class="finance-panel">
                         <div class="section-title">
                             <div><span class="eyebrow">DRE por Fiorino</span>
-                                <h5>Lucro real por veiculo</h5>
+                                <h5>Lucro real por veículo</h5>
                             </div>
                         </div>
                         <div v-for="vehicle in vehicleDre" :key="vehicle.vehicleId" class="vehicle-dre-row">
@@ -294,7 +299,7 @@
 
                 <section v-if="!isDriverUser && activeTab === 'salaries'" class="finance-panel">
                     <div class="section-title">
-                        <div><span class="eyebrow">Salarios</span>
+                        <div><span class="eyebrow">Salários</span>
                             <h5>Motoristas e pagamentos</h5>
                         </div>
                     </div>
@@ -314,7 +319,7 @@
                 <span class="modal-icon"><i class="fa-solid fa-receipt"></i></span>
                 <div>
                     <h6>{{ expenseForm.id ? 'Editar despesa' : 'Nova despesa' }}</h6>
-                    <p>Foto do comprovante e descricao ajudam na aprovacao.</p>
+                    <p>Foto do comprovante e descrição ajudam na aprovação.</p>
                 </div>
             </div>
             <label class="form-label">Data</label>
@@ -324,9 +329,9 @@
                 <option v-for="option in availableExpenseCategories" :key="option" :value="option">{{ option }}</option>
             </select>
             <template v-if="showVehicleField && !isDriverUser">
-                <label class="form-label">Veiculo {{ vehicleRequiredForExpense ? '' : '(opcional)' }}</label>
+                <label class="form-label">Veículo {{ vehicleRequiredForExpense ? '' : '(opcional)' }}</label>
                 <select v-model="expenseForm.vehicleId" class="form-select w-100 mb-2">
-                    <option value="">{{ vehicleRequiredForExpense ? 'Selecione um veiculo' : 'Sem vinculo com veiculo'
+                    <option value="">{{ vehicleRequiredForExpense ? 'Selecione um veículo' : 'Sem vínculo com veículo'
                     }}</option>
                     <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">{{ vehicle.plate }} - {{
                         vehicle.model }}</option>
@@ -340,14 +345,14 @@
                         driver.email }}</option>
                 </select>
             </template>
-            <label class="form-label">Descricao</label>
+            <label class="form-label">Descrição</label>
             <input type="text" v-model="expenseForm.description" class="w-100 mb-2"
-                placeholder="Ex: abastecimento, pedagio, troca de pneu" />
+                placeholder="Ex: abastecimento, pedágio, troca de pneu" />
             <label class="form-label">Valor</label>
             <input type="number" v-model.number="expenseForm.amount" class="w-100 mb-2" placeholder="0,00" />
             <label class="form-label">Comprovante</label>
             <PhotoUploadComp v-model="photos" />
-            <p v-if="driverVehicleRequiredWithoutVehicle" class="review-note">Vincule um veiculo ao motorista para registrar esta categoria.</p>
+            <p v-if="driverVehicleRequiredWithoutVehicle" class="review-note">Vincule um veículo ao motorista para registrar está categoria.</p>
             <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveExpense"
                 :click-action="saveExpense">Salvar despesa</ButtonComp>
         </ModalDefault>
@@ -363,7 +368,7 @@
             </div>
             <label class="form-label">Data</label>
             <input type="date" v-model="revenueForm.date" class="w-100 mb-2" />
-            <label class="form-label">Descricao</label>
+            <label class="form-label">Descrição</label>
             <input type="text" v-model="revenueForm.description" class="w-100 mb-2" />
             <label class="form-label">Cliente/transportadora</label>
             <input type="text" v-model="revenueForm.company" class="w-100 mb-2" />
@@ -385,6 +390,7 @@ import ButtonComp from '@/components/ButtonComp.vue'
 import ModalDefault from '@/components/modals/ModalDefault.vue'
 import PhotoUploadComp from '@/components/PhotoUploadComp.vue'
 import {
+    downloadEmergencyBackup,
     formatLocalDate,
     getCashFlow,
     getDre,
@@ -438,15 +444,15 @@ export default {
             photos: [],
             selectedFund: null,
             expenseCategories: {
-                FUEL: 'Combustivel',
-                TOLL: 'Pedagio',
-                MAINTENANCE: 'Manutencao do carro',
+                FUEL: 'Combustível',
+                TOLL: 'Pedágio',
+                MAINTENANCE: 'Manutenção do carro',
                 TIRE: 'Pneus',
                 INSURANCE: 'Seguro',
                 FINE: 'Multa',
-                SALARY: 'Salario',
-                ADMINISTRATION: 'Administracao',
-                OFFICE: 'Escritorio',
+                SALARY: 'Salário',
+                ADMINISTRATION: 'Administração',
+                OFFICE: 'Escritório',
                 TAX: 'Impostos',
                 INSTALLMENT: 'Parcela/financiamento',
                 OTHER: 'Outros'
@@ -463,7 +469,7 @@ export default {
                 { key: 'salaries', label: 'Pagamentos', icon: 'fa-money-check-dollar' }
             ],
             months: [
-                { value: 1, label: 'Jan' }, { value: 2, label: 'Fev' }, { value: 3, label: 'Mar' },
+                { value: 1, label: 'Ján' }, { value: 2, label: 'Fev' }, { value: 3, label: 'Mar' },
                 { value: 4, label: 'Abr' }, { value: 5, label: 'Mai' }, { value: 6, label: 'Jun' },
                 { value: 7, label: 'Jul' }, { value: 8, label: 'Ago' }, { value: 9, label: 'Set' },
                 { value: 10, label: 'Out' }, { value: 11, label: 'Nov' }, { value: 12, label: 'Dez' }
@@ -489,9 +495,9 @@ export default {
         },
         quickExpenseActions() {
             return [
-                { label: 'Registrar combustivel', category: this.expenseCategories.FUEL, icon: 'fa-gas-pump' },
-                { label: 'Registrar pedagio', category: this.expenseCategories.TOLL, icon: 'fa-road' },
-                { label: 'Registrar manutencao', category: this.expenseCategories.MAINTENANCE, icon: 'fa-screwdriver-wrench' },
+                { label: 'Registrar combustível', category: this.expenseCategories.FUEL, icon: 'fa-gas-pump' },
+                { label: 'Registrar pedágio', category: this.expenseCategories.TOLL, icon: 'fa-road' },
+                { label: 'Registrar manutenção', category: this.expenseCategories.MAINTENANCE, icon: 'fa-screwdriver-wrench' },
                 { label: 'Enviar comprovante', category: this.expenseCategories.OTHER, icon: 'fa-camera' }
             ]
         },
@@ -551,8 +557,8 @@ export default {
         },
         cashFlowCards() {
             return [
-                { label: 'Entradas', value: this.formatMoney(this.cashFlowInTotal), hint: this.filteredCashFlow.filter(item => item.type === 'IN').length + ' lancamento(s)', icon: 'fa-arrow-down-to-bracket', type: 'IN' },
-                { label: 'Saidas', value: '-' + this.formatMoney(this.cashFlowOutTotal), hint: this.filteredCashFlow.filter(item => item.type === 'OUT').length + ' lancamento(s)', icon: 'fa-arrow-up-from-bracket', type: 'OUT' },
+                { label: 'Entradas', value: this.formatMoney(this.cashFlowInTotal), hint: this.filteredCashFlow.filter(item => item.type === 'IN').length + ' lançamento(s)', icon: 'fa-arrow-down-to-bracket', type: 'IN' },
+                { label: 'Saídas', value: '-' + this.formatMoney(this.cashFlowOutTotal), hint: this.filteredCashFlow.filter(item => item.type === 'OUT').length + ' lançamento(s)', icon: 'fa-arrow-up-from-bracket', type: 'OUT' },
                 { label: 'Saldo final', value: this.formatMoney(this.cashFlowFinalBalance), hint: 'Saldo acumulado', icon: 'fa-wallet', type: 'BALANCE' }
             ]
         },
@@ -569,14 +575,14 @@ export default {
         summaryCards() {
             if (this.isDriverUser) {
                 return [
-                    { label: 'Meus gastos', value: this.formatMoney(this.totalExpenses), hint: 'Periodo filtrado', tone: 'expense' },
-                    { label: 'Pendentes', value: String(this.filteredExpenses.filter(item => item.status === 'PENDING').length), hint: 'Aguardando aprovacao', tone: 'pending' },
+                    { label: 'Meus gastos', value: this.formatMoney(this.totalExpenses), hint: 'Período filtrado', tone: 'expense' },
+                    { label: 'Pendentes', value: String(this.filteredExpenses.filter(item => item.status === 'PENDING').length), hint: 'Aguardando aprovação', tone: 'pending' },
                     { label: 'Correcoes', value: String(this.filteredExpenses.filter(item => item.status === 'CORRECTION_REQUESTED').length), hint: 'Precisam de ajuste', tone: 'info' }
                 ]
             }
             return [
-                { label: 'Receitas', value: this.formatMoney(this.summary.totalRevenue), hint: 'Entradas do periodo', tone: 'income' },
-                { label: 'Despesas', value: this.formatMoney(this.summary.totalExpenses), hint: `${this.summary.expenseCount || 0} lancamento(s)`, tone: 'expense' },
+                { label: 'Receitas', value: this.formatMoney(this.summary.totalRevenue), hint: 'Entradas do período', tone: 'income' },
+                { label: 'Despesas', value: this.formatMoney(this.summary.totalExpenses), hint: `${this.summary.expenseCount || 0} lançamento(s)`, tone: 'expense' },
                 { label: 'Saldo', value: this.formatMoney(this.summary.netBalance), hint: `${this.summary.pendingExpenses || 0} pendente(s)`, tone: 'done' }
             ]
         },
@@ -604,7 +610,7 @@ export default {
     },
     methods: {
         emptyExpenseFormBase() {
-            return { id: null, date: new Date().toISOString().slice(0, 10), vehicleId: '', driverId: '', category: 'Combustivel', description: '', amount: null }
+            return { id: null, date: new Date().toISOString().slice(0, 10), vehicleId: '', driverId: '', category: 'Combustível', description: '', amount: null }
         },
         emptyRevenueForm() {
             return { id: null, date: new Date().toISOString().slice(0, 10), description: '', company: '', amount: null, paid: true }
@@ -674,6 +680,24 @@ export default {
             this.fundMovementForm = this.emptyFundMovementForm()
             this.showFundMovementModal = true
         },
+        async downloadEmergencyBackupFile() {
+            this.isLoading = true
+            try {
+                const { blob, filename } = await downloadEmergencyBackup()
+                const url = URL.createObjectURL(blob)
+                const link = document.createElement('a')
+                link.href = url
+                link.download = filename
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                URL.revokeObjectURL(url)
+            } catch (error) {
+                console.error(error)
+            } finally {
+                this.isLoading = false
+            }
+        },
         async saveExpense() {
             if (!this.canSaveExpense) return
             const payload = {
@@ -701,7 +725,7 @@ export default {
             } catch (error) { console.error(error) } finally { this.isLoading = false }
         },
         async deleteRevenue(id) {
-            if (!window.confirm('Excluir esta receita?')) return
+            if (!window.confirm('Excluir está receita?')) return
             this.isLoading = true
             try {
                 await removeRevenueApi(id)
@@ -768,19 +792,19 @@ export default {
             return parsed.getMonth() + 1 === this.selectedMonth && parsed.getFullYear() === this.selectedYear
         },
         statusLabel(status) {
-            return { PENDING: 'Pendente', APPROVED: 'Aprovada', REJECTED: 'Recusada', CORRECTION_REQUESTED: 'Correcao' }[status] || 'Aprovada'
+            return { PENDING: 'Pendente', APPROVED: 'Aprovada', REJECTED: 'Recusada', CORRECTION_REQUESTED: 'Correção' }[status] || 'Aprovada'
         },
         expenseCategoryIcon(category) {
             const icons = {
-                Combustivel: 'fa-gas-pump',
-                'Manutencao do carro': 'fa-screwdriver-wrench',
-                Pedagio: 'fa-road',
+                Combustível: 'fa-gas-pump',
+                'Manutenção do carro': 'fa-screwdriver-wrench',
+                Pedágio: 'fa-road',
                 Pneus: 'fa-circle-dot',
                 Seguro: 'fa-shield-halved',
                 Multa: 'fa-triangle-exclamation',
-                Salario: 'fa-money-check-dollar',
-                Administracao: 'fa-briefcase',
-                Escritorio: 'fa-building',
+                Salário: 'fa-money-check-dollar',
+                Administração: 'fa-briefcase',
+                Escritório: 'fa-building',
                 Impostos: 'fa-file-invoice-dollar',
                 'Parcela/financiamento': 'fa-calendar-check',
                 Outros: 'fa-receipt'
@@ -792,7 +816,7 @@ export default {
             return `${Math.min(100, Math.max(0, Number(value || 0)))}%`
         },
         cashFlowTypeLabel(item) {
-            return item.type === 'IN' ? 'Entrada' : 'Saida'
+            return item.type === 'IN' ? 'Entrada' : 'Saída'
         },
         cashFlowTypeIcon(item) {
             return item.type === 'IN' ? 'fa-file-invoice-dollar' : 'fa-road'

@@ -69,7 +69,7 @@ export default {
             return this.$route.name?.toLowerCase() || this.$route.path?.toLowerCase()
         },
         profileLabel() {
-            if (this.userRole === 'DRIVER') return 'OperaÁ„o em campo'
+            if (this.userRole === 'DRIVER') return 'Opera√ß√£o em campo'
             if (this.userRole === 'FINANCE') return 'Painel financeiro'
             return 'Painel administrativo'
         },
@@ -78,7 +78,7 @@ export default {
                 return [
                     { to: '/rotas', match: 'rotas', icon: 'fa-route', label: 'Rotas' },
                     { to: '/financial', match: 'financial', icon: 'fa-receipt', label: 'Gastos' },
-                    { to: '/vehicles', match: 'vehicles', icon: 'fa-van-shuttle', label: 'VeÌculo' },
+                    { to: '/vehicles', match: 'vehicles', icon: 'fa-van-shuttle', label: 'Ve√≠culo' },
                     { to: '/profile', match: 'profile', icon: 'fa-user', label: 'Perfil' }
                 ]
             }
@@ -108,7 +108,7 @@ export default {
 
     mounted() {
         const user = JSON.parse(localStorage.getItem('user') || 'null')
-        this.userName = user?.name || 'Usu·rio'
+        this.userName = user?.name || 'Usu√°rio'
         this.userAvatar = user?.photoUrl || ''
         this.userRole = user?.role || this.userRole
         this.profileType = this.profileFromRole(this.userRole)
@@ -132,7 +132,7 @@ export default {
 
         syncProfile(event) {
             const user = JSON.parse(localStorage.getItem('user') || 'null')
-            this.userName = user?.name || 'Usu·rio'
+            this.userName = user?.name || 'Usu√°rio'
             this.userAvatar = user?.photoUrl || ''
             this.userRole = user?.role || this.userRole
             this.profileType = event.detail || this.profileFromRole(this.userRole)

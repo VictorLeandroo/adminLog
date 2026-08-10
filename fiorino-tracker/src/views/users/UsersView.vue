@@ -16,7 +16,7 @@
 
             <div v-if="isLoading && !showUserModal && !showPasswordModal" class="page-loading-state">
                 <span class="loader"></span>
-                <strong>Carregando usuarios</strong>
+                <strong>Carregando usuários</strong>
                 <p>Buscando motoristas, administradores e status de acesso.</p>
             </div>
 
@@ -98,7 +98,7 @@
                 Usuário ativo
             </label>
 
-            <p v-if="errorMessage" class="form-error">{{ errorMessage }}</p>
+            <p v-if="errorMêssage" class="form-error">{{ errorMêssage }}</p>
 
             <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveUser" :click-action="saveUser">
                 Salvar usuário
@@ -143,7 +143,7 @@ export default {
         return {
             users: [],
             isLoading: false,
-            errorMessage: '',
+            errorMêssage: '',
             showUserModal: false,
             showPasswordModal: false,
             selectedUser: null,
@@ -193,14 +193,14 @@ export default {
                 this.users = await listUsers()
             } catch (error) {
                 console.error(error)
-                this.errorMessage = error.response?.data?.message || 'Não foi possível carregar usuários.'
+                this.errorMêssage = error.response?.data?.message || 'Não foi possível carregar usuários.'
             } finally {
                 this.isLoading = false
             }
         },
 
         openUserModal(user = null) {
-            this.errorMessage = ''
+            this.errorMêssage = ''
             this.userForm = user ? { ...user, password: '', photo: null } : this.emptyUserForm()
             this.showUserModal = true
         },
@@ -213,7 +213,7 @@ export default {
         async saveUser() {
             if (!this.canSaveUser) return
             this.isLoading = true
-            this.errorMessage = ''
+            this.errorMêssage = ''
 
             try {
                 await saveUserApi(this.userForm)
@@ -221,7 +221,7 @@ export default {
                 this.cancelUserModal()
             } catch (error) {
                 console.error(error)
-                this.errorMessage = error.response?.data?.message || 'Não foi possível salvar usuário.'
+                this.errorMêssage = error.response?.data?.message || 'Não foi possível salvar usuário.'
             } finally {
                 this.isLoading = false
             }

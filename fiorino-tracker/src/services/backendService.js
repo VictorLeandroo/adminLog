@@ -4,26 +4,30 @@ const apiOrigin = api.defaults.baseURL.replace(/\/api\/?$/, '')
 
 const statusFromApi = {
   OK: 'Em dia',
-  ATTENTION: 'Atencao',
-  MAINTENANCE: 'Manutencao',
+  ATTENTION: 'Atenção',
+  MAINTENANCE: 'Manutenção',
   IN_PROGRESS: 'Em andamento',
-  PENDING_REVIEW: 'Pendente de analise',
-  COMPLETED: 'Concluida',
+  PENDING_REVIEW: 'Pendente de análise',
+  COMPLETED: 'Concluída',
   REQUESTED: 'Solicitado',
   PROCESSING: 'Processando',
-  DONE: 'Concluido',
+  DONE: 'Concluído',
   CANCELED: 'Cancelado'
 }
 
 const vehicleStatusToApi = {
   'Em dia': 'OK',
+  Atenção: 'ATTENTION',
   Atencao: 'ATTENTION',
+  Manutenção: 'MAINTENANCE',
   Manutencao: 'MAINTENANCE'
 }
 
 const routeStatusToApi = {
   'Em andamento': 'IN_PROGRESS',
+  'Pendente de análise': 'PENDING_REVIEW',
   'Pendente de analise': 'PENDING_REVIEW',
+  Concluída: 'COMPLETED',
   Concluida: 'COMPLETED'
 }
 
@@ -219,7 +223,7 @@ function loadImage(file) {
     }
     image.onerror = () => {
       URL.revokeObjectURL(url)
-      reject(new Error('Nao foi possivel carregar a imagem.'))
+      reject(new Error('Não foi possível carregar a imagem.'))
     }
     image.src = url
   })
@@ -482,6 +486,14 @@ export async function downloadFreightPdf(params) {
   return {
     blob: response.data,
     filename: downloadFilename(response)
+  }
+}
+
+export async function downloadEmergencyBackup() {
+  const response = await api.get('/backup/emergency', { responseType: 'blob' })
+  return {
+    blob: response.data,
+    filename: downloadFilename(response) || `adminlog-emergency-backup-${new Date().toISOString().slice(0, 10)}.json`
   }
 }
 

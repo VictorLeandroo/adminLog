@@ -5,15 +5,15 @@ const prisma = require('../../lib/prisma');
 const AppError = require('../../utils/AppError');
 
 const EXPENSE_CATEGORIES = {
-  FUEL: 'Combustivel',
-  TOLL: 'Pedagio',
-  MAINTENANCE: 'Manutencao do carro',
+  FUEL: 'Combustível',
+  TOLL: 'Pedágio',
+  MAINTENANCE: 'Manutenção do carro',
   TIRE: 'Pneus',
   INSURANCE: 'Seguro',
   FINE: 'Multa',
-  SALARY: 'Salario',
-  ADMINISTRATION: 'Administracao',
-  OFFICE: 'Escritorio',
+  SALARY: 'Salário',
+  ADMINISTRATION: 'Administração',
+  OFFICE: 'Escritório',
   TAX: 'Impostos',
   INSTALLMENT: 'Parcela/financiamento',
   OTHER: 'Outros',
@@ -49,7 +49,9 @@ const expenseSchema = z.object({
   vehicleId: z.string().optional().nullable(),
   driverId: z.string().optional().nullable(),
   date: z.string(),
-  category: z.enum(Object.values(EXPENSE_CATEGORIES)),
+  category: z.string().transform(normalizeCategory).refine((category) => Object.values(EXPENSE_CATEGORIES).includes(category), {
+    message: 'Categoria inválida',
+  }),
   description: z.string().optional().nullable(),
   amount: z.number(),
   paid: z.boolean().default(true),
@@ -98,7 +100,13 @@ function sum(list, selector) {
 }
 
 function normalizeCategory(value) {
-  return String(value || '').trim();
+  const text = String(value || '').trim();
+  const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const category = Object.values(EXPENSE_CATEGORIES).find((item) => (
+    item.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === normalized
+  ));
+
+  return category || text;
 }
 
 function getPeriod(query = {}) {
@@ -162,23 +170,23 @@ function revenueWhere(query = {}) {
 }
 
 async function ensureDriverVehicle(userId, vehicleId) {
-  if (!vehicleId) throw new AppError('Motorista deve informar o veiculo da despesa', 400);
+  if (!vehicleId) throw new AppError('Motorista deve informar o veículo da despesa', 400);
 
   const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
-  if (!vehicle) throw new AppError('Veiculo nao encontrado', 404);
-  if (vehicle.driverId !== userId) throw new AppError('Veiculo nao vinculado ao motorista', 403);
+  if (!vehicle) throw new AppError('Veículo não encontrado', 404);
+  if (vehicle.driverId !== userId) throw new AppError('Veículo não vinculado ao motorista', 403);
 }
 
 function assertExpensePermission(user, data) {
   const category = normalizeCategory(data.category);
 
   if (user.role === 'DRIVER') {
-    if (!DRIVER_ALLOWED_CATEGORIES.has(category)) throw new AppError('Motorista nao pode registrar esta categoria de despesa', 403);
-    if (category === EXPENSE_CATEGORIES.SALARY) throw new AppError('Motorista nao pode registrar despesa salarial', 403);
+    if (!DRIVER_ALLOWED_CATEGORIES.has(category)) throw new AppError('Motorista não pode registrar está categoria de despesa', 403);
+    if (category === EXPENSE_CATEGORIES.SALARY) throw new AppError('Motorista não pode registrar despesa salarial', 403);
   }
 
   if (category === EXPENSE_CATEGORIES.SALARY && !['ADMIN', 'FINANCE'].includes(user.role)) {
-    throw new AppError('Somente admin e financeiro podem registrar salario', 403);
+    throw new AppError('Somente admin e financeiro podem registrar salário', 403);
   }
 }
 
@@ -240,7 +248,7 @@ async function listExpenses(user, query = {}) {
 
 async function getExpense(id) {
   const expense = await prisma.expense.findUnique({ where: { id } });
-  if (!expense) throw new AppError('Despesa nao encontrada', 404);
+  if (!expense) throw new AppError('Despesa não encontrada', 404);
   return expense;
 }
 
@@ -252,12 +260,12 @@ async function createExpense(user, input) {
   if (user.role === 'DRIVER' && (data.vehicleId || VEHICLE_REQUIRED_CATEGORIES.has(category))) {
     await ensureDriverVehicle(user.id, data.vehicleId);
   }
-  if (VEHICLE_REQUIRED_CATEGORIES.has(category) && !data.vehicleId) throw new AppError('Categoria selecionada exige vinculo com veiculo', 400);
+  if (VEHICLE_REQUIRED_CATEGORIES.has(category) && !data.vehicleId) throw new AppError('Categoria selecionada exige vínculo com veículo', 400);
   if (category === EXPENSE_CATEGORIES.SALARY && !data.driverId) throw new AppError('Despesa salarial exige motorista vinculado', 400);
 
   if (category === EXPENSE_CATEGORIES.SALARY) {
     const driver = await prisma.user.findUnique({ where: { id: data.driverId } });
-    if (!driver || driver.role !== 'DRIVER') throw new AppError('Motorista da despesa salarial nao encontrado', 404);
+    if (!driver || driver.role !== 'DRIVER') throw new AppError('Motorista da despesa salarial não encontrado', 404);
   }
 
   return prisma.expense.create({
@@ -266,7 +274,7 @@ async function createExpense(user, input) {
       createdById: user.id,
       driverId: category === EXPENSE_CATEGORIES.SALARY ? data.driverId : (user.role === 'DRIVER' ? user.id : null),
       date: new Date(data.date),
-      category: data.category,
+      category,
       description: data.description,
       amount: data.amount,
       paid: data.paid,
@@ -295,7 +303,7 @@ async function updateExpense(id, input) {
       vehicleId: data.vehicleId,
       driverId: data.driverId,
       date: data.date ? new Date(data.date) : undefined,
-      category: data.category,
+      category: category || undefined,
       description: data.description,
       amount: data.amount,
       paid: data.paid,
@@ -317,7 +325,7 @@ async function reviewExpense(user, id, input) {
   const data = schema.parse(input);
 
   if (data.status !== EXPENSE_STATUSES.APPROVED && !String(data.reviewNote || '').trim()) {
-    throw new AppError('Informe uma observacao para recusar ou solicitar correcao', 400);
+    throw new AppError('Informe uma observação para recusar ou solicitar correção', 400);
   }
 
   await getExpense(id);
@@ -349,7 +357,7 @@ async function listRevenues(query = {}) {
 
 async function getRevenue(id) {
   const revenue = await prisma.revenue.findUnique({ where: { id } });
-  if (!revenue) throw new AppError('Receita nao encontrada', 404);
+  if (!revenue) throw new AppError('Receita não encontrada', 404);
   return revenue;
 }
 
@@ -603,7 +611,7 @@ async function getSalarySettlements(user, query) {
     return {
       driverId: driver.id,
       driver: driver.name,
-      vehicle: driver.assignedVehicles?.[0]?.plate || 'Sem veiculo',
+      vehicle: driver.assignedVehicles?.[0]?.plate || 'Sem veículo',
       baseSalary: totalSalary,
       absences: 0,
       discounts: totalFines,
@@ -623,14 +631,14 @@ async function getInsights(user, query) {
   const withoutReceipt = expenses.filter((item) => !item.photos?.length && item.sourceType === 'EXPENSE');
 
   if (withoutReceipt.length) insights.push({ tone: 'attention', title: 'Despesa sem comprovante', text: `${withoutReceipt.length} despesa(s) precisam de comprovante.` });
-  if (expenses.some((item) => publicStatus(item) === EXPENSE_STATUSES.CORRECTION_REQUESTED)) insights.push({ tone: 'info', title: 'Correcao pendente', text: 'Existem despesas aguardando ajuste do motorista.' });
+  if (expenses.some((item) => publicStatus(item) === EXPENSE_STATUSES.CORRECTION_REQUESTED)) insights.push({ tone: 'info', title: 'Correção pendente', text: 'Existem despesas aguardando ajuste do motorista.' });
   if (dre.margin < 10 && dre.totalRevenue > 0) insights.push({ tone: 'danger', title: 'Margem baixa', text: `Margem liquida em ${dre.margin.toFixed(1)}%.` });
-  if (funds.funds.find((fund) => fund.key === 'reserve')?.progress < 50) insights.push({ tone: 'attention', title: 'Reserva abaixo da meta', text: 'Reserva operacional ainda esta abaixo do alvo recomendado.' });
+  if (funds.funds.find((fund) => fund.key === 'reserve')?.progress < 50) insights.push({ tone: 'attention', title: 'Reserva abaixo da meta', text: 'Reserva operacional ainda está abaixo do alvo recomendado.' });
 
   const weakVehicle = vehicleDre.find((item) => item.margin < 10 && item.revenue > 0);
-  if (weakVehicle) insights.push({ tone: 'danger', title: 'Veiculo com margem baixa', text: `${weakVehicle.plate} esta com margem de ${weakVehicle.margin.toFixed(1)}%.` });
+  if (weakVehicle) insights.push({ tone: 'danger', title: 'Veículo com margem baixa', text: `${weakVehicle.plate} está com margem de ${weakVehicle.margin.toFixed(1)}%.` });
 
-  return insights.length ? insights : [{ tone: 'neutral', title: 'Sem alertas financeiros', text: 'Nenhum insight critico encontrado para o periodo.' }];
+  return insights.length ? insights : [{ tone: 'neutral', title: 'Sem alertas financeiros', text: 'Nenhum insight crítico encontrado para o período.' }];
 }
 
 async function listStatementRequests() {

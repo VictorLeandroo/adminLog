@@ -146,7 +146,7 @@ function getFinishPayload(data) {
 }
 
 function tollRouteDescription(routeId) {
-  return `[ROUTE_TOLL:${routeId}] Pedagio da rota`;
+  return `[ROUTE_TOLL:${routeId}] Pedágio da rota`;
 }
 
 function loadingRouteDescription(routeId) {
@@ -256,7 +256,7 @@ async function replaceRouteExtraExpenses(tx, route, data, createdById) {
 
   const expenses = [
     ...tollAmounts.map((amount) => ({
-      category: 'Pedagio',
+      category: 'Pedágio',
       description: tollRouteDescription(route.id),
       amount,
     })),
@@ -299,7 +299,7 @@ async function listRoutes(user) {
 
 async function getRoute(id) {
   const route = await prisma.route.findUnique({ where: { id }, include });
-  if (!route) throw new AppError('Rota nao encontrada', 404);
+  if (!route) throw new AppError('Rota não encontrada', 404);
   return withTollAmount(route);
 }
 
@@ -316,21 +316,21 @@ async function startRoute(user, input) {
   const data = startSchema.parse(input);
 
   const active = await getActiveRoute(user.id);
-  if (active) throw new AppError('Motorista ja possui uma rota em andamento', 409);
+  if (active) throw new AppError('Motorista já possui uma rota em andamento', 409);
 
   const vehicle = await prisma.vehicle.findUnique({ where: { id: data.vehicleId } });
 
-  if (!vehicle) throw new AppError('Veiculo nao encontrado ou nao vinculado', 404);
-  if (vehicle.driverId !== user.id) throw new AppError('Veiculo nao esta vinculado a este motorista', 403);
+  if (!vehicle) throw new AppError('Veículo não encontrado ou não vinculado', 404);
+  if (vehicle.driverId !== user.id) throw new AppError('Veículo não está vinculado a este motorista', 403);
   if (data.initialKm < vehicle.currentKm) {
-    throw new AppError('KM inicial nao pode ser menor que o KM atual do veiculo', 400);
+    throw new AppError('KM inicial não pode ser menor que o KM atual do veículo', 400);
   }
 
   const route = await prisma.route.create({
     data: {
       vehicleId: vehicle.id,
       driverId: user.id,
-      date: data.date ? new Date(data.date) : new Date(),
+      date: data.daté ? new Date(data.date) : new Date(),
       initialKm: data.initialKm,
       plannedDeliveries: data.plannedDeliveries || null,
       status: RouteStatus.IN_PROGRESS,
@@ -346,16 +346,16 @@ async function createRoute(input) {
   const payload = getFinishPayload(data);
   const vehicle = await prisma.vehicle.findUnique({ where: { id: data.vehicleId } });
 
-  if (!vehicle) throw new AppError('Veiculo nao encontrado', 404);
-  if (!vehicle.driverId) throw new AppError('Veiculo sem motorista vinculado', 400);
+  if (!vehicle) throw new AppError('Veículo não encontrado', 404);
+  if (!vehicle.driverId) throw new AppError('Veículo sem motorista vinculado', 400);
 
   const active = await getActiveRoute(vehicle.driverId);
   if (active && (data.status || 'IN_PROGRESS') === 'IN_PROGRESS') {
-    throw new AppError('Motorista ja possui uma rota em andamento', 409);
+    throw new AppError('Motorista já possui uma rota em andamento', 409);
   }
 
   if (data.finalKm !== null && data.finalKm !== undefined && data.finalKm < data.initialKm) {
-    throw new AppError('KM final nao pode ser menor que KM inicial', 400);
+    throw new AppError('KM final não pode ser menor que KM inicial', 400);
   }
 
   const hasFinishedData = data.finalKm !== null && data.finalKm !== undefined;
@@ -379,7 +379,7 @@ async function createRoute(input) {
       data: {
         vehicleId: vehicle.id,
         driverId: vehicle.driverId,
-        date: data.date ? new Date(data.date) : new Date(),
+        date: data.daté ? new Date(data.date) : new Date(),
         initialKm: data.initialKm,
         finalKm: hasFinishedData ? data.finalKm : null,
         plannedDeliveries: data.plannedDeliveries || null,
@@ -413,7 +413,7 @@ async function finishRoute(user, id, input) {
   }
 
   if (data.finalKm < route.initialKm) {
-    throw new AppError('KM final nao pode ser menor que KM inicial', 400);
+    throw new AppError('KM final não pode ser menor que KM inicial', 400);
   }
 
   const status = payload.cities.length && payload.invoices.length
@@ -472,7 +472,7 @@ async function reportError(user, id, input) {
   }
 
   if (route.status === RouteStatus.IN_PROGRESS) {
-    throw new AppError('Nao e possivel solicitar correcao em rota em andamento', 400);
+    throw new AppError('Não é possível solicitar correção em rota em andamento', 400);
   }
 
   return prisma.route.update({
@@ -492,7 +492,7 @@ async function reviewRoute(id, input) {
   const route = await getRoute(id);
 
   if (data.finalKm !== undefined && data.finalKm < (data.initialKm ?? route.initialKm)) {
-    throw new AppError('KM final nao pode ser menor que KM inicial', 400);
+    throw new AppError('KM final não pode ser menor que KM inicial', 400);
   }
 
   return prisma.$transaction(async (tx) => {
@@ -557,17 +557,17 @@ async function addDeliveryProgress(user, id, input) {
   }
 
   if (!data.lateInvoice && route.status !== RouteStatus.IN_PROGRESS) {
-    throw new AppError('So e possivel registrar entrega em rota em andamento', 400);
+    throw new AppError('Só é possível registrar entrega em rota em andamento', 400);
   }
 
   if (data.lateInvoice && route.status === RouteStatus.IN_PROGRESS) {
-    throw new AppError('Nota pendente so pode ser enviada depois da rota finalizada', 400);
+    throw new AppError('Nota pendente só pode ser enviada depois da rota finalizada', 400);
   }
 
   const nextIndex = route.photos.filter((photo) => photo.deliveredAt || photo.deliveryIndex).length + 1;
   const correctionNote = data.note
-    ? `Nota fiscal enviada apos finalizacao: ${data.note}`
-    : 'Nota fiscal enviada apos a rota ja estar finalizada.';
+    ? `Nota fiscal enviada após finalização: ${data.note}`
+    : 'Nota fiscal enviada após a rota já estar finalizada.';
 
   const updatedRoute = await prisma.route.update({
     where: { id },
@@ -621,7 +621,7 @@ function parseDateRange(query) {
     : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    throw new AppError('Periodo invalido para gerar o frete', 400);
+    throw new AppError('Período inválido para gerar o frete', 400);
   }
 
   return { start, end };
@@ -726,7 +726,7 @@ function routeTollAmount(route, expenses) {
 
   if (route.tollAmount !== undefined && route.tollAmount !== null) return numberValue(route.tollAmount);
 
-  return routeExtraAmount(route, expenses, ['pedagio', 'pedágio'], ['pedagio']);
+  return routeExtraAmount(route, expenses, ['pedágio', 'pedágio'], ['pedágio']);
 }
 
 function routeLoadingAmount(route, expenses) {
@@ -879,10 +879,10 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   await workbook.xlsx.readFile(FREIGHT_TEMPLATE_PATH);
 
   const worksheet = workbook.worksheets[0];
-  if (!worksheet) throw new AppError('Template de frete invalido', 500);
+  if (!worksheet) throw new AppError('Template de frete inválido', 500);
 
   if (routes.length > FREIGHT_BLOCK_ROWS.length) {
-    throw new AppError(`O template de frete suporta ate ${FREIGHT_BLOCK_ROWS.length} rotas por arquivo`, 400);
+    throw new AppError(`O templaté de frete suporta até ${FREIGHT_BLOCK_ROWS.length} rotas por arquivo`, 400);
   }
 
   setCellValue(worksheet, 'A1', title);
@@ -971,7 +971,7 @@ async function generateFreightPdf(query) {
   const pdfBuffer = await convertXlsxToPdf(xlsxBuffer, xlsxFilename);
 
   if (!pdfBuffer) {
-    throw new AppError('Nao foi possivel converter a planilha de frete para PDF. Instale o LibreOffice no servidor ou configure LIBREOFFICE_PATH.', 500);
+    throw new AppError('Não foi possível converter a planilha de frete para PDF. Instale o LibreOffice no servidor ou configure LIBREOFFICE_PATH.', 500);
   }
 
   const filename = xlsxFilename.replace(/\.xlsx$/i, '.pdf');
@@ -1004,7 +1004,7 @@ function renderFreightRouteBlock(route, expenses, settings) {
       </div>
       <div class="grid">
         <div class="left notes">${escapeHtml(invoices)}</div>
-        <div class="label">Saida (ate ${values.includedKm}km)</div>
+        <div class="label">Saída (até ${values.includedKm}km)</div>
         <div class="amount">${formatMoney(values.baseAmount)}</div>
       </div>
       <div class="grid">
@@ -1017,7 +1017,7 @@ function renderFreightRouteBlock(route, expenses, settings) {
           <span>Inicial</span>
           <strong>${kmInitial}</strong>
         </div>
-        <div class="label">Pedagios</div>
+        <div class="label">Pedágios</div>
         <div class="amount">${values.toll ? formatMoney(values.toll) : ''}</div>
       </div>
       <div class="grid">
@@ -1053,7 +1053,7 @@ async function generateFreightHtml(query) {
   const total = routes.reduce((sum, route) => sum + routeFreightValues(route, expenses, settings).total, 0);
   const blocks = routes.length
     ? routes.map((route) => renderFreightRouteBlock(route, expenses, settings)).join('')
-    : '<p class="empty">Nenhuma rota concluida encontrada nesse periodo.</p>';
+    : '<p class="empty">Nenhuma rota concluída encontrada nesse período.</p>';
 
   return `<!doctype html>
 <html lang="pt-BR">

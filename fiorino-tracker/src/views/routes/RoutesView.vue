@@ -132,28 +132,28 @@
                         <input type="date" v-model="dateFilterStart" />
                     </label>
                     <label>
-                        <span>Ate</span>
+                        <span>Até</span>
                         <input type="date" v-model="dateFilterEnd" />
                     </label>
                 </div>
                 <div class="date-shortcuts">
                     <button type="button" @click="setDateShortcut('today')">Hoje</button>
                     <button type="button" @click="setDateShortcut('week')">7 dias</button>
-                    <button type="button" @click="setDateShortcut('month')">Mes</button>
+                    <button type="button" @click="setDateShortcut('month')">Mês</button>
                     <button type="button" @click="setDateShortcut('clear')">Limpar</button>
                 </div>
                 <select v-model="statusFilter" class="form-select">
                     <option value="all">Todos</option>
                     <option value="Em andamento">Em andamento</option>
-                    <option value="Pendente de analise">Pendente de análise</option>
-                    <option value="Concluida">Concluída</option>
+                    <option value="Pendente de análise">Pendente de análise</option>
+                    <option value="Concluída">Concluída</option>
                 </select>
             </section>
 
             <div v-if="isLoading" class="page-loading-state">
                 <span class="loader"></span>
                 <strong>Carregando rotas</strong>
-                <p>Buscando rotas, veiculo ativo e dados de apoio.</p>
+                <p>Buscando rotas, veículo ativo e dados de apoio.</p>
             </div>
 
             <section v-else class="route-list">
@@ -401,7 +401,7 @@
                         <small>Frete calculado</small>
                         <strong>{{ formatMoney(createRouteFreightAmount) }}</strong>
                     </div>
-                    <span>{{ createRouteForm.freightDailyOnly ? 'Somente valor da saida' : `${freightSettings.includedKm} km inclusos` }}</span>
+                    <span>{{ createRouteForm.freightDailyOnly ? 'Somente valor da saída' : `${freightSettings.includedKm} km inclusos` }}</span>
                 </div>
 
                 <label class="freight-manual-toggle mb-2">
@@ -412,8 +412,8 @@
                 <label class="form-label">Status</label>
                 <select v-model="createRouteForm.status" class="form-select w-100 mb-2">
                     <option value="Em andamento">Em andamento</option>
-                    <option value="Pendente de analise">Pendente de análise</option>
-                    <option value="Concluida">Concluída</option>
+                    <option value="Pendente de análise">Pendente de análise</option>
+                    <option value="Concluída">Concluída</option>
                 </select>
             </div>
 
@@ -776,8 +776,8 @@
                         <label class="form-label">Status</label>
                         <select v-model="adminForm.status" class="form-select w-100 mb-2">
                             <option value="Em andamento">Em andamento</option>
-                            <option value="Pendente de analise">Pendente de análise</option>
-                            <option value="Concluida">Concluída</option>
+                            <option value="Pendente de análise">Pendente de análise</option>
+                            <option value="Concluída">Concluída</option>
                         </select>
 
                         <div class="correction-card mb-2" v-if="adminForm.correctionRequested">
@@ -823,15 +823,15 @@
                 <span class="modal-icon"><i class="fa-solid fa-file-pdf"></i></span>
                 <div>
                     <h6>Gerar frete</h6>
-                    <p>O periodo quinzenal ja vem preenchido. Escolha se quer baixar PDF ou Excel.</p>
+                    <p>O período quinzenal já vem preenchido. Escolha se quer baixar PDF ou Excel.</p>
                 </div>
             </div>
 
-            <label class="form-label">Periodo</label>
+            <label class="form-label">Período</label>
             <select v-model="freightForm.periodType" class="form-select w-100 mb-2" @change="syncFreightPeriod">
                 <option value="first-half">1 quinzena</option>
                 <option value="second-half">2 quinzena</option>
-                <option value="month">Mes inteiro</option>
+                <option value="month">Mês inteiro</option>
                 <option value="custom">Personalizado</option>
             </select>
 
@@ -1003,7 +1003,7 @@ export default {
                 loadingAmount: null,
                 unloadingAmount: null,
                 useManualFreightAmount: false,
-                status: 'Concluida'
+                status: 'Concluída'
             },
             finishForm: {
                 kmFinal: '',
@@ -1031,7 +1031,7 @@ export default {
                 loadingAmount: null,
                 unloadingAmount: null,
                 useManualFreightAmount: false,
-                status: 'Pendente de analise',
+                status: 'Pendente de análise',
                 correctionRequested: false,
                 correctionNote: ''
             },
@@ -1129,7 +1129,7 @@ export default {
         },
 
         heroTitle() {
-            if (this.isDriver) return this.activeRoute ? 'Voce esta em rota' : 'Pronto para sair'
+            if (this.isDriver) return this.activeRoute ? 'Você está em rota' : 'Pronto para sair'
             return 'Rotas para revisar'
         },
 
@@ -1904,7 +1904,7 @@ export default {
                 notifySuccess(`Frete em ${isExcel ? 'Excel' : 'PDF'} gerado com sucesso.`)
             } catch (error) {
                 console.error(error)
-                notifyError(error, `Nao foi possivel gerar o frete em ${isExcel ? 'Excel' : 'PDF'}.`)
+                notifyError(error, `Não foi possível gerar o frete em ${isExcel ? 'Excel' : 'PDF'}.`)
             } finally {
                 this.isModalLoading = false
             }
@@ -1924,13 +1924,13 @@ export default {
         syncAdminReviewStatus() {
             if (!this.showAdminModal) return
 
-            if (this.adminReviewHasRequiredData && this.adminForm.status !== 'Concluida') {
-                this.adminForm.status = 'Concluida'
+            if (this.adminReviewHasRequiredData && this.adminForm.status !== 'Concluída') {
+                this.adminForm.status = 'Concluída'
                 return
             }
 
-            if (!this.adminReviewHasRequiredData && this.adminForm.status === 'Concluida') {
-                this.adminForm.status = 'Pendente de analise'
+            if (!this.adminReviewHasRequiredData && this.adminForm.status === 'Concluída') {
+                this.adminForm.status = 'Pendente de análise'
             }
         },
 
@@ -1950,7 +1950,7 @@ export default {
                 loadingAmount: null,
                 unloadingAmount: null,
                 useManualFreightAmount: false,
-                status: 'Concluida'
+                status: 'Concluída'
             }
         },
 
@@ -1965,9 +1965,9 @@ export default {
             switch (status) {
                 case 'Em andamento':
                     return 'running'
-                case 'Pendente de analise':
+                case 'Pendente de análise':
                     return 'pending'
-                case 'Concluida':
+                case 'Concluída':
                     return 'done'
                 default:
                     return 'idle'
@@ -1985,9 +1985,9 @@ export default {
 
         routeStatusSortOrder(status) {
             const statusOrder = {
-                'Pendente de analise': 1,
+                'Pendente de análise': 1,
                 'Em andamento': 2,
-                Concluida: 3
+                Concluída: 3
             }
 
             return statusOrder[status] || 99

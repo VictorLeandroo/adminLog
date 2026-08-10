@@ -3,13 +3,13 @@ const { RouteStatus, VehicleStatus } = require('@prisma/client');
 const prisma = require('../../lib/prisma');
 
 const EXPENSE_BUCKETS = {
-  fuel: ['combustivel', 'combustivel', 'fuel'],
-  toll: ['pedagio', 'pedagio'],
-  maintenance: ['manutencao', 'manutencao do carro', 'maintenance'],
+  fuel: ['combustível', 'combustível', 'fuel'],
+  toll: ['pedágio', 'pedágio'],
+  maintenance: ['manutenção', 'manutenção do carro', 'maintenance'],
   insurance: ['seguro', 'insurance'],
   ipva: ['ipva', 'licenciamento'],
   installment: ['parcela', 'financiamento'],
-  salary: ['salario', 'salario'],
+  salary: ['salário', 'salário'],
   fine: ['multa'],
 };
 
@@ -179,18 +179,18 @@ function buildFinancialBoxes({ netProfit, activeVehicles, maintenanceExpenses, t
     targets,
     boxes: [
       { key: 'operationalCash', label: 'Caixa operacional', value: operationalCash, target: activeVehicles * 3000, progress: percent(operationalCash, activeVehicles * 3000) },
-      { key: 'emergencyReserve', label: 'Reserva de emergencia', value: emergencyReserve, target: targets.operationalReserve, progress: percent(emergencyReserve, targets.operationalReserve) },
-      { key: 'maintenanceFund', label: 'Fundo de manutencao', value: maintenanceFund, target: targets.maintenanceFund, progress: percent(maintenanceFund, targets.maintenanceFund) },
-      { key: 'expansionFund', label: 'Expansao / frota', value: expansionFund, target: targets.expansionFund, progress: percent(expansionFund, targets.expansionFund) },
-      { key: 'officeFund', label: 'Reforma escritorio', value: officeFund, target: targets.officeFund, progress: percent(officeFund, targets.officeFund) },
-      { key: 'partners', label: 'Disponivel para socios', value: partnersAvailable, target: netProfit, progress: percent(partnersAvailable, netProfit), locked: reserveGap > 0 },
+      { key: 'emergencyReserve', label: 'Reserva de emergência', value: emergencyReserve, target: targets.operationalReserve, progress: percent(emergencyReserve, targets.operationalReserve) },
+      { key: 'maintenanceFund', label: 'Fundo de manutenção', value: maintenanceFund, target: targets.maintenanceFund, progress: percent(maintenanceFund, targets.maintenanceFund) },
+      { key: 'expansionFund', label: 'Expansão / frota', value: expansionFund, target: targets.expansionFund, progress: percent(expansionFund, targets.expansionFund) },
+      { key: 'officeFund', label: 'Reforma escritório', value: officeFund, target: targets.officeFund, progress: percent(officeFund, targets.officeFund) },
+      { key: 'partners', label: 'Disponivel para sócios', value: partnersAvailable, target: netProfit, progress: percent(partnersAvailable, netProfit), locked: reserveGap > 0 },
     ],
     suggestedDistribution: [
       { label: 'Reserva operacional', value: reserveGap > 0 ? Math.min(netProfit * 0.4, reserveGap) : netProfit * 0.2 },
-      { label: 'Manutencao', value: netProfit * 0.2 },
-      { label: 'Expansao', value: netProfit * 0.12 },
-      { label: 'Escritorio', value: netProfit * 0.06 },
-      { label: 'Socios', value: partnersAvailable },
+      { label: 'Manutenção', value: netProfit * 0.2 },
+      { label: 'Expansão', value: netProfit * 0.12 },
+      { label: 'Escritório', value: netProfit * 0.06 },
+      { label: 'Sócios', value: partnersAvailable },
     ].map((item) => ({ ...item, value: Math.max(0, item.value) })),
   };
 }
@@ -207,7 +207,7 @@ function buildHealthScore({ netProfit, margin, financialBoxes, activeVehicles, m
 
   const normalized = Math.max(0, Math.min(100, Math.round(score)));
   const status = normalized >= 75 ? 'healthy' : normalized >= 50 ? 'attention' : 'critical';
-  const label = status === 'healthy' ? 'Saudavel' : status === 'attention' ? 'Atencao' : 'Critico';
+  const label = status === 'healthy' ? 'Saudável' : status === 'attention' ? 'Atenção' : 'Crítico';
 
   return { score: normalized, status, label };
 }
@@ -222,29 +222,29 @@ function buildAlerts({ vehicles, routes, expenses, financialBoxes }) {
 
   vehicles.forEach((vehicle) => {
     if (vehicle.status === VehicleStatus.MAINTENANCE) {
-      addAlert(alerts, 'high', 'Veiculo em manutencao', `${vehicle.plate} esta indisponivel para operacao.`, { vehicleId: vehicle.id });
+      addAlert(alerts, 'high', 'Veículo em manutenção', `${vehicle.plate} está indisponivel para operação.`, { vehicleId: vehicle.id });
     }
 
     if (vehicle.insuranceValidUntil) {
       const days = daysUntil(vehicle.insuranceValidUntil);
-      if (days < 0) addAlert(alerts, 'critical', 'Seguro vencido', `${vehicle.plate} esta com seguro vencido.`, { vehicleId: vehicle.id });
+      if (days < 0) addAlert(alerts, 'critical', 'Seguro vencido', `${vehicle.plate} está com seguro vencido.`, { vehicleId: vehicle.id });
       else if (days <= 30) addAlert(alerts, days <= 7 ? 'high' : 'medium', 'Seguro vencendo', `${vehicle.plate} vence em ${days} dia(s).`, { vehicleId: vehicle.id });
     }
 
     if (vehicle.licenseValidUntil) {
       const days = daysUntil(vehicle.licenseValidUntil);
-      if (days < 0) addAlert(alerts, 'critical', 'Licenciamento/IPVA vencido', `${vehicle.plate} esta com documento vencido.`, { vehicleId: vehicle.id });
+      if (days < 0) addAlert(alerts, 'critical', 'Licenciamento/IPVA vencido', `${vehicle.plate} está com documento vencido.`, { vehicleId: vehicle.id });
       else if (days <= 30) addAlert(alerts, days <= 7 ? 'high' : 'medium', 'Licenciamento/IPVA vencendo', `${vehicle.plate} vence em ${days} dia(s).`, { vehicleId: vehicle.id });
     }
 
     if (vehicle.nextMaintenanceAtKm && vehicle.nextMaintenanceAtKm - vehicle.currentKm <= 500) {
       const remaining = vehicle.nextMaintenanceAtKm - vehicle.currentKm;
-      addAlert(alerts, remaining <= 0 ? 'critical' : 'medium', 'Manutencao proxima por KM', `${vehicle.plate} tem ${Math.max(0, remaining)} km ate a proxima manutencao.`, { vehicleId: vehicle.id });
+      addAlert(alerts, remaining <= 0 ? 'critical' : 'medium', 'Manutenção próxima por KM', `${vehicle.plate} tem ${Math.max(0, remaining)} km até a próxima manutenção.`, { vehicleId: vehicle.id });
     }
 
     requiredDocs.forEach((type) => {
       const document = vehicle.documents.find((item) => item.type === type);
-      if (!document) addAlert(alerts, 'medium', 'Documento faltando', `${vehicle.plate} nao possui ${type} cadastrado.`, { vehicleId: vehicle.id });
+      if (!document) addAlert(alerts, 'medium', 'Documento faltando', `${vehicle.plate} não possui ${type} cadastrado.`, { vehicleId: vehicle.id });
       if (document?.expiresAt && daysUntil(document.expiresAt) < 0) {
         addAlert(alerts, 'critical', 'Documento vencido', `${vehicle.plate} possui ${type} vencido.`, { vehicleId: vehicle.id });
       }
@@ -258,7 +258,7 @@ function buildAlerts({ vehicles, routes, expenses, financialBoxes }) {
 
   routes
     .filter((route) => route.status === RouteStatus.PENDING_REVIEW && daysBetween(route.updatedAt || route.createdAt) >= 3)
-    .forEach((route) => addAlert(alerts, 'high', 'Rota aguardando revisao', `Rota de ${dateOnly(route.date)} esta pendente ha ${daysBetween(route.updatedAt || route.createdAt)} dias.`, { routeId: route.id }));
+    .forEach((route) => addAlert(alerts, 'high', 'Rota aguardando revisão', `Rota de ${dateOnly(route.date)} está pendente ha ${daysBetween(route.updatedAt || route.createdAt)} dias.`, { routeId: route.id }));
 
   const reserve = financialBoxes.boxes.find((box) => box.key === 'emergencyReserve');
   if (reserve && reserve.progress < 50) {
@@ -501,7 +501,7 @@ function buildDriversRanking(context) {
     return {
       id: driver.id,
       name: driver.name,
-      vehicle: driver.assignedVehicles?.[0] ? `${driver.assignedVehicles[0].model} ${driver.assignedVehicles[0].plate}` : 'Sem veiculo',
+      vehicle: driver.assignedVehicles?.[0] ? `${driver.assignedVehicles[0].model} ${driver.assignedVehicles[0].plate}` : 'Sem veículo',
       completedRoutes: completedRoutes.length,
       km,
       absences: 0,
@@ -570,12 +570,12 @@ function buildInsights(context, summary, vehiclesPerformance) {
 
   if (previousRevenue) {
     const change = ((summary.hero.totalRevenue - previousRevenue) / previousRevenue) * 100;
-    insights.push({ tone: change >= 0 ? 'positive' : 'negative', title: 'Receita do mes', text: `Receita ${change >= 0 ? 'subiu' : 'caiu'} ${Math.abs(change).toFixed(1)}% em relacao ao mes anterior.` });
+    insights.push({ tone: change >= 0 ? 'positive' : 'negative', title: 'Receita do mes', text: `Receita ${change >= 0 ? 'subiu' : 'caiu'} ${Math.abs(change).toFixed(1)}% em relação ao mês anterior.` });
   }
 
   if (previousFuel) {
     const change = ((currentFuel - previousFuel) / previousFuel) * 100;
-    insights.push({ tone: change <= 0 ? 'positive' : 'attention', title: 'Combustivel', text: `Combustivel ${change >= 0 ? 'subiu' : 'caiu'} ${Math.abs(change).toFixed(1)}% contra o mes anterior.` });
+    insights.push({ tone: change <= 0 ? 'positive' : 'attention', title: 'Combustível', text: `Combustível ${change >= 0 ? 'subiu' : 'caiu'} ${Math.abs(change).toFixed(1)}% contra o mês anterior.` });
   }
 
   if (vehiclesPerformance.length >= 2) {
@@ -588,11 +588,11 @@ function buildInsights(context, summary, vehiclesPerformance) {
   }
 
   if (maintenance && maintenance.total > summary.hero.totalRevenue * 0.15) {
-    insights.push({ tone: 'attention', title: 'Manutencao', text: 'Manutencao passou de 15% da receita do mes.' });
+    insights.push({ tone: 'attention', title: 'Manutenção', text: 'Manutenção passou de 15% da receita do mes.' });
   }
 
   if (!insights.length) {
-    insights.push({ tone: 'neutral', title: 'Sem historico suficiente', text: 'Assim que houver mais lancamentos, os insights comparativos aparecem aqui.' });
+    insights.push({ tone: 'neutral', title: 'Sem histórico suficiente', text: 'Assim que houver mais lançamentos, os insights comparativos aparecem aqui.' });
   }
 
   return insights;
