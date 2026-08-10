@@ -122,7 +122,13 @@ function expenseVisibleWhere(user) {
     NOT: { description: { startsWith: ROUTE_UNLOADING_DESCRIPTION_PREFIX } },
   };
 
-  if (user.role === 'DRIVER') where.vehicle = { driverId: user.id };
+  if (user.role === 'DRIVER') {
+    where.OR = [
+      { vehicle: { driverId: user.id } },
+      { createdById: user.id },
+      { driverId: user.id },
+    ];
+  }
 
   return where;
 }

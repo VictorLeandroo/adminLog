@@ -27,12 +27,7 @@
                         Configurar frete
                     </ButtonComp>
 
-                    <button v-if="canToggleProfile" class="role-chip" @click="toggleProfile">
-                        <i class="fa-solid" :class="isDriver ? 'fa-truck-fast' : 'fa-user-shield'"></i>
-                        {{ isDriver ? 'Motorista' : 'Admin' }}
-                    </button>
-
-                    <span v-else class="role-chip locked">
+                    <span class="role-chip locked">
                         <i class="fa-solid fa-truck-fast"></i>
                         Motorista
                     </span>
@@ -1075,11 +1070,11 @@ export default {
         },
 
         canToggleProfile() {
-            return this.isAdminUser
+            return false
         },
 
         isDriver() {
-            return !this.isAdminUser || this.profileType === 'driver'
+            return this.currentUser?.role === 'DRIVER'
         },
 
         activeRoute() {
@@ -1333,7 +1328,7 @@ export default {
                 return 'driver'
             }
 
-            return localStorage.getItem('profileType') || 'admin'
+            return user?.role === 'ADMIN' ? 'admin' : 'driver'
         },
 
         async fetchRoutes() {
@@ -1389,10 +1384,8 @@ export default {
             }
         },
 
-        syncProfile(event) {
-            this.profileType = this.isAdminUser
-                ? event.detail || localStorage.getItem('profileType') || 'admin'
-                : 'driver'
+        syncProfile() {
+            this.profileType = this.currentUser?.role === 'ADMIN' ? 'admin' : 'driver'
             this.fetchRoutes()
             this.fetchMyVehicle()
             this.fetchAdminVehicles()
@@ -1430,7 +1423,7 @@ export default {
                 loadingAmount: route.loadingAmount ?? null,
                 unloadingAmount: route.unloadingAmount ?? null
             }
-            this.photos = []
+            this.photos = [...(route.photos || [])]
             this.showFinishModal = true
         },
 
@@ -1598,14 +1591,22 @@ export default {
                 if (!shouldContinue) return
             }
 
-            const newPhotos = this.photos.map((photo, index) => ({
-                file: photo.file,
-                name: photo.file?.name || `foto-${Date.now()}-${index}`,
-                url: photo.preview || photo.url
-            }))
+            const existingPhotoKeys = new Set((this.routeSelected.photos || [])
+                .map(photo => photo.fileUrl || photo.url || photo.preview)
+                .filter(Boolean))
+            const newPhotos = this.photos
+                .filter(photo => photo.file || !existingPhotoKeys.has(photo.fileUrl || photo.url || photo.preview))
+                .map((photo, index) => ({
+                    file: photo.file,
+                    name: photo.file?.name || photo.name || photo.fileName || `foto-${Date.now()}-${index}`,
+                    fileUrl: photo.fileUrl,
+                    url: photo.preview || photo.url || photo.fileUrl,
+                    deliveryIndex: photo.deliveryIndex,
+                    deliveryNote: photo.deliveryNote,
+                    deliveredAt: photo.deliveredAt
+                }))
 
             this.isModalLoading = true
-
             try {
                 await finishRouteApi(this.routeSelected.id, {
                     kmFinal: this.finishForm.kmFinal,

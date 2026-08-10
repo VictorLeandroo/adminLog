@@ -6,7 +6,7 @@
                     <span class="eyebrow">{{ isDriverUser ? 'Financeiro do motorista' : 'Centro financeiro' }}</span>
                     <h4>{{ isDriverUser ? 'Meus gastos' : 'Financeiro' }}</h4>
                     <p>{{ isDriverUser ? 'Registre gastos do seu veiculo e acompanhe aprovacoes.' :
-                        'Despesas, receitas, caixa, DRE, fundos e pagamentos em uma visao organizada.' }}</p>
+                        'Despesas, receitas, caixa e resultado da frota em uma visao organizada.' }}</p>
                 </div>
                 <div class="hero-actions">
                     <ButtonComp btn-class="button-primary button-big" :click-action="openExpenseModal">
@@ -85,45 +85,57 @@
                         </div>
 
                         <article v-for="expense in filteredExpenses" :key="expense.id" class="expense-card">
-                            <div class="expense-head">
-                                <div class="expense-title">
-                                    <span class="expense-icon">
-                                        <i class="fa-solid" :class="expenseCategoryIcon(expense.category)"></i>
-                                    </span>
-                                    <div>
-                                        <strong>{{ expense.category }}</strong>
-                                        <small>{{ formatDate(expense.date) }} - {{ expense.quinzenna }} quinzena</small>
+                            <div class="expense-title">
+                                <span class="expense-icon">
+                                    <i class="fa-solid" :class="expenseCategoryIcon(expense.category)"></i>
+                                </span>
+                                <div class="expense-copy">
+                                    <strong>{{ expense.category }}</strong>
+                                    <small class="expense-meta">
+                                        <span><i class="fa-regular fa-calendar-days"></i>{{ formatDate(expense.date) }}</span>
+                                        <span>{{ expense.quinzenna }} quinzena</span>
+                                    </small>
+                                    <p class="expense-description">{{ expense.description || 'Sem descricao' }}</p>
+                                    <p v-if="expense.reviewNote" class="review-note">{{ expense.reviewNote }}</p>
+
+                                    <div class="photo-strip" v-if="expense.photos?.length">
+                                        <button v-for="(photo, index) in expense.photos" :key="index" type="button"
+                                            @click="openLightbox(photo.url || photo.preview)">
+                                            <img :src="photo.url || photo.preview" />
+                                        </button>
                                     </div>
                                 </div>
-                                <div class="amount-stack">
-                                    <span class="status-badge" :class="expense.status">{{ statusLabel(expense.status)
-                                    }}</span>
-                                    <strong class="amount danger">{{ formatMoney(expense.amount) }}</strong>
-                                </div>
                             </div>
 
-                            <p class="expense-description">{{ expense.description || 'Sem descricao' }}</p>
-                            <p v-if="expense.reviewNote" class="review-note">{{ expense.reviewNote }}</p>
-
-                            <div class="photo-strip" v-if="expense.photos?.length">
-                                <button v-for="(photo, index) in expense.photos" :key="index" type="button"
-                                    @click="openLightbox(photo.url || photo.preview)">
-                                    <img :src="photo.url || photo.preview" />
-                                </button>
-                            </div>
+                            <span class="status-badge" :class="expense.status">{{ statusLabel(expense.status) }}</span>
+                            <strong class="amount danger">{{ formatMoney(expense.amount) }}</strong>
 
                             <div class="expense-actions" v-if="canManageExpenses && expense.editable">
                                 <ButtonComp btn-class="button-secundary w-100"
-                                    :click-action="() => openExpenseModal(expense)">Editar</ButtonComp>
+                                    :click-action="() => openExpenseModal(expense)">
+                                    <i class="fa-solid fa-pen"></i>
+                                    Editar
+                                </ButtonComp>
                                 <ButtonComp v-if="expense.status === 'PENDING'" btn-class="button-primary w-100"
-                                    :click-action="() => reviewExpense(expense, 'APPROVED')">Aprovar</ButtonComp>
+                                    :click-action="() => reviewExpense(expense, 'APPROVED')">
+                                    <i class="fa-solid fa-check"></i>
+                                    Aprovar
+                                </ButtonComp>
                                 <ButtonComp v-if="expense.status === 'PENDING'" btn-class="button-secundary w-100"
-                                    :click-action="() => askReview(expense, 'CORRECTION_REQUESTED')">Corrigir
+                                    :click-action="() => askReview(expense, 'CORRECTION_REQUESTED')">
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                    Corrigir
                                 </ButtonComp>
                                 <ButtonComp v-if="expense.status === 'PENDING'" btn-class="button-secundary-red w-100"
-                                    :click-action="() => askReview(expense, 'REJECTED')">Recusar</ButtonComp>
+                                    :click-action="() => askReview(expense, 'REJECTED')">
+                                    <i class="fa-solid fa-xmark"></i>
+                                    Recusar
+                                </ButtonComp>
                                 <ButtonComp btn-class="button-secundary-red w-100"
-                                    :click-action="() => deleteExpense(expense.id)">Excluir</ButtonComp>
+                                    :click-action="() => deleteExpense(expense.id)">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                    Excluir
+                                </ButtonComp>
                             </div>
                         </article>
 
@@ -160,47 +172,94 @@
                     </aside>
                 </section>
 
-                <section v-if="!isDriverUser && activeTab === 'revenues'" class="panel-grid">
-                    <article class="finance-panel wide">
-                        <div class="section-title">
-                            <div><span class="eyebrow">Receitas</span>
-                                <h5>Entradas registradas</h5>
-                            </div>
-                            <strong class="positive">{{ formatMoney(totalRevenues) }}</strong>
+                <section v-if="!isDriverUser && activeTab === 'revenues'" class="finance-panel revenue-panel">
+                    <div class="revenue-panel-head">
+                        <div>
+                            <span class="eyebrow">Receitas</span>
+                            <h5>Entradas registradas</h5>
+                            <p>Total do periodo selecionado</p>
                         </div>
-                        <div v-for="revenue in filteredRevenues" :key="revenue.id" class="list-row revenue-row">
-                            <div><strong>{{ revenue.description }}</strong><small>{{ formatDate(revenue.date) }} - {{
-                                revenue.company || 'Sem cliente' }}</small></div>
-                            <div class="row-value-actions">
-                                <span class="positive">{{ formatMoney(revenue.amount) }}</span>
-                                <div class="row-actions">
-                                    <button type="button" @click="openRevenueModal(revenue)" title="Editar receita">
-                                        <i class="fa-solid fa-pen"></i>
-                                    </button>
-                                    <button type="button" class="danger-action" @click="deleteRevenue(revenue.id)"
-                                        title="Excluir receita">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
+                        <div class="revenue-total">
+                            <small>Total</small>
+                            <strong>{{ formatMoney(totalRevenues) }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="revenue-list" v-if="filteredRevenues.length">
+                        <article v-for="revenue in filteredRevenues" :key="revenue.id" class="revenue-card">
+                            <div class="revenue-title">
+                                <span class="revenue-icon">
+                                    <i class="fa-solid fa-file-lines"></i>
+                                </span>
+                                <div class="revenue-copy">
+                                    <strong>{{ revenue.description || 'Receita' }}</strong>
+                                    <small class="revenue-meta">
+                                        <span><i class="fa-regular fa-calendar-days"></i>{{ formatDate(revenue.date) }}</span>
+                                        <span><i class="fa-solid fa-tag"></i>{{ revenue.company || 'Sem cliente' }}</span>
+                                    </small>
                                 </div>
                             </div>
-                        </div>
-                        <div v-if="!filteredRevenues.length" class="empty-state compact"><strong>Nenhuma receita no
-                                periodo</strong></div>
-                    </article>
+
+                            <strong class="amount positive">{{ formatMoney(revenue.amount) }}</strong>
+
+                            <div class="revenue-actions">
+                                <button type="button" @click="openRevenueModal(revenue)" title="Editar receita">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button type="button" class="danger-action" @click="deleteRevenue(revenue.id)"
+                                    title="Excluir receita">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div v-else class="empty-state compact"><strong>Nenhuma receita no periodo</strong></div>
                 </section>
 
-                <section v-if="!isDriverUser && activeTab === 'cashflow'" class="finance-panel">
-                    <div class="section-title">
-                        <div><span class="eyebrow">Fluxo de caixa</span>
-                            <h5>Entradas, saidas e saldo acumulado</h5>
+                <section v-if="!isDriverUser && activeTab === 'cashflow'" class="finance-panel cashflow-panel">
+                    <div class="cashflow-head">
+                        <span class="eyebrow">Fluxo de caixa</span>
+                        <h5>Entradas, saidas e saldo acumulado</h5>
+                    </div>
+
+                    <div class="cashflow-metrics">
+                        <article v-for="card in cashFlowCards" :key="card.label" class="cashflow-metric" :class="card.type">
+                            <span class="cashflow-metric-icon">
+                                <i class="fa-solid" :class="card.icon"></i>
+                            </span>
+                            <div>
+                                <small>{{ card.label }}</small>
+                                <strong>{{ card.value }}</strong>
+                                <p>{{ card.hint }}</p>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div v-if="filteredCashFlow.length" class="cashflow-table">
+                        <div class="cashflow-table-head">
+                            <span>Tipo</span>
+                            <span>Descricao</span>
+                            <span>Data</span>
+                            <span>Categoria</span>
+                            <span>Valor</span>
+                            <span>Saldo acumulado</span>
                         </div>
+
+                        <article v-for="item in filteredCashFlow" :key="item.id" class="cashflow-row" :class="item.type">
+                            <span class="cashflow-type-chip">
+                                <i class="fa-solid" :class="cashFlowTypeIcon(item)"></i>
+                                {{ cashFlowTypeLabel(item) }}
+                            </span>
+                            <strong>{{ item.description }}</strong>
+                            <span>{{ formatDate(item.date) }}</span>
+                            <span>{{ item.category }}{{ item.related ? ' - ' + item.related : '' }}</span>
+                            <strong class="cashflow-amount">{{ cashFlowAmountLabel(item) }}</strong>
+                            <span class="cashflow-balance">{{ formatMoney(item.balance) }}</span>
+                        </article>
                     </div>
-                    <div v-for="item in cashFlow" :key="item.id" class="cash-row" :class="item.type">
-                        <div><strong>{{ item.description }}</strong><small>{{ formatDate(item.date) }} - {{
-                            item.category }} - {{ item.related }}</small></div>
-                        <div><span>{{ formatMoney(item.amount) }}</span><small>Saldo {{ formatMoney(item.balance)
-                        }}</small></div>
-                    </div>
+
+                    <div v-else class="empty-state compact"><strong>Nenhum movimento no periodo</strong></div>
                 </section>
 
                 <section v-if="!isDriverUser && activeTab === 'dre'" class="panel-grid">
@@ -233,30 +292,6 @@
                     </article>
                 </section>
 
-                <section v-if="!isDriverUser && activeTab === 'funds'" class="finance-panel">
-                    <div class="section-title">
-                        <div><span class="eyebrow">Fundos e reservas</span>
-                            <h5>Caixinhas financeiras</h5>
-                        </div>
-                        <ButtonComp btn-class="button-primary" :click-action="openFundModal">
-                            <i class="fa-solid fa-plus"></i>
-                            Novo fundo
-                        </ButtonComp>
-                    </div>
-                    <div class="fund-grid">
-                        <div v-for="fund in funds.funds" :key="fund.key" class="fund-card">
-                            <strong>{{ fund.label }}</strong>
-                            <span>{{ formatMoney(fund.value) }}</span>
-                            <small>Meta {{ formatMoney(fund.target) }}</small>
-                            <div class="progress-line"><i :style="{ width: progressWidth(fund.progress) }"></i></div>
-                            <div class="fund-actions">
-                                <button type="button" @click="openFundModal(fund)">Editar meta</button>
-                                <button type="button" @click="openFundMovementModal(fund)">Movimentar</button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
                 <section v-if="!isDriverUser && activeTab === 'salaries'" class="finance-panel">
                     <div class="section-title">
                         <div><span class="eyebrow">Salarios</span>
@@ -270,18 +305,6 @@
                     </div>
                 </section>
 
-                <section v-if="!isDriverUser && activeTab === 'insights'" class="finance-panel">
-                    <div class="section-title">
-                        <div><span class="eyebrow">Insights</span>
-                            <h5>Alertas financeiros</h5>
-                        </div>
-                    </div>
-                    <div v-for="insight in insights" :key="`${insight.title}-${insight.text}`" class="insight-row"
-                        :class="insight.tone">
-                        <i class="fa-solid fa-circle-info"></i>
-                        <div><strong>{{ insight.title }}</strong><small>{{ insight.text }}</small></div>
-                    </div>
-                </section>
             </template>
         </div>
 
@@ -324,52 +347,9 @@
             <input type="number" v-model.number="expenseForm.amount" class="w-100 mb-2" placeholder="0,00" />
             <label class="form-label">Comprovante</label>
             <PhotoUploadComp v-model="photos" />
+            <p v-if="driverVehicleRequiredWithoutVehicle" class="review-note">Vincule um veiculo ao motorista para registrar esta categoria.</p>
             <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveExpense"
                 :click-action="saveExpense">Salvar despesa</ButtonComp>
-        </ModalDefault>
-
-        <ModalDefault :isLoading="isLoading" :is-visible="showFundModal" max-width="460px" min-width="320px"
-            @update:isVisible="cancelFund">
-            <div class="modal-head">
-                <span class="modal-icon"><i class="fa-solid fa-vault"></i></span>
-                <div>
-                    <h6>{{ fundForm.id ? 'Editar fundo' : 'Novo fundo' }}</h6>
-                    <p>Defina a meta e o nome da caixinha.</p>
-                </div>
-            </div>
-            <label class="form-label">Nome</label>
-            <input type="text" v-model="fundForm.name" class="w-100 mb-2" />
-            <label class="form-label">Descricao</label>
-            <input type="text" v-model="fundForm.description" class="w-100 mb-2" />
-            <label class="form-label">Meta</label>
-            <input type="number" v-model.number="fundForm.target" class="w-100 mb-2" />
-            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!fundForm.name"
-                :click-action="saveFund">
-                Salvar fundo</ButtonComp>
-        </ModalDefault>
-
-        <ModalDefault :isLoading="isLoading" :is-visible="showFundMovementModal" max-width="460px" min-width="320px"
-            @update:isVisible="cancelFundMovement">
-            <div class="modal-head">
-                <span class="modal-icon"><i class="fa-solid fa-money-bill-transfer"></i></span>
-                <div>
-                    <h6>Movimentar fundo</h6>
-                    <p>{{ selectedFund?.label || selectedFund?.name }}</p>
-                </div>
-            </div>
-            <label class="form-label">Tipo</label>
-            <select v-model="fundMovementForm.type" class="form-select w-100 mb-2">
-                <option value="IN">Entrada</option>
-                <option value="OUT">Saida</option>
-            </select>
-            <label class="form-label">Data</label>
-            <input type="date" v-model="fundMovementForm.date" class="w-100 mb-2" />
-            <label class="form-label">Valor</label>
-            <input type="number" v-model.number="fundMovementForm.amount" class="w-100 mb-2" />
-            <label class="form-label">Observacao</label>
-            <input type="text" v-model="fundMovementForm.note" class="w-100 mb-2" />
-            <ButtonComp btn-class="button-primary button-big w-100 mt-2" :is-disabled="!canSaveFundMovement"
-                :click-action="saveFundMovement">Salvar movimento</ButtonComp>
         </ModalDefault>
 
         <ModalDefault :isLoading="isLoading" :is-visible="showRevenueModal" max-width="460px" min-width="320px"
@@ -408,8 +388,6 @@ import {
     formatLocalDate,
     getCashFlow,
     getDre,
-    getFinanceFunds,
-    getFinanceInsights,
     getFinanceSummary,
     getMyVehicle,
     getQuinzenna,
@@ -482,9 +460,7 @@ export default {
                 { key: 'revenues', label: 'Receitas', icon: 'fa-arrow-trend-up' },
                 { key: 'cashflow', label: 'Fluxo', icon: 'fa-timeline' },
                 { key: 'dre', label: 'DRE', icon: 'fa-chart-line' },
-                { key: 'funds', label: 'Fundos', icon: 'fa-vault' },
-                { key: 'salaries', label: 'Salarios', icon: 'fa-id-card' },
-                { key: 'insights', label: 'Insights', icon: 'fa-lightbulb' }
+                { key: 'salaries', label: 'Pagamentos', icon: 'fa-money-check-dollar' }
             ],
             months: [
                 { value: 1, label: 'Jan' }, { value: 2, label: 'Fev' }, { value: 3, label: 'Mar' },
@@ -553,6 +529,33 @@ export default {
         totalRevenues() {
             return this.filteredRevenues.reduce((sum, item) => sum + Number(item.amount || 0), 0)
         },
+        filteredCashFlow() {
+            const term = this.searchTerm.trim().toLowerCase()
+            return this.cashFlow
+                .filter(item => this.matchesPeriod(item.date))
+                .filter(item => !term || [item.type, item.description, item.category, item.related, item.date].join(' ').toLowerCase().includes(term))
+        },
+        cashFlowInTotal() {
+            return this.filteredCashFlow
+                .filter(item => item.type === 'IN')
+                .reduce((sum, item) => sum + Math.abs(Number(item.amount || 0)), 0)
+        },
+        cashFlowOutTotal() {
+            return this.filteredCashFlow
+                .filter(item => item.type === 'OUT')
+                .reduce((sum, item) => sum + Math.abs(Number(item.amount || 0)), 0)
+        },
+        cashFlowFinalBalance() {
+            const last = this.filteredCashFlow[this.filteredCashFlow.length - 1]
+            return Number(last?.balance || 0)
+        },
+        cashFlowCards() {
+            return [
+                { label: 'Entradas', value: this.formatMoney(this.cashFlowInTotal), hint: this.filteredCashFlow.filter(item => item.type === 'IN').length + ' lancamento(s)', icon: 'fa-arrow-down-to-bracket', type: 'IN' },
+                { label: 'Saidas', value: '-' + this.formatMoney(this.cashFlowOutTotal), hint: this.filteredCashFlow.filter(item => item.type === 'OUT').length + ' lancamento(s)', icon: 'fa-arrow-up-from-bracket', type: 'OUT' },
+                { label: 'Saldo final', value: this.formatMoney(this.cashFlowFinalBalance), hint: 'Saldo acumulado', icon: 'fa-wallet', type: 'BALANCE' }
+            ]
+        },
         categoryTotals() {
             const categories = this.filteredExpenses.reduce((acc, expense) => {
                 const name = expense.category || 'Outros'
@@ -577,11 +580,12 @@ export default {
                 { label: 'Saldo', value: this.formatMoney(this.summary.netBalance), hint: `${this.summary.pendingExpenses || 0} pendente(s)`, tone: 'done' }
             ]
         },
+        driverVehicleRequiredWithoutVehicle() { return this.isDriverUser && this.vehicleRequiredForExpense && !this.myVehicleId },
         canSaveExpense() {
             const hasBase = Boolean(this.expenseForm.date && this.expenseForm.category && this.expenseForm.amount)
             if (!hasBase) return false
             if (this.expenseForm.category === this.expenseCategories.SALARY) return Boolean(this.expenseForm.driverId)
-            return this.isDriverUser ? Boolean(this.myVehicleId) : (!this.vehicleRequiredForExpense || Boolean(this.expenseForm.vehicleId))
+            return this.isDriverUser ? (!this.vehicleRequiredForExpense || Boolean(this.myVehicleId)) : (!this.vehicleRequiredForExpense || Boolean(this.expenseForm.vehicleId))
         },
         canSaveRevenue() {
             return Boolean(this.revenueForm.date && this.revenueForm.description && this.revenueForm.amount)
@@ -631,14 +635,13 @@ export default {
             try {
                 const query = this.periodQuery
                 if (this.isDriverUser) {
-                    const [expenses, summary, insights] = await Promise.all([listExpenses(query), getFinanceSummary(query), getFinanceInsights(query)])
+                    const [expenses, summary] = await Promise.all([listExpenses(query), getFinanceSummary(query)])
                     this.finance.expenses = expenses
                     this.summary = summary
-                    this.insights = insights
                     return
                 }
-                const [expenses, revenues, summary, cashFlow, dre, vehicleDre, funds, salaries, insights] = await Promise.all([
-                    listExpenses(query), listRevenues(query), getFinanceSummary(query), getCashFlow(query), getDre(query), getVehicleDre(query), getFinanceFunds(query), getSalarySettlements(query), getFinanceInsights(query)
+                const [expenses, revenues, summary, cashFlow, dre, vehicleDre, salaries] = await Promise.all([
+                    listExpenses(query), listRevenues(query), getFinanceSummary(query), getCashFlow(query), getDre(query), getVehicleDre(query), getSalarySettlements(query)
                 ])
                 this.finance.expenses = expenses
                 this.finance.revenues = revenues
@@ -646,9 +649,7 @@ export default {
                 this.cashFlow = cashFlow
                 this.dre = dre
                 this.vehicleDre = vehicleDre
-                this.funds = funds
                 this.salaries = salaries
-                this.insights = insights
             } catch (error) { console.error(error) } finally { this.isLoading = false }
         },
         syncProfile() {
@@ -677,7 +678,7 @@ export default {
             if (!this.canSaveExpense) return
             const payload = {
                 ...this.expenseForm,
-                vehicleId: this.isDriverUser ? this.myVehicleId : (this.expenseForm.vehicleId || null),
+                vehicleId: this.isDriverUser ? (this.myVehicleId || null) : (this.expenseForm.vehicleId || null),
                 amount: Number(this.expenseForm.amount),
                 quinzenna: getQuinzenna(this.expenseForm.date),
                 paid: true,
@@ -789,6 +790,16 @@ export default {
         },
         progressWidth(value) {
             return `${Math.min(100, Math.max(0, Number(value || 0)))}%`
+        },
+        cashFlowTypeLabel(item) {
+            return item.type === 'IN' ? 'Entrada' : 'Saida'
+        },
+        cashFlowTypeIcon(item) {
+            return item.type === 'IN' ? 'fa-file-invoice-dollar' : 'fa-road'
+        },
+        cashFlowAmountLabel(item) {
+            const value = Math.abs(Number(item.amount || 0))
+            return (item.type === 'OUT' ? '-' : '') + this.formatMoney(value)
         },
         formatMoney(value) { return money(value) },
         formatKm(value) { return Number(value || 0).toLocaleString('pt-BR') },
@@ -1032,23 +1043,23 @@ export default {
 }
 
 .expense-card {
-    border-radius: 18px;
-    padding: 16px;
-    overflow: hidden;
-}
-
-.expense-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(112px, auto) minmax(250px, auto);
     align-items: center;
+    gap: 18px 22px;
+    border-radius: 18px;
+    padding: 18px;
+    overflow: hidden;
 }
 
 .expense-title {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 18px;
     min-width: 0;
 }
 
-.expense-title>div {
+.expense-copy {
     min-width: 0;
 }
 
@@ -1056,49 +1067,64 @@ export default {
     display: block;
     overflow: hidden;
     color: var(--text-strong);
-    line-height: 1.2;
+    font-size: 18px;
+    line-height: 1.16;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.expense-title small {
-    display: block;
-    margin-top: 4px;
+.expense-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px 14px;
+    margin-top: 8px;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.2;
+}
+
+.expense-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.expense-meta span+span::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    margin-right: 7px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.75;
 }
 
 .expense-icon {
     display: grid;
     place-items: center;
     flex: 0 0 auto;
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
+    width: 76px;
+    height: 76px;
+    border-radius: 18px;
     background: rgba(var(--primary-color-rgb), 0.14);
     color: var(--primary-color);
+    font-size: 29px;
 }
 
 .expense-description {
-    margin: 14px 0 0;
-    color: var(--text-strong) !important;
+    margin: 7px 0 0;
+    color: var(--text-muted) !important;
     line-height: 1.35;
     overflow-wrap: anywhere;
 }
 
-.amount-stack {
-    display: grid;
-    justify-items: end;
-    gap: 5px;
-    text-align: right;
-    flex: 0 0 auto;
-}
-
-.amount-stack .amount {
+.expense-card>.amount {
     display: block;
-    font-size: 15px;
+    justify-self: end;
+    font-size: 19px;
     line-height: 1.15;
+    text-align: right;
     white-space: nowrap;
 }
 
@@ -1106,10 +1132,11 @@ export default {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    justify-self: center;
     max-width: 100%;
     border-radius: 999px;
-    padding: 6px 9px;
-    font-size: 10px;
+    padding: 9px 16px;
+    font-size: 12px;
     line-height: 1;
     font-weight: 900;
     color: var(--text-strong);
@@ -1174,13 +1201,319 @@ export default {
 }
 
 .expense-actions {
-    margin-top: 12px;
+    justify-content: flex-end;
     flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 0;
 }
 
 .expense-actions>* {
-    min-width: 110px;
-    flex: 1;
+    flex: 0 0 auto;
+    min-width: 118px;
+}
+
+.revenue-panel {
+    padding: 24px;
+}
+
+.revenue-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.revenue-panel-head h5,
+.revenue-panel-head p {
+    margin: 0;
+}
+
+.revenue-panel-head h5 {
+    color: var(--text-strong);
+    font-size: 22px;
+    line-height: 1.15;
+}
+
+.revenue-panel-head p,
+.revenue-total small {
+    color: var(--text-muted);
+}
+
+.revenue-total {
+    display: grid;
+    gap: 6px;
+    justify-items: end;
+    text-align: right;
+}
+
+.revenue-total strong {
+    color: #22c55e;
+    font-size: 30px;
+    line-height: 1.1;
+}
+
+.revenue-list {
+    display: grid;
+    gap: 12px;
+    padding-top: 16px;
+}
+
+.revenue-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(140px, auto) auto;
+    align-items: center;
+    gap: 18px 22px;
+    border: 1px solid var(--border-soft);
+    border-radius: 18px;
+    background: var(--surface-muted);
+    padding: 18px 20px;
+}
+
+.revenue-title {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-width: 0;
+}
+
+.revenue-copy {
+    min-width: 0;
+}
+
+.revenue-title strong {
+    display: block;
+    overflow: hidden;
+    color: var(--text-strong);
+    font-size: 18px;
+    line-height: 1.16;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.revenue-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px 14px;
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.2;
+}
+
+.revenue-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.revenue-meta span+span::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    margin-right: 7px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.75;
+}
+
+.revenue-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 72px;
+    height: 72px;
+    border: 1px solid rgba(var(--primary-color-rgb), 0.34);
+    border-radius: 18px;
+    background: rgba(var(--primary-color-rgb), 0.14);
+    color: var(--primary-color);
+    font-size: 28px;
+}
+
+.revenue-card>.amount {
+    justify-self: end;
+    font-size: 19px;
+    line-height: 1.15;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.revenue-actions {
+    display: inline-flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.revenue-actions button {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+    background: rgba(var(--primary-color-rgb), 0.14);
+    color: var(--primary-color);
+    font-size: 18px;
+}
+
+.revenue-actions button.danger-action {
+    border-color: rgba(239, 68, 68, 0.22);
+    background: rgba(239, 68, 68, 0.14);
+    color: #ef4444;
+}
+
+.cashflow-panel {
+    padding: 20px;
+    border-color: rgba(var(--primary-color-rgb), 0.34);
+}
+
+.cashflow-head {
+    margin-bottom: 14px;
+}
+
+.cashflow-head h5 {
+    margin: 4px 0 0;
+    color: var(--text-strong);
+    font-size: 20px;
+    line-height: 1.16;
+}
+
+.cashflow-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.cashflow-metric {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+    background: var(--surface-muted);
+    padding: 16px;
+}
+
+.cashflow-metric-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(var(--primary-color-rgb), 0.14);
+    color: var(--primary-color);
+    font-size: 20px;
+}
+
+.cashflow-metric small,
+.cashflow-metric p {
+    color: var(--text-muted);
+}
+
+.cashflow-metric p {
+    margin: 3px 0 0;
+    line-height: 1.2;
+}
+
+.cashflow-metric strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: 21px;
+    line-height: 1.12;
+}
+
+.cashflow-metric.IN strong,
+.cashflow-row.IN .cashflow-amount,
+.cashflow-row.IN .cashflow-type-chip {
+    color: #22c55e;
+}
+
+.cashflow-metric.IN .cashflow-metric-icon,
+.cashflow-row.IN .cashflow-type-chip {
+    background: rgba(34, 197, 94, 0.14);
+}
+
+.cashflow-metric.OUT strong,
+.cashflow-row.OUT .cashflow-amount,
+.cashflow-row.OUT .cashflow-type-chip {
+    color: #ef4444;
+}
+
+.cashflow-metric.OUT .cashflow-metric-icon,
+.cashflow-row.OUT .cashflow-type-chip {
+    background: rgba(239, 68, 68, 0.14);
+}
+
+.cashflow-metric.BALANCE strong {
+    color: #93c5fd;
+}
+
+.cashflow-table {
+    display: grid;
+    overflow-x: auto;
+}
+
+.cashflow-table-head,
+.cashflow-row {
+    display: grid;
+    grid-template-columns: 150px minmax(220px, 1.3fr) 150px minmax(220px, 1fr) 150px 170px;
+    align-items: center;
+    gap: 14px;
+    min-width: 1020px;
+}
+
+.cashflow-table-head {
+    border-radius: 12px;
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--text-muted);
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.cashflow-row {
+    border-bottom: 1px solid var(--border-soft);
+    padding: 9px 14px;
+    color: var(--text-muted);
+}
+
+.cashflow-row strong:first-of-type {
+    overflow: hidden;
+    color: var(--text-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cashflow-type-chip,
+.cashflow-balance {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 7px 12px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.cashflow-type-chip {
+    gap: 8px;
+}
+
+.cashflow-balance {
+    justify-self: end;
+    color: #bfdbfe;
+    background: rgba(148, 163, 184, 0.1);
+}
+
+.cashflow-amount {
+    justify-self: end;
+    white-space: nowrap;
 }
 
 .category-list,
@@ -1412,16 +1745,11 @@ export default {
     }
 
     .expense-card {
+        grid-template-columns: 1fr;
         width: 100%;
         min-width: 0;
         padding: 12px;
         border-radius: 16px;
-    }
-
-    .expense-head {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
     }
 
     .expense-title {
@@ -1435,37 +1763,45 @@ export default {
         overflow-wrap: anywhere;
     }
 
-    .expense-title small {
+    .expense-meta {
+        gap: 5px 10px;
         font-size: 11px;
     }
 
     .expense-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 11px;
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        font-size: 20px;
     }
 
-    .amount-stack {
-        width: 100%;
-        grid-template-columns: auto auto;
-        align-items: center;
-        justify-content: space-between;
-        justify-items: start;
+    .expense-card>.status-badge {
+        justify-self: start;
+    }
+
+    .expense-card>.amount {
+        justify-self: start;
+        font-size: 16px;
         text-align: left;
     }
 
-    .amount-stack .amount {
-        justify-self: end;
-        font-size: 14px;
+    .expense-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .expense-actions>* {
+        flex: 1 1 120px;
+        min-width: 0;
     }
 
     .status-badge {
-        padding: 6px 8px;
-        font-size: 9px;
+        padding: 7px 10px;
+        font-size: 10px;
     }
 
     .expense-description {
-        margin-top: 10px;
+        margin-top: 8px;
         font-size: 13px;
     }
 
@@ -1479,6 +1815,107 @@ export default {
         width: 54px;
         height: 54px;
         border-radius: 9px;
+    }
+
+    .revenue-panel {
+        padding: 16px;
+    }
+
+    .revenue-panel-head {
+        flex-direction: column;
+        align-items: stretch;
+        padding-bottom: 16px;
+    }
+
+    .revenue-total {
+        justify-items: start;
+        text-align: left;
+    }
+
+    .revenue-total strong {
+        font-size: 24px;
+    }
+
+    .revenue-card {
+        grid-template-columns: 1fr;
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .revenue-title {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .revenue-title strong {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .revenue-meta {
+        gap: 5px 10px;
+        font-size: 11px;
+    }
+
+    .revenue-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        font-size: 20px;
+    }
+
+    .revenue-card>.amount {
+        justify-self: start;
+        font-size: 16px;
+        text-align: left;
+    }
+
+    .revenue-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .revenue-actions button {
+        flex: 1;
+        width: auto;
+        height: 46px;
+        border-radius: 14px;
+    }
+
+    .cashflow-panel {
+        padding: 14px;
+    }
+
+    .cashflow-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .cashflow-metric {
+        padding: 12px;
+    }
+
+    .cashflow-table-head {
+        display: none;
+    }
+
+    .cashflow-table {
+        overflow-x: visible;
+        gap: 10px;
+    }
+
+    .cashflow-row {
+        grid-template-columns: 1fr;
+        min-width: 0;
+        gap: 7px;
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+        background: var(--surface-muted);
+        padding: 12px;
+    }
+
+    .cashflow-amount,
+    .cashflow-balance {
+        justify-self: start;
     }
 
     .summary-grid,

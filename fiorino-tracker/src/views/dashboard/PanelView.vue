@@ -5,12 +5,20 @@
                 <div>
                     <span class="eyebrow">Painel executivo</span>
                     <h4>Fiorino Tracker</h4>
-                    <p>{{ dashboardPeriodLabel }} - gestao financeira, frota e operacao</p>
+                    <p>{{ dashboardPeriodLabel }} - rotas, faturamento, gastos e comparativo mensal</p>
                 </div>
-                <button class="refresh-btn" type="button" @click="fetchDashboardData">
-                    <i class="fa-solid fa-rotate-right"></i>
-                    Atualizar
-                </button>
+                <div class="dashboard-period-actions">
+                    <select v-model.number="selectedMonth" class="period-select" @change="fetchDashboardData">
+                        <option v-for="month in months" :key="month.value" :value="month.value">{{ month.label }}</option>
+                    </select>
+                    <select v-model.number="selectedYear" class="period-select compact" @change="fetchDashboardData">
+                        <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+                    </select>
+                    <button class="refresh-btn" type="button" @click="fetchDashboardData">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        Atualizar
+                    </button>
+                </div>
             </section>
 
             <div v-if="isLoading" class="dashboard-skeleton">
@@ -20,7 +28,7 @@
             <template v-else>
                 <section class="finance-hero" :class="hero.status">
                     <div class="hero-main">
-                        <span class="eyebrow">Lucro liquido do mes</span>
+                        <span class="eyebrow">Resultado do mês</span>
                         <strong>{{ formatMoney(hero.netProfit) }}</strong>
                         <p>
                             Receita {{ formatMoney(hero.totalRevenue) }} -
@@ -29,7 +37,7 @@
                         </p>
                         <div class="hero-metrics">
                             <div>
-                                <small>Receita total</small>
+                                <small>Faturamento</small>
                                 <span>{{ formatMoney(hero.totalRevenue) }}</span>
                             </div>
                             <div>
@@ -50,35 +58,6 @@
                         <small>Comparativo mes anterior</small>
                         <strong>{{ trendLabel(hero.previousMonth) }}</strong>
                     </div>
-                </section>
-
-                <section class="health-row">
-                    <article class="health-card" :class="health.status">
-                        <div>
-                            <span class="eyebrow">Saude da empresa</span>
-                            <h5>{{ health.label }}</h5>
-                            <p>Score geral considerando lucro, margem, reservas, frota e pendencias.</p>
-                        </div>
-                        <div class="score-ring">
-                            <strong>{{ health.score }}</strong>
-                            <span>/100</span>
-                        </div>
-                    </article>
-
-                    <article class="distribution-card">
-                        <div class="section-head compact">
-                            <div>
-                                <span class="eyebrow">Sobra inteligente</span>
-                                <h5>Distribuicao sugerida</h5>
-                            </div>
-                        </div>
-                        <div class="distribution-list">
-                            <div v-for="item in financialBoxes.suggestedDistribution" :key="item.label">
-                                <span>{{ item.label }}</span>
-                                <strong>{{ formatMoney(item.value) }}</strong>
-                            </div>
-                        </div>
-                    </article>
                 </section>
 
                 <section class="operations-summary">
@@ -178,31 +157,10 @@
                         <div v-else class="empty-state">
                             <i class="fa-solid fa-circle-check"></i>
                             <strong>Nenhuma pendencia critica</strong>
-                            <p>Seguro, documentos, rotas e reservas estao sem alertas relevantes.</p>
+                            <p>Seguro, documentos, rotas e comprovantes estao sem alertas relevantes.</p>
                         </div>
                     </article>
 
-                    <article class="panel-card">
-                        <div class="section-head">
-                            <div>
-                                <span class="eyebrow">Caixas financeiras</span>
-                                <h5>Reservas e fundos</h5>
-                            </div>
-                        </div>
-                        <div class="fund-list">
-                            <div v-for="box in financialBoxes.boxes" :key="box.key" class="fund-line">
-                                <div>
-                                    <strong>{{ box.label }}</strong>
-                                    <small>{{ box.locked ? 'Distribuicao limitada ate bater a meta' : `Meta
-                                        ${formatMoney(box.target)}` }}</small>
-                                </div>
-                                <div class="fund-value">
-                                    <strong>{{ formatMoney(box.value) }}</strong>
-                                    <span><i :style="{ width: progressWidth(box.progress) }"></i></span>
-                                </div>
-                            </div>
-                        </div>
-                    </article>
                 </section>
                 <section class="dashboard-grid">
                     <article class="panel-card">
@@ -302,19 +260,7 @@
                         </div>
                     </article>
 
-                    <article class="panel-card">
-                        <div class="section-head">
-                            <div>
-                                <span class="eyebrow">Reserva</span>
-                                <h5>Evolucao projetada</h5>
-                            </div>
-                        </div>
-                        <div class="chart-wrapper">
-                            <Line v-if="charts.reserveEvolution.length" :data="reserveChartData"
-                                :options="lineOptions" />
-                            <div v-else class="empty-chart">Sem evolucao de reserva</div>
-                        </div>
-                    </article>
+
                 </section>
 
                 <section class="dashboard-grid two-columns">
@@ -377,19 +323,17 @@ import {
     BarElement,
     CategoryScale,
     LinearScale,
-    ArcElement,
-    LineElement,
-    PointElement
+    ArcElement
 } from 'chart.js'
-import { Bar, Doughnut, Line } from 'vue-chartjs'
+import { Bar, Doughnut } from 'vue-chartjs'
 import { getExecutiveDashboardData, money } from '@/services/backendService'
 
-ChartJS.register(Title, Tooltip, Legend, ArcElement, BarElement, CategoryScale, LinearScale, LineElement, PointElement)
+ChartJS.register(Title, Tooltip, Legend, ArcElement, BarElement, CategoryScale, LinearScale)
 
 export default {
     name: 'DashboardView',
 
-    components: { Bar, Doughnut, Line },
+    components: { Bar, Doughnut },
 
     data() {
         return {
@@ -413,12 +357,6 @@ export default {
             ],
             barOptions: this.baseBarOptions(),
             horizontalBarOptions: { ...this.baseBarOptions(), indexAxis: 'y' },
-            lineOptions: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: this.chartScales()
-            },
             doughnutOptions: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -465,14 +403,6 @@ export default {
 
         hero() {
             return this.summary.hero
-        },
-
-        health() {
-            return this.summary.health
-        },
-
-        financialBoxes() {
-            return this.dashboard.financialBoxes || this.summary.financialBoxes
         },
 
         vehiclesPerformance() {
@@ -588,21 +518,6 @@ export default {
                     }
                 ]
             }
-        },
-
-        reserveChartData() {
-            return {
-                labels: this.charts.reserveEvolution.map(item => item.month),
-                datasets: [
-                    {
-                        data: this.charts.reserveEvolution.map(item => item.value),
-                        borderColor: '#62a8ff',
-                        backgroundColor: 'rgba(98, 168, 255, 0.18)',
-                        tension: 0.35,
-                        fill: true
-                    }
-                ]
-            }
         }
     },
 
@@ -697,10 +612,6 @@ export default {
             return { low: 'baixo', medium: 'medio', high: 'alto', critical: 'critico' }[value] || value
         },
 
-        progressWidth(value) {
-            return `${Math.min(100, Math.max(0, Number(value || 0)))}%`
-        },
-
         insightIcon(tone) {
             return {
                 positive: 'fa-arrow-trend-up',
@@ -762,6 +673,28 @@ export default {
     font-weight: 800;
 }
 
+
+.dashboard-period-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.period-select {
+    min-height: 40px;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background: var(--surface-muted);
+    color: var(--text-strong);
+    padding: 0 34px 0 12px;
+    font-weight: 800;
+}
+
+.period-select.compact {
+    min-width: 92px;
+}
 .refresh-btn {
     border: 0;
     border-radius: 12px;
@@ -1407,6 +1340,7 @@ export default {
         align-items: flex-start;
     }
 
+    .dashboard-period-actions,
     .refresh-btn {
         width: 100%;
         justify-content: center;

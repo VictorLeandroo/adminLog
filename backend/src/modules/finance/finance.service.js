@@ -140,7 +140,13 @@ function expenseWhere(user, query = {}) {
   if (query.category) where.category = query.category;
   if (query.status) where.status = query.status;
   if (query.paid !== undefined) where.paid = String(query.paid) === 'true';
-  if (user.role === 'DRIVER') where.vehicle = { driverId: user.id };
+  if (user.role === 'DRIVER') {
+    where.OR = [
+      { vehicle: { driverId: user.id } },
+      { createdById: user.id },
+      { driverId: user.id },
+    ];
+  }
   where.NOT = { description: { startsWith: ROUTE_UNLOADING_DESCRIPTION_PREFIX } };
 
   return where;
@@ -243,7 +249,9 @@ async function createExpense(user, input) {
   const category = normalizeCategory(data.category);
   assertExpensePermission(user, data);
 
-  if (user.role === 'DRIVER') await ensureDriverVehicle(user.id, data.vehicleId);
+  if (user.role === 'DRIVER' && (data.vehicleId || VEHICLE_REQUIRED_CATEGORIES.has(category))) {
+    await ensureDriverVehicle(user.id, data.vehicleId);
+  }
   if (VEHICLE_REQUIRED_CATEGORIES.has(category) && !data.vehicleId) throw new AppError('Categoria selecionada exige vinculo com veiculo', 400);
   if (category === EXPENSE_CATEGORIES.SALARY && !data.driverId) throw new AppError('Despesa salarial exige motorista vinculado', 400);
 
@@ -256,7 +264,7 @@ async function createExpense(user, input) {
     data: {
       vehicleId: category === EXPENSE_CATEGORIES.SALARY ? null : (data.vehicleId || null),
       createdById: user.id,
-      driverId: category === EXPENSE_CATEGORIES.SALARY ? data.driverId : null,
+      driverId: category === EXPENSE_CATEGORIES.SALARY ? data.driverId : (user.role === 'DRIVER' ? user.id : null),
       date: new Date(data.date),
       category: data.category,
       description: data.description,

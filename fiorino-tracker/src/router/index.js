@@ -7,15 +7,21 @@ import VehiclesView from '@/views/vehicles/VehiclesView.vue'
 import UsersView from '@/views/users/UsersView.vue'
 import ProfileView from '@/views/profile/ProfileView.vue'
 
+function homeForRole(role) {
+    if (role === 'DRIVER') return '/rotas'
+    if (role === 'FINANCE') return '/financial'
+    return '/dashboard'
+}
+
 const routes = [
-    { path: '/', redirect: '/dashboard' },
+    { path: '/', redirect: () => homeForRole(JSON.parse(localStorage.getItem('user') || 'null')?.role) },
     { path: '/login', name: 'Login', component: LoginView },
-    { path: '/dashboard', name: 'Dashboard', component: DashboardView },
+    { path: '/dashboard', name: 'Dashboard', component: DashboardView, meta: { roles: ['ADMIN', 'FINANCE'] } },
     { path: '/rotas', name: 'Rotas', component: RoutesView, meta: { roles: ['ADMIN', 'DRIVER'] } },
     { path: '/financial', name: 'Financial', component: FinancialView, meta: { roles: ['ADMIN', 'DRIVER', 'FINANCE'] } },
-    { path: '/vehicles', name: 'Vehicles', component: VehiclesView, meta: { roles: ['ADMIN', 'FINANCE'] } },
+    { path: '/vehicles', name: 'Vehicles', component: VehiclesView, meta: { roles: ['ADMIN', 'DRIVER', 'FINANCE'] } },
     { path: '/profile', name: 'Profile', component: ProfileView },
-    { path: '/users', name: 'Users', component: UsersView, meta: { adminOnly: true } },
+    { path: '/users', name: 'Users', component: UsersView, meta: { roles: ['ADMIN'] } },
 ]
 
 const router = createRouter({
@@ -33,19 +39,12 @@ router.beforeEach((to, _from, next) => {
     }
 
     if (to.path === '/login' && token) {
-        next('/dashboard')
-        return
-    }
-
-    const profileType = localStorage.getItem('profileType') || 'driver'
-
-    if (to.meta.adminOnly && (user?.role !== 'ADMIN' || profileType !== 'admin')) {
-        next('/dashboard')
+        next(homeForRole(user?.role))
         return
     }
 
     if (to.meta.roles && !to.meta.roles.includes(user?.role)) {
-        next('/dashboard')
+        next(homeForRole(user?.role))
         return
     }
 

@@ -34,15 +34,20 @@ export default {
     },
     data() {
         return {
-            adjustedMinWidth: this.minWidth
+            adjustedMinWidth: this.minWidth,
+            previousBodyOverflow: ''
         }
     },
     mounted() {
         this.setResponsiveMinWidth();
         window.addEventListener('resize', this.setResponsiveMinWidth);
+        if (this.isVisible) {
+            this.lockBodyScroll();
+        }
     },
     beforeUnmount() {
         window.removeEventListener('resize', this.setResponsiveMinWidth);
+        this.unlockBodyScroll();
     },
     methods: {
         closeModal() {
@@ -57,19 +62,22 @@ export default {
             } else {
                 this.adjustedMinWidth = this.minWidth;
             }
+        },
+        lockBodyScroll() {
+            this.previousBodyOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            this.setResponsiveMinWidth();
+        },
+        unlockBodyScroll() {
+            document.body.style.overflow = this.previousBodyOverflow || '';
         }
     },
     watch: {
         isVisible(newValue) {
             if (newValue) {
-                setTimeout(()=>{
-                    document.body.style.overflow = 'hidden';
-                    this.setResponsiveMinWidth(); 
-                },20)
+                this.lockBodyScroll();
             } else {
-                setTimeout(()=>{
-                    document.body.style.overflow = 'auto';
-                },20)
+                this.unlockBodyScroll();
             }
         }
     }

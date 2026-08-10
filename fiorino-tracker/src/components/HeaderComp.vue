@@ -17,19 +17,15 @@
                 <div class="user-info position-relative" @click="dropdownOpen = !dropdownOpen">
                     <div class="user-copy">
                         <h6>{{ userName }}</h6>
-                        <small>{{ profileType === 'driver' ? 'Motorista' : 'Administração' }}</small>
+                        <small>{{ profileLabel }}</small>
                     </div>
                     <img :src="avatarSrc" alt="avatar" class="avatar">
 
                     <div class="dropdown-menu-header" v-if="dropdownOpen" @click.stop>
-                        <button class="dropdown-item-h" @click="setProfile('driver')">
-                            <i class="fa-solid fa-truck-fast"></i>
-                            Modo motorista
-                        </button>
-                        <button v-if="userRole === 'ADMIN'" class="dropdown-item-h" @click="setProfile('admin')">
-                            <i class="fa-solid fa-user-shield"></i>
-                            Modo administração
-                        </button>
+                        <router-link class="dropdown-item-h" to="/profile" @click="dropdownOpen = false">
+                            <i class="fa-solid fa-user"></i>
+                            Meu perfil
+                        </router-link>
                         <button class="dropdown-item-h danger" @click="logout">
                             <i class="fa-solid fa-arrow-right-from-bracket"></i>
                             Sair
@@ -40,29 +36,10 @@
         </div>
 
         <div class="sub">
-            <router-link class="link" to="/dashboard" :class="{ 'link-selected': currentPage.includes('dashboard') }">
-                <i class="fa-solid fa-chart-line"></i>
-                <span>Início</span>
-            </router-link>
-            <router-link class="link" to="/rotas" :class="{ 'link-selected': currentPage.includes('rotas') }">
-                <i class="fa-solid fa-route"></i>
-                <span>Rotas</span>
-            </router-link>
-            <router-link class="link" to="/financial" :class="{ 'link-selected': currentPage.includes('financial') }">
-                <i class="fa-solid fa-wallet"></i>
-                <span>Financeiro</span>
-            </router-link>
-            <router-link class="link" to="/vehicles" :class="{ 'link-selected': currentPage.includes('vehicles') }">
-                <i class="fa-solid fa-van-shuttle"></i>
-                <span>Veículo</span>
-            </router-link>
-            <router-link class="link" to="/profile" :class="{ 'link-selected': currentPage.includes('profile') }">
-                <i class="fa-solid fa-user"></i>
-                <span>Perfil</span>
-            </router-link>
-            <router-link v-if="canAccessAdminPages" class="link" to="/users" :class="{ 'link-selected': currentPage.includes('users') }">
-                <i class="fa-solid fa-users"></i>
-                <span>Usuários</span>
+            <router-link v-for="item in navLinks" :key="item.to" class="link" :to="item.to"
+                :class="{ 'link-selected': currentPage.includes(item.match) }">
+                <i class="fa-solid" :class="item.icon"></i>
+                <span>{{ item.label }}</span>
             </router-link>
         </div>
     </nav>
@@ -75,25 +52,54 @@ export default {
     name: 'HeaderComp',
 
     data() {
+        const user = JSON.parse(localStorage.getItem('user') || 'null') || {}
+
         return {
-            userName: '',
-            userAvatar: JSON.parse(localStorage.getItem('user') || 'null')?.photoUrl || '',
-            userRole: JSON.parse(localStorage.getItem('user') || 'null')?.role || 'DRIVER',
+            userName: user.name || '',
+            userAvatar: user.photoUrl || '',
+            userRole: user.role || 'DRIVER',
             dropdownOpen: false,
-            profileType: localStorage.getItem('profileType') || 'driver',
+            profileType: this.profileFromRole(user.role),
             isDark: localStorage.getItem('theme') === 'dark'
         }
     },
 
     computed: {
         currentPage() {
-            return this.$route.name?.toLowerCase() || this.$route.path?.toLowerCase();
+            return this.$route.name?.toLowerCase() || this.$route.path?.toLowerCase()
         },
         profileLabel() {
-            return this.profileType === 'driver' ? 'Operação em campo' : 'Painel administrativo'
+            if (this.userRole === 'DRIVER') return 'Opera��o em campo'
+            if (this.userRole === 'FINANCE') return 'Painel financeiro'
+            return 'Painel administrativo'
         },
-        canAccessAdminPages() {
-            return this.userRole === 'ADMIN' && this.profileType === 'admin'
+        navLinks() {
+            if (this.userRole === 'DRIVER') {
+                return [
+                    { to: '/rotas', match: 'rotas', icon: 'fa-route', label: 'Rotas' },
+                    { to: '/financial', match: 'financial', icon: 'fa-receipt', label: 'Gastos' },
+                    { to: '/vehicles', match: 'vehicles', icon: 'fa-van-shuttle', label: 'Ve�culo' },
+                    { to: '/profile', match: 'profile', icon: 'fa-user', label: 'Perfil' }
+                ]
+            }
+
+            if (this.userRole === 'FINANCE') {
+                return [
+                    { to: '/dashboard', match: 'dashboard', icon: 'fa-chart-line', label: 'Dashboard' },
+                    { to: '/financial', match: 'financial', icon: 'fa-wallet', label: 'Financeiro' },
+                    { to: '/vehicles', match: 'vehicles', icon: 'fa-van-shuttle', label: 'Frota' },
+                    { to: '/profile', match: 'profile', icon: 'fa-user', label: 'Perfil' }
+                ]
+            }
+
+            return [
+                { to: '/dashboard', match: 'dashboard', icon: 'fa-chart-line', label: 'Dashboard' },
+                { to: '/rotas', match: 'rotas', icon: 'fa-route', label: 'Rotas' },
+                { to: '/financial', match: 'financial', icon: 'fa-wallet', label: 'Financeiro' },
+                { to: '/vehicles', match: 'vehicles', icon: 'fa-van-shuttle', label: 'Frota' },
+                { to: '/users', match: 'users', icon: 'fa-users', label: 'Motoristas' },
+                { to: '/profile', match: 'profile', icon: 'fa-user', label: 'Perfil' }
+            ]
         },
         avatarSrc() {
             return this.userAvatar || require('@/assets/img/avatar.jpg')
@@ -102,9 +108,11 @@ export default {
 
     mounted() {
         const user = JSON.parse(localStorage.getItem('user') || 'null')
-        this.userName = user?.name || 'Usuário'
+        this.userName = user?.name || 'Usu�rio'
         this.userAvatar = user?.photoUrl || ''
         this.userRole = user?.role || this.userRole
+        this.profileType = this.profileFromRole(this.userRole)
+        localStorage.setItem('profileType', this.profileType)
         this.applyTheme()
         window.addEventListener('profile-updated', this.syncProfile)
         window.addEventListener('profile-saved', this.syncProfile)
@@ -116,24 +124,18 @@ export default {
     },
 
     methods: {
-        setProfile(profile) {
-            if (profile === 'admin' && this.userRole !== 'ADMIN') return
-            this.profileType = profile
-            localStorage.setItem('profileType', profile)
-            window.dispatchEvent(new CustomEvent('profile-updated', { detail: profile }))
-            this.dropdownOpen = false
-
-            if (profile === 'driver' && this.$route.meta?.adminOnly) {
-                this.$router.push('/dashboard')
-            }
+        profileFromRole(role) {
+            if (role === 'ADMIN') return 'admin'
+            if (role === 'FINANCE') return 'finance'
+            return 'driver'
         },
 
         syncProfile(event) {
-            this.profileType = event.detail || localStorage.getItem('profileType') || 'driver'
             const user = JSON.parse(localStorage.getItem('user') || 'null')
-            this.userName = user?.name || 'Usuário'
+            this.userName = user?.name || 'Usu�rio'
             this.userAvatar = user?.photoUrl || ''
             this.userRole = user?.role || this.userRole
+            this.profileType = event.detail || this.profileFromRole(this.userRole)
         },
 
         toggleTheme() {
@@ -149,6 +151,7 @@ export default {
         logout() {
             localStorage.removeItem('token')
             localStorage.removeItem('user')
+            localStorage.removeItem('profileType')
             localStorage.removeItem('profilePhoto')
             localStorage.removeItem('profileName')
             this.$router.push('/login')

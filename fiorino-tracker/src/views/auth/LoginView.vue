@@ -188,7 +188,7 @@ export default {
         window.dispatchEvent(new CustomEvent('profile-updated', {
           detail: profileType
         }))
-        this.$router.push('/dashboard')
+        this.$router.push(user.role === 'DRIVER' ? '/rotas' : user.role === 'FINANCE' ? '/financial' : '/dashboard')
       } catch (err) {
         console.error(err)
         this.errorMessage = err.response?.data?.message || 'Não foi possível entrar. Confira seus dados.'
