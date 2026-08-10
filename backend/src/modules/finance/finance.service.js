@@ -145,7 +145,7 @@ function expenseWhere(user, query = {}) {
   if (query.startDate || query.endDate || query.month || query.year) where.date = dateRange(query);
   if (query.vehicleId) where.vehicleId = query.vehicleId;
   if (query.driverId) where.driverId = query.driverId;
-  if (query.category) where.category = query.category;
+  if (query.category) where.category = normalizeCategory(query.category);
   if (query.status) where.status = query.status;
   if (query.paid !== undefined) where.paid = String(query.paid) === 'true';
   if (user.role === 'DRIVER') {
@@ -155,7 +155,14 @@ function expenseWhere(user, query = {}) {
       { driverId: user.id },
     ];
   }
-  where.NOT = { description: { startsWith: ROUTE_UNLOADING_DESCRIPTION_PREFIX } };
+  where.AND = [
+    {
+      OR: [
+        { description: null },
+        { NOT: { description: { startsWith: ROUTE_UNLOADING_DESCRIPTION_PREFIX } } },
+      ],
+    },
+  ];
 
   return where;
 }
