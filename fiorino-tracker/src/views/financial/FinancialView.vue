@@ -147,7 +147,7 @@
                         <div v-if="!filteredExpenses.length" class="empty-state">
                             <span class="empty-icon"><i class="fa-solid fa-receipt"></i></span>
                             <strong>Nenhuma despesa encontrada</strong>
-                            <p>{{ isDriverUser ? 'Use os botoes rapidos para registrar um gasto do veículo.' :
+                            <p>{{ isDriverUser ? 'Use os botões rápidos para registrar um gasto do veículo.' :
                                 'Crie uma despesa ou ajuste os filtros do período.' }}</p>
                         </div>
                     </div>
@@ -271,14 +271,14 @@
                     <article class="finance-panel">
                         <div class="section-title">
                             <div><span class="eyebrow">DRE geral</span>
-                                <h5>Resultado do mes</h5>
+                                <h5>Resultado do mês</h5>
                             </div>
                         </div>
                         <div class="dre-line positive"><span>Receitas</span><strong>{{ formatMoney(dre.totalRevenue)
                         }}</strong></div>
                         <div v-for="category in dre.categories" :key="category.category" class="dre-line"><span>{{
                             category.category }}</span><strong>{{ formatMoney(category.total) }}</strong></div>
-                        <div class="dre-line total"><span>Lucro liquido</span><strong>{{ formatMoney(dre.netProfit)
+                        <div class="dre-line total"><span>Lucro líquido</span><strong>{{ formatMoney(dre.netProfit)
                         }}</strong></div>
                     </article>
                     <article class="finance-panel">
@@ -297,7 +297,7 @@
                     </article>
                 </section>
 
-                <section v-if="!isDriverUser && activeTab === 'salaries'" class="finance-panel">
+                <section v-if="!isDriverUser && activeTab === 'salaries'" class="finance-panel salary-panel">
                     <div class="section-title">
                         <div><span class="eyebrow">Salários</span>
                             <h5>Motoristas e pagamentos</h5>
@@ -577,7 +577,7 @@ export default {
                 return [
                     { label: 'Meus gastos', value: this.formatMoney(this.totalExpenses), hint: 'Período filtrado', tone: 'expense' },
                     { label: 'Pendentes', value: String(this.filteredExpenses.filter(item => item.status === 'PENDING').length), hint: 'Aguardando aprovação', tone: 'pending' },
-                    { label: 'Correcoes', value: String(this.filteredExpenses.filter(item => item.status === 'CORRECTION_REQUESTED').length), hint: 'Precisam de ajuste', tone: 'info' }
+                    { label: 'Correções', value: String(this.filteredExpenses.filter(item => item.status === 'CORRECTION_REQUESTED').length), hint: 'Precisam de ajuste', tone: 'info' }
                 ]
             }
             return [
@@ -725,7 +725,7 @@ export default {
             } catch (error) { console.error(error) } finally { this.isLoading = false }
         },
         async deleteRevenue(id) {
-            if (!window.confirm('Excluir está receita?')) return
+            if (!window.confirm('Excluir esta receita?')) return
             this.isLoading = true
             try {
                 await removeRevenueApi(id)
@@ -1237,15 +1237,15 @@ export default {
 }
 
 .revenue-panel {
-    padding: 24px;
+    padding: 16px;
 }
 
 .revenue-panel-head {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
-    padding-bottom: 22px;
+    gap: 14px;
+    padding-bottom: 14px;
     border-bottom: 1px solid var(--border-soft);
 }
 
@@ -1256,8 +1256,8 @@ export default {
 
 .revenue-panel-head h5 {
     color: var(--text-strong);
-    font-size: 22px;
-    line-height: 1.15;
+    font-size: 18px;
+    line-height: 1.18;
 }
 
 .revenue-panel-head p,
@@ -1274,31 +1274,31 @@ export default {
 
 .revenue-total strong {
     color: #22c55e;
-    font-size: 30px;
+    font-size: 24px;
     line-height: 1.1;
 }
 
 .revenue-list {
     display: grid;
-    gap: 12px;
-    padding-top: 16px;
+    gap: 10px;
+    padding-top: 12px;
 }
 
 .revenue-card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(140px, auto) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(120px, auto) auto;
     align-items: center;
-    gap: 18px 22px;
+    gap: 12px 16px;
     border: 1px solid var(--border-soft);
-    border-radius: 18px;
+    border-radius: 14px;
     background: var(--surface-muted);
-    padding: 18px 20px;
+    padding: 12px 14px;
 }
 
 .revenue-title {
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: 12px;
     min-width: 0;
 }
 
@@ -1310,8 +1310,8 @@ export default {
     display: block;
     overflow: hidden;
     color: var(--text-strong);
-    font-size: 18px;
-    line-height: 1.16;
+    font-size: 15px;
+    line-height: 1.2;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -1347,18 +1347,18 @@ export default {
     display: grid;
     place-items: center;
     flex: 0 0 auto;
-    width: 72px;
-    height: 72px;
+    width: 46px;
+    height: 46px;
     border: 1px solid rgba(var(--primary-color-rgb), 0.34);
-    border-radius: 18px;
+    border-radius: 12px;
     background: rgba(var(--primary-color-rgb), 0.14);
     color: var(--primary-color);
-    font-size: 28px;
+    font-size: 18px;
 }
 
 .revenue-card>.amount {
     justify-self: end;
-    font-size: 19px;
+    font-size: 16px;
     line-height: 1.15;
     text-align: right;
     white-space: nowrap;
@@ -1367,19 +1367,19 @@ export default {
 .revenue-actions {
     display: inline-flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: 8px;
 }
 
 .revenue-actions button {
     display: grid;
     place-items: center;
-    width: 54px;
-    height: 54px;
+    width: 38px;
+    height: 38px;
     border: 1px solid var(--border-soft);
-    border-radius: 16px;
+    border-radius: 11px;
     background: rgba(var(--primary-color-rgb), 0.14);
     color: var(--primary-color);
-    font-size: 18px;
+    font-size: 14px;
 }
 
 .revenue-actions button.danger-action {
@@ -1547,6 +1547,22 @@ export default {
     gap: 10px;
 }
 
+.panel-grid {
+    gap: 16px;
+}
+
+.panel-grid .finance-panel,
+.salary-panel {
+    display: grid;
+    align-content: start;
+    gap: 12px;
+}
+
+.panel-grid .section-title,
+.salary-panel .section-title {
+    margin-bottom: 0;
+}
+
 .category-row,
 .list-row,
 .cash-row,
@@ -1556,7 +1572,36 @@ export default {
 .insight-row {
     border-radius: 14px;
     background: var(--surface-muted);
-    padding: 11px;
+    padding: 13px 14px;
+}
+
+.dre-line + .dre-line,
+.vehicle-dre-row + .vehicle-dre-row,
+.list-row + .list-row {
+    margin-top: 10px;
+}
+
+.dre-line,
+.vehicle-dre-row,
+.list-row {
+    gap: 16px;
+}
+
+.vehicle-dre-row > div,
+.list-row > div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.vehicle-dre-row small,
+.list-row small {
+    line-height: 1.35;
+}
+
+.vehicle-dre-row > div:last-child,
+.list-row > span {
+    text-align: right;
 }
 
 .category-row span,
