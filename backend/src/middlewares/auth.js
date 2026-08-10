@@ -4,7 +4,7 @@ const prisma = require('../lib/prisma');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 
-const authenticaté = asyncHandler(async (req, _res, next) => {
+const authenticate = asyncHandler(async (req, _res, next) => {
   const header = req.headers.authorization;
 
   if (!header?.startsWith('Bearer ')) {

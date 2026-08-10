@@ -330,7 +330,7 @@ async function startRoute(user, input) {
     data: {
       vehicleId: vehicle.id,
       driverId: user.id,
-      date: data.daté ? new Date(data.date) : new Date(),
+      date: data.date ? new Date(data.date) : new Date(),
       initialKm: data.initialKm,
       plannedDeliveries: data.plannedDeliveries || null,
       status: RouteStatus.IN_PROGRESS,
@@ -379,7 +379,7 @@ async function createRoute(input) {
       data: {
         vehicleId: vehicle.id,
         driverId: vehicle.driverId,
-        date: data.daté ? new Date(data.date) : new Date(),
+        date: data.date ? new Date(data.date) : new Date(),
         initialKm: data.initialKm,
         finalKm: hasFinishedData ? data.finalKm : null,
         plannedDeliveries: data.plannedDeliveries || null,
@@ -882,7 +882,7 @@ async function buildFreightWorkbook(routes, expenses, settings, { start, end, ti
   if (!worksheet) throw new AppError('Template de frete inválido', 500);
 
   if (routes.length > FREIGHT_BLOCK_ROWS.length) {
-    throw new AppError(`O templaté de frete suporta até ${FREIGHT_BLOCK_ROWS.length} rotas por arquivo`, 400);
+    throw new AppError(`O template de frete suporta até ${FREIGHT_BLOCK_ROWS.length} rotas por arquivo`, 400);
   }
 
   setCellValue(worksheet, 'A1', title);

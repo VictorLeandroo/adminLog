@@ -88,9 +88,9 @@
                 <button type="button" class="forgot-link">Esqueceu sua senha?</button>
               </div>
 
-              <div v-if="errorMêssage" class="login-error">
+              <div v-if="errorMessage" class="login-error">
                 <i class="fa-solid fa-circle-exclamation"></i>
-                <span>{{ errorMêssage }}</span>
+                <span>{{ errorMessage }}</span>
               </div>
 
               <button class="login-submit" type="submit" :disabled="isLoading || !form.email || !form.password">
@@ -158,7 +158,7 @@ export default {
         password: ''
       },
       isLoading: false,
-      errorMêssage: '',
+      errorMessage: '',
       showPassword: false,
       rememberMe: true
     }
@@ -173,7 +173,7 @@ export default {
       if (this.isLoading || !this.form.email || !this.form.password) return
 
       this.isLoading = true
-      this.errorMêssage = ''
+      this.errorMessage = ''
 
       try {
         const { token, user } = await loginUser(this.form.email, this.form.password)
@@ -191,7 +191,7 @@ export default {
         this.$router.push(user.role === 'DRIVER' ? '/rotas' : user.role === 'FINANCE' ? '/financial' : '/dashboard')
       } catch (err) {
         console.error(err)
-        this.errorMêssage = err.response?.data?.message || 'Não foi possível entrar. Confira seus dados.'
+        this.errorMessage = err.response?.data?.message || 'Não foi possível entrar. Confira seus dados.'
       } finally {
         this.isLoading = false
       }

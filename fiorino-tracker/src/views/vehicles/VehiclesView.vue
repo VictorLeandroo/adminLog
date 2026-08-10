@@ -178,7 +178,7 @@
                         </div>
 
                         <div class="fleet-review-summary">
-                            <span>{{ vehicle.maintenances?.length || 0 }} revisão(oes)</span>
+                            <span>{{ vehicle.maintenances?.length || 0 }} revisões</span>
                             <ButtonComp btn-class="button-secundary" :click-action="() => openMaintenanceModal(vehicle)">
                                 <i class="fa-solid fa-plus"></i>
                                 Revisão
@@ -496,7 +496,7 @@ export default {
             vehicles: [],
             drivers: [],
             isLoading: false,
-            errorMêssage: '',
+            errorMessage: '',
             showVehicleModal: false,
             showMaintenanceModal: false,
             showDetailsModal: false,
@@ -558,7 +558,7 @@ export default {
     methods: {
         async fetchVehicles() {
             this.isLoading = true
-            this.errorMêssage = ''
+            this.errorMessage = ''
 
             try {
                 this.vehicles = this.isDriver ? await getMyVehicle() : await listVehicles()
@@ -568,7 +568,7 @@ export default {
                     this.vehicles = []
                     return
                 }
-                this.errorMêssage = error.response?.data?.message || 'Não foi possível carregar os veículos.'
+                this.errorMessage = error.response?.data?.message || 'Não foi possível carregar os veículos.'
             } finally {
                 this.isLoading = false
             }
@@ -584,7 +584,7 @@ export default {
                 this.drivers = await listDrivers()
             } catch (error) {
                 console.error(error)
-                this.errorMêssage = error.response?.data?.message || 'Não foi possível carregar os motoristas.'
+                this.errorMessage = error.response?.data?.message || 'Não foi possível carregar os motoristas.'
             }
         },
 
@@ -656,7 +656,7 @@ export default {
                 this.cancelVehicleModal()
             } catch (error) {
                 console.error(error)
-                this.errorMêssage = error.response?.data?.message || 'Não foi possível salvar o veículo.'
+                this.errorMessage = error.response?.data?.message || 'Não foi possível salvar o veículo.'
             } finally {
                 this.isLoading = false
             }
@@ -669,7 +669,7 @@ export default {
                 this.vehicles = this.vehicles.filter(vehicle => vehicle.id !== id)
             } catch (error) {
                 console.error(error)
-                this.errorMêssage = error.response?.data?.message || 'Não foi possível remover o veículo.'
+                this.errorMessage = error.response?.data?.message || 'Não foi possível remover o veículo.'
             } finally {
                 this.isLoading = false
             }
@@ -711,7 +711,7 @@ export default {
                 this.cancelMaintenanceModal()
             } catch (error) {
                 console.error(error)
-                this.errorMêssage = error.response?.data?.message || 'Não foi possível salvar a revisão.'
+                this.errorMessage = error.response?.data?.message || 'Não foi possível salvar a revisão.'
             } finally {
                 this.isLoading = false
             }
