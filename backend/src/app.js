@@ -36,6 +36,10 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/health/database', require('./database-health.cjs')(async () => {
+  await require('./lib/prisma').$queryRaw`SELECT 1`;
+}));
+
 app.use('/api', routes);
 app.use(errorHandler);
 

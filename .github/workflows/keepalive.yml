@@ -1,0 +1,29 @@
+name: Monitorar APIs e bancos
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,17,27,37,47,57 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: health-monitor
+  cancel-in-progress: false
+
+jobs:
+  health:
+    if: vars.KEEPALIVE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Verificar os dois projetos
+        env:
+          ADMINLOG_URL: ${{ secrets.ADMINLOG_URL }}
+          WEHOME_URL: ${{ secrets.WEHOME_URL }}
+          START_HOUR: ${{ vars.KEEPALIVE_START_HOUR }}
+          END_HOUR: ${{ vars.KEEPALIVE_END_HOUR }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: node scripts/keepalive.mjs
