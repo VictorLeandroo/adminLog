@@ -32,3 +32,5 @@ https://render.com/docs/free
 https://supabase.com/docs/guides/platform/free-project-pausing
 https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
 https://docs.github.com/en/billing/concepts/product-billing/github-actions
+
+WEHOME_URL é opcional enquanto o backend do wehome não estiver disponível. Nesse caso, o monitor verifica apenas adminLog e registra a pendência no log.

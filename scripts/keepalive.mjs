@@ -1,7 +1,7 @@
 ﻿import { pathToFileURL } from 'node:url';
 
 export function targetsFrom(env) {
-  return ['ADMINLOG', 'WEHOME'].map(name => {
+  return ['ADMINLOG', 'WEHOME'].filter(name => name === 'ADMINLOG' || env[name + '_URL']?.trim()).map(name => {
     const raw = env[name + '_URL']?.trim();
     let url;
     try { url = new URL(raw); } catch { throw new Error(name + '_URL deve ser uma URL HTTPS.'); }
@@ -40,7 +40,7 @@ export async function main(env = process.env) {
     console.log('Fora do horário configurado.');
     return 0;
   }
-  const results = await Promise.all(targetsFrom(env).map(target => checkTarget(target)));
+  if (!env.WEHOME_URL?.trim()) console.log('WEHOME: backend not configured; checking adminLog only.'); const results = await Promise.all(targetsFrom(env).map(target => checkTarget(target)));
   return results.every(Boolean) ? 0 : 1;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

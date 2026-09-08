@@ -4,7 +4,7 @@ import { targetsFrom, inWindow, checkTarget } from './keepalive.mjs';
 test('validates both HTTPS origins', () => {
   assert.equal(targetsFrom({ ADMINLOG_URL: 'https://a.example', WEHOME_URL: 'https://b.example/' })[1].url, 'https://b.example/health/database');
   assert.throws(() => targetsFrom({ ADMINLOG_URL: 'https://a.example', WEHOME_URL: 'http://b.example' }));
-  assert.throws(() => targetsFrom({ ADMINLOG_URL: 'https://a.example' }));
+  assert.equal(targetsFrom({ ADMINLOG_URL: 'https://a.example' }).length, 1); assert.throws(() => targetsFrom({}));
 });
 test('respects Sao Paulo window, including 24h', () => {
   assert.equal(inWindow({}, new Date('2026-09-08T10:00:00Z')), false);
