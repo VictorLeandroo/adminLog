@@ -33,7 +33,7 @@ app.get('/uploads/supabase/*', uploadRoutes.streamSupabaseObject);
 app.use('/uploads', express.static('uploads'));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, revision: process.env.RENDER_GIT_COMMIT || undefined });
 });
 
 app.get('/health/database', require('./database-health.cjs')(async () => {

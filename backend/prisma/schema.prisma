@@ -161,7 +161,7 @@ model RouteCity {
 model RouteInvoice {
   id      String @id @default(uuid())
   routeId String
-  number  String
+  number  String @unique
 
   route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
 }

@@ -8,6 +8,7 @@ const ExcelJS = require('exceljs');
 
 const prisma = require('../../lib/prisma');
 const AppError = require('../../utils/AppError');
+const { validateInvoiceNumbers } = require('./invoiceValidation');
 
 const FREIGHT_TEMPLATE_PATH = path.resolve(__dirname, '../../templates/frete-base.xlsx');
 const FREIGHT_BLOCK_ROWS = [2, 11, 20, 29, 38, 47, 56, 65, 74, 83, 92];
@@ -368,6 +369,7 @@ async function createRoute(input) {
         : RouteStatus.IN_PROGRESS;
 
   return prisma.$transaction(async (tx) => {
+    await validateInvoiceNumbers(tx, payload.invoices);
     if (hasFinishedData && data.finalKm > vehicle.currentKm) {
       await tx.vehicle.update({
         where: { id: vehicle.id },
@@ -421,6 +423,7 @@ async function finishRoute(user, id, input) {
     : RouteStatus.PENDING_REVIEW;
 
   return prisma.$transaction(async (tx) => {
+    await validateInvoiceNumbers(tx, payload.invoices, id);
     await tx.vehicle.update({
       where: { id: route.vehicleId },
       data: { currentKm: data.finalKm },
@@ -496,6 +499,7 @@ async function reviewRoute(id, input) {
   }
 
   return prisma.$transaction(async (tx) => {
+    await validateInvoiceNumbers(tx, payload.invoices, id);
     if (data.finalKm !== undefined && data.finalKm !== null && data.finalKm > route.vehicle.currentKm) {
       await tx.vehicle.update({
         where: { id: route.vehicleId },
