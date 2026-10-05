@@ -17,6 +17,11 @@ Servidor padrao: `http://localhost:4000/api`.
 
 ## Consulta periódica ao banco
 
+O mecanismo principal é o job `fiorino_keep_alive` no próprio Supabase, definido
+em `prisma/keepalive.sql`. Ele chama a API no Render a cada 5 minutos, 24 horas
+por dia, para verificar servidor e banco mesmo sem usuários conectados.
+Consulte `KEEPALIVE.md` na raiz para instalação, verificação e limites.
+
 Ao iniciar a API, o backend executa `SELECT 1` e repete a consulta a cada
 29 minutos, sem depender de uma aba aberta. Falhas são registradas no log e
 não interrompem a API. Para desativar, use `DATABASE_KEEP_ALIVE_ENABLED=false`.

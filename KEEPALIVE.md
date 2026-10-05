@@ -1,5 +1,52 @@
 ﻿# Monitoramento de adminLog e wehome
 
+## Keep-alive do Fiorino no Supabase
+
+O mecanismo principal do Fiorino é `pg_cron` + `pg_net` no próprio Supabase,
+como no expenseControl, com uma chamada HTTP adicional para manter o Render ativo.
+O job `fiorino_keep_alive` chama `https://adminlog-1.onrender.com/health/database`
+a cada 5 minutos (`*/5 * * * *`), todos os dias e em todos os horários.
+O endpoint verifica a conexão com o banco e não retorna dados dos usuários.
+
+Para instalar ou atualizar o job, execute `backend/prisma/keepalive.sql` no SQL
+Editor do Supabase de produção. É uma configuração operacional específica desse
+ambiente, não uma migração do banco local. Não exige senha ou token no cron,
+pois o endpoint de saúde é público. O timeout de 90 segundos permite a primeira
+chamada durante a inicialização do Render.
+
+Para verificar o agendamento e as execuções:
+
+```sql
+SELECT jobid, jobname, schedule, active
+FROM cron.job WHERE jobname = 'fiorino_keep_alive';
+
+SELECT status, return_message, start_time, end_time
+FROM cron.job_run_details
+WHERE jobid = (SELECT jobid FROM cron.job WHERE jobname = 'fiorino_keep_alive')
+ORDER BY start_time DESC LIMIT 10;
+```
+
+O sucesso do cron significa que a requisição foi enfileirada. Confira também
+o HTTP 200 em `net._http_response`, pelo ID retornado por `net.http_get`, para
+confirmar a resposta da API. As respostas HTTP são temporárias.
+Para pausar somente este job:
+
+```sql
+SELECT cron.alter_job(jobid, active := false)
+FROM cron.job WHERE jobname = 'fiorino_keep_alive';
+```
+
+O timer de 29 minutos dentro da API permanece como complemento. Ele não impede
+a suspensão do Render sozinho. O GitHub Actions abaixo é um monitor legado e
+não é necessário para o cron do Supabase funcionar.
+
+Esta configuração mantém apenas o Fiorino ativo 24h. O uso conta para a franquia
+compartilhada de horas do Render; outros serviços no mesmo workspace também
+consomem essa franquia. Reinícios e indisponibilidade dos provedores continuam
+possíveis. Um Supabase já pausado precisa ser restaurado antes que o cron rode.
+
+## Monitoramento legado
+
 O workflow .github/workflows/keepalive.yml executa no repositório público adminLog e verifica ambos os backends. Não há processo rodando dentro de um servidor que pode estar suspenso.
 
 ## Ativação
